@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+      <loc>http://regilero.github.io/Drupal/English/2011/10/18/drupal_mongodb_statistics_module_published/</loc>
+      <lastmod>2011-10-18</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
+      <loc>http://regilero.github.io/Drupal/English/2011/10/03/separate_cache_backends_d6_and_d7/</loc>
+      <lastmod>2011-10-03</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
+      <loc>http://regilero.github.io/Apache/English/2009/11/06/more_on_static_file_redirector/</loc>
+      <lastmod>2009-11-06</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
+      <loc>http://regilero.github.io/Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/</loc>
+      <lastmod>2009-11-05</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
+      <loc>http://regilero.github.io/Monitoring/Francais/2008/05/25/temps_de_reponse_reel_d_une_page_web_avec_netcat/</loc>
+      <lastmod>2008-05-25</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+</urlset>

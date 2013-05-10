@@ -1,0 +1,929 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+	<channel>
+		<title>RBleug</title>
+		<description>Regilero's blog; Mostly tech things about web stuff.</description>
+		<link>http://regilero.github.io/</link>
+		
+			<item>
+				<title>Drupal - Mongodb statistics module published</title>
+				<description>&lt;h3&gt;What is this about?&lt;/h3&gt;
+
+&lt;p&gt;Just a few words, as I've other some things to do.&lt;/p&gt;
+
+&lt;p&gt;I've just published a development version of &lt;a href=&quot;http://github.com/regilero/drupal_mongodb_statistics&quot;&gt;mongodb-statistics&lt;/a&gt; on github.&lt;/p&gt;
+
+&lt;p&gt;This module is a first try on replacing heavy MySQL operations done by the core statistics module.&lt;/p&gt;
+
+&lt;p&gt;It's copy-and-alter of the core statistics module, with some additions.
+So it's not the nicest piece of code I could write :-)&lt;/p&gt;
+
+&lt;p&gt;On the things added :&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;batch migration of previous node_counter statistics if any (not yet for accesslog)&lt;/li&gt;
+&lt;li&gt;post-synchronisation of node_counter mongodb table to a sql table (via cron), so that you could query it via views (not for accesslog, are you mad?)&lt;/li&gt;
+&lt;li&gt;time based caching of the popular content block&lt;/li&gt;
+&lt;li&gt;Still lot of thing to do (see the &lt;a href=&quot;https://github.com/regilero/drupal_mongodb_statistics/blob/master/mongodb_statistics/TODO.txt&quot;&gt;TODO&lt;/a&gt;) but it was a nice way to learn &lt;strong&gt;&lt;em&gt;mongodb&lt;/em&gt;&lt;/strong&gt;. I especially like the idea of &lt;a href=&quot;http://nosql.mypopescu.com/post/392418792/translate-sql-to-mongodb-mapreduce&quot;&gt;mapReduce&lt;/a&gt; functions applied for complex &lt;code&gt;GROUP BY&lt;/code&gt; equivalents.&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+				<published>2011-10-18 00:00:00 +0200</published>
+				<link>http://regilero.github.io//Drupal/English/2011/10/18/drupal_mongodb_statistics_module_published/</link>
+			</item>
+		
+			<item>
+				<title>Separate cache Backends with Drupal6 and Drupal7.</title>
+				<description>&lt;p&gt;Drupal use a lot of caches at different levels but all of them are by default stored in the database.&lt;/p&gt;
+
+&lt;p&gt;In this article we'll study how to push all these caches in better places.&lt;/p&gt;
+
+&lt;p&gt;Thi is a new feature of default Drupal7, but simple solutions are available if you want the same thing on a Drupal6 installation.&lt;/p&gt;
+
+&lt;h3&gt;The default situation&lt;/h3&gt;
+
+&lt;p&gt;Take your Drupal Database and check what are the cache tables used, here I'll use a quite basic default Drupal installation on Drupal6:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;n&quot;&gt;mysql&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;show&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tables&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;like&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;cache%&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;---------------------------+&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Tables_in_expat6&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;---------------------------+&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;cache&lt;/span&gt;                     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache_block&lt;/span&gt;               &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache_content&lt;/span&gt;             &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache_filter&lt;/span&gt;              &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache_form&lt;/span&gt;                &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache_menu&lt;/span&gt;                &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache_page&lt;/span&gt;                &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache_update&lt;/span&gt;              &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache_views&lt;/span&gt;               &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache_views_data&lt;/span&gt;          &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache_admin_menu&lt;/span&gt;          &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;---------------------------+&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Let's try to get more informations on theses tables with a query on the INFORMATION_SCHEMA of MySQL, here a database named mydrupal&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;n&quot;&gt;mysql&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; 
+    &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;  &lt;span class=&quot;n&quot;&gt;concat&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;table_schema&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;.&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;table_name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dbtable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;  &lt;span class=&quot;n&quot;&gt;concat&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;round&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;table_rows&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;K&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;rows&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;  &lt;span class=&quot;n&quot;&gt;concat&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;round&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data_length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1024&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1024&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;M&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;DATA&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;  &lt;span class=&quot;n&quot;&gt;concat&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;round&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;index_length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1024&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1024&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;M&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;indexes&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;  &lt;span class=&quot;n&quot;&gt;concat&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;round&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data_length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;index_length&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1024&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1024&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;M&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;total_size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;  &lt;span class=&quot;n&quot;&gt;round&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;index_length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data_length&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;idxfrac&lt;/span&gt; 
+    &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;  &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;information_schema&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;TABLES&lt;/span&gt; 
+    &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;  &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;table_name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;LIKE&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;cache%&amp;#39;&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;  &lt;span class=&quot;k&quot;&gt;AND&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;table_schema&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;&amp;quot;mydrupal&amp;quot;&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;  &lt;span class=&quot;k&quot;&gt;ORDER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;data_length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;index_length&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;DESC&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;---------------------------+-------+-------+---------+------------+---------+&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dbtable&lt;/span&gt;                   &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;rows&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;DATA&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;indexes&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;total_size&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;idxfrac&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;---------------------------+-------+-------+---------+------------+---------+&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mydrupal&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cache_menu&lt;/span&gt;       &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;02&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;K&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;7&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;19&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;06&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;7&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;26&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;    &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;01&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; 
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mydrupal&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cache_form&lt;/span&gt;       &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;01&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;K&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;99&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;01&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;    &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; 
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mydrupal&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cache_update&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;K&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;86&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;01&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;86&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;    &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;01&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; 
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mydrupal&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cache_filter&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;22&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;K&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;49&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;03&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;52&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;    &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;06&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; 
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mydrupal&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;cache&lt;/span&gt;            &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;01&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;K&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;46&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;01&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;46&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;    &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;01&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; 
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mydrupal&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cache_content&lt;/span&gt;    &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;17&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;K&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;35&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;01&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;36&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;    &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;03&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; 
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mydrupal&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cache_views&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;01&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;K&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;23&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;01&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;23&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;    &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;03&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; 
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mydrupal&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cache_admin_menu&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;K&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;01&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;01&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;   &lt;span class=&quot;mi&quot;&gt;96&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; 
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mydrupal&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cache_page&lt;/span&gt;       &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;K&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;    &lt;span class=&quot;k&quot;&gt;NULL&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; 
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mydrupal&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cache_views_data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;K&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;    &lt;span class=&quot;k&quot;&gt;NULL&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; 
+&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mydrupal&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cache_block&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;K&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;    &lt;span class=&quot;k&quot;&gt;NULL&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; 
+&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;---------------------------+-------+-------+---------+------------+---------+&lt;/span&gt;
+&lt;span class=&quot;mi&quot;&gt;11&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;rows&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;set&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;00&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;sec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;So, well, here my example is a quite little website. Cache tables are small and not heavily used.
+You would get bigger numbers on a big website.
+But anyway, the real problem in term of performance here is not on the size of
+caches or the size of the indexes, but on the number of read and write queries
+running on theses tables.&lt;/p&gt;
+
+&lt;p&gt;When the website will grow you will need to activate more internal caching,
+maybe you will use good modules, which make their own cache tables and use them
+&amp;amp; the existing ones to avoid recomputing all answers.
+You may even use so much the cache that some queries on the website will be answered
+by only requesting the cache table (aggressive cache mode with cache_page).&lt;/p&gt;
+
+&lt;p&gt;Soon enough you will ask yourself &quot;Could I use some smarter solutions like Memcache for the cache storage?&quot;.&lt;/p&gt;
+
+&lt;p&gt;And of course some existing modules could help you doing that.
+The memcache module, for example.
+And the &quot;cache router&quot; module applied some of the ideas we'll study later on this article.&lt;/p&gt;
+
+&lt;p&gt;You may wonder why it is smart to use something which is not the database to perform the caching storage?&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;You could maybe avoid completely the database requests in aggressive mode&lt;/li&gt;
+&lt;li&gt;Dedicated storage engine (cache engines) perform faster than a relational database both in write and read operations&lt;/li&gt;
+&lt;li&gt;Reducing the number of requests made on MySQL is very important with Drupal, where a single page can be between 50 and 250 requests. With core modules only, adding Panels, some views and some other modules and you could grow up to 600 requests.&lt;/li&gt;
+&lt;li&gt;data not managed in MySQl will never impact MySQL memory buffers management (smallest database will have more chances to avoid pagination)&lt;/li&gt;
+&lt;li&gt;In some circumstances cache tables can get a lot of write operations and the query_cache for queries on theses tables will be wiped out frequently, which is bad for the query cache ratio and usage. But this is not always true, depends a lot on your Drupal cache usages&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;I said before cache engines can be faster in both write and read operations.
+So now you may ask &quot;why don't we use Cache engines for everything?&quot;. And the answer is that a relational database provides more services, it can for example provides a better persitency,
+or manage better simultaneous writes, or allow handling relationship between objects.
+&lt;strong&gt;&lt;em&gt;Use the right tool for the right thing&lt;/em&gt;&lt;/strong&gt;.
+But this is still a good question. Drupal 8 studies &amp;amp; discussions are actually requesting whether a document based backend for most Drupal storage wouldn't be  more appropriate than a relational database.
+For now we'll just have a look at the cache tables problems.&lt;/p&gt;
+
+&lt;h3&gt;Cache backends with Drupal7&lt;/h3&gt;
+
+&lt;p&gt;Now comes Drupal7. The cache management has been rewritten, using cache router and memcached ideas and try to put the things one step further in the core.
+Cache bins are used, for example the bin &lt;strong&gt;&lt;em&gt;'foo'&lt;/em&gt;&lt;/strong&gt; will use the cache table &lt;strong&gt;&lt;em&gt;cache_foo&lt;/em&gt;&lt;/strong&gt;.
+And &lt;strong&gt;for each bin you can specify which storage backend will be used&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;Available cache backends are:&lt;/p&gt;
+ * Database: the default one, like before
+ * File (module filecache): a file-based storage which could be useful with fast disk storage (and a shared disk storage if you have several apache servers)
+ * Apc (module apc): APC is not only an opcode (PHP code precompiler) it also  provides a local cache of shared memory. If you have several Apache servers you will have one APC cache per server, but it's not a big one, be careful (and part of the available memory space is occupied by the opcode). In case of full cache (overflow) the cache is completely wiped out, so do not use that for long persistency.
+ * Memcache (module memcache): To use the well known memcached daemon. where you could use a basic mono-server setting or a complex multi-servers with replications usage&lt;/p&gt;
+
+&lt;p&gt;But other backends could be written.
+And you can already find two Redis backends implementations (&lt;strong&gt;&lt;em&gt;Predis&lt;/em&gt;&lt;/strong&gt; &amp;amp; &lt;strong&gt;&lt;em&gt;PhpRedis&lt;/em&gt;&lt;/strong&gt;) with the  &lt;a href=&quot;http://drupal.org/project/redis&quot;&gt;redis module&lt;/a&gt; (alpha).
+Module maintained by &lt;strong&gt;&lt;em&gt;pounard&lt;/em&gt;&lt;/strong&gt;, a Makina Corpus worker.
+There is also a &lt;a href=&quot;http://drupal.org/project/mongodb&quot;&gt;MongoDB module&lt;/a&gt; providing a mongodb cache backend (beta2), that I did not test yet, powered by Damien Tournoud.&lt;/p&gt;
+
+&lt;h3&gt;Having a drupal6? Or do you want some configuration details?&lt;/h3&gt;
+
+&lt;p&gt;The only thing we need know is a documentation on how to configure these.
+This is always (almost) provided in the module documentation but we will use the &lt;a href=&quot;http://drupal.org/project/cache_backport&quot;&gt;cache backport module&lt;/a&gt; documentation as an example.
+This module, again maintained by  &lt;strong&gt;&lt;em&gt;pounard&lt;/em&gt;&lt;/strong&gt;, is a backport of Drupal7 cache engine (separating  backends) for Drupal6.
+So it's a replacement for Cache Router where you can reuse the cache parts of Drupal7 cache backends in a Drupal6 website.
+And One of the good points of this module is that it provides a centralized documentation on several cache backends which is spread on the different modules for Drupal7.&lt;/p&gt;
+
+&lt;p&gt;The first question is &quot;where should I put each separate cache bin (or each cache table for short) ?&quot;&lt;/p&gt;
+
+&lt;p&gt;The &lt;strong&gt;&lt;em&gt;cache&lt;/em&gt;&lt;/strong&gt; and &lt;strong&gt;&lt;em&gt;cache_bootstrap&lt;/em&gt;&lt;/strong&gt; bins contains short and often used data.
+They will love the APC cache backend.&lt;/p&gt;
+
+&lt;p&gt;For all the others bins you could apply a different policy.
+You may want to keep some bins in the database, but you should test the memcached/mongodb backend for most bins.
+You could also try the filecache backend, with a modern linux kernel often used files will get mapped into memory buffers and you may get good results.&lt;/p&gt;
+
+&lt;p&gt;There is no magic rules, the best tool will depend on your cache usage and on used modules.
+MySQL is already working a lot, moving all caches outside of the  database will help MySQL.
+But you will need to allow some memory (server?) for these new backends, maybe some of the memory given previously to MySQl or Apache.
+Keep in mind that you should never make a server swap.&lt;/p&gt;
+
+&lt;p&gt;Let's look at a complete configuration, for Drupal6 the cache backport module would require these lines:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;  // Load the cache backport replacement for cache.inc:&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_inc&amp;#39;] = &amp;#39;sites/all/modules/cache_backport/cache.inc&amp;#39;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And now for Drupal7 or Drupal6 we would have (of course it depends of the bins available on your installation, check the table created in MySQL to see what bin are requested by the modules):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;  // Define cache engines:&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // Database : &amp;#39;DrupalDatabaseCache&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_backends&amp;#39;][] = &amp;#39;sites/all/modules/cache_backport/database.inc&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // FileCache : &amp;#39;DrupalFileCache&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_backends&amp;#39;][] = &amp;#39;sites/all/modules/filecache/filecache.inc&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // APC : &amp;#39;DrupalAPCCache&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_backends&amp;#39;][] = &amp;#39;sites/all/modules/apc/drupal_apc_cache.inc&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // Memcache from drupal 7 : &amp;#39;MemCacheDrupal&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_backends&amp;#39;][] = &amp;#39;sites/all/modules/memcache/memcache.inc&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // Define cache bins, here&amp;#39;s the magic, deporting several cache on the&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // appropriate place depending on usage frequency, size, and others:&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // Please consider seriously doing brainstorming and benchmarking on your own&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // since this is only an example, and sites performance may vary depending&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // on modules and usage.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // Cache name |  Usage/frequency/size&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // default    |  any/any/any          select memcache, apc, file or db&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_default_class&amp;#39;]          = &amp;#39;DrupalDatabaseCache&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // WARNING: this one is &amp;#39;cache_class_cache&amp;#39; and not &amp;#39;cache_class_cache_cache&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // general    |  all/every/medium     select memcache &amp;gt; file &amp;gt; apc &amp;gt; db&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_class_cache&amp;#39;]            = &amp;#39;MemCacheDrupal&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // bootstrap  |  all/every/medium     select apc &amp;gt; db&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_class_cache_bootstrap&amp;#39;]  = &amp;#39;DrupalAPCCache&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // block      |  any/often/small      select memcache &amp;gt; db &amp;gt; file&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_class_cache_block&amp;#39;]      = &amp;#39;MemCacheDrupal&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // field      |  page/some/large      select file &amp;gt; memcache &amp;gt; db&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_class_cache_content&amp;#39;]    = &amp;#39;DrupalFileCache&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // filter     |  page/some/large      select file &amp;gt; memcache &amp;gt; db&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_class_cache_filter&amp;#39;]     = &amp;#39;DrupalFileCache&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // form       |  edit/rare/medium     select file &amp;gt; memcache &amp;gt; db&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_class_cache_form&amp;#39;]       = &amp;#39;DrupalFileCache&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // menu       |  any/often/large      select memcache &amp;gt; db &amp;gt; file&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_class_cache_menu&amp;#39;]       = &amp;#39;MemCacheDrupal&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // page       |  page/often/large     select memcache &amp;gt; file &amp;gt; db&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_class_cache_page&amp;#39;]       = &amp;#39;MemCacheDrupal&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // pathdst    |  any/some/medium      select memcache &amp;gt; db &amp;gt; file&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_class_cache_pathdst&amp;#39;]    = &amp;#39;MemCacheDrupal&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // pathsrc    |  any/some/medium      select memcache &amp;gt; db &amp;gt; file&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_class_cache_pathsrc&amp;#39;]    = &amp;#39;MemCacheDrupal&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // multiprice |  any/often/medium     select memcache &amp;gt; db &amp;gt; file&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_class_cache_uc_price&amp;#39;]   = &amp;#39;MemCacheDrupal&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // update     |  system/rare/large,   select file &amp;gt; db&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_class_cache_update&amp;#39;]     = &amp;#39;DrupalFileCache&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // users      |  any/some/large       select memcache &amp;gt; file &amp;gt; db&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_class_cache_users&amp;#39;]      = &amp;#39;MemCacheDrupal&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // views      |  any/some/large       select memcache &amp;gt; file &amp;gt; db&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_class_cache_views&amp;#39;]      = &amp;#39;MemCacheDrupal&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // views data |  any/often/small      select apc &amp;gt; db&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_class_cache_views_data&amp;#39;] = &amp;#39;DrupalAPCCache&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // Define File Cache settings:&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // See README.TXT in FileCache directory for configuration details.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;filecache_fast_pagecache&amp;#39;] = TRUE; // set TRUE to enable fast page serving&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // you will need to define your $conf[&amp;#39;file_directory_temp&amp;#39;] = &amp;#39;/something/tmp&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // before using this line. Put the directory in a place where drupal can write&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // (tmp, or files subdirectory) but that is not available via direct web&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // access, default Drupal conf protects .ht* directories, so default name is&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // .ht.filecache in the files directory if you provide no value for this setting&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;filecache_directory&amp;#39;] = $conf[&amp;#39;file_directory_temp&amp;#39;] . DIRECTORY_SEPARATOR . &amp;#39;filecache&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // Define APC settings.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;apc_show_debug&amp;#39;] = FALSE; // set TRUE to enable debug mode&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // TODO In order to use multiple Drupal instance on the same physical box,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // each site settings.php file should provide a bin name prefix for APC and&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // most other bin. Currently APC is managing it internally with request&amp;#39;s&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // $_SERVER[&amp;#39;PHP_HOST&amp;#39;]. &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // Define Memcache settings.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  /* in case you use php-memcached and not php-memcache (for this one use php.ini settings)&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;memcache_options&amp;#39;] = array(&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    Memcached::OPT_BINARY_PROTOCOL =&amp;gt; FALSE, // set TRUE to enable binary protocol when using memcached &amp;gt;= 1.4&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    Memcached::OPT_COMPRESSION =&amp;gt; FALSE, // set FALSE to disable compression for improved performance&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    Memcached::OPT_DISTRIBUTION =&amp;gt; Memcached::DISTRIBUTION_CONSISTENT, // set consistent distribution&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    Memcached::OPT_HASH =&amp;gt; Memcached::HASH_CRC, // set CRC32 hash method&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    Memcached::OPT_CONNECT_TIMEOUT =&amp;gt; 1000, // connection timeout in milliseconds&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    Memcached::OPT_SERVER_FAILURE_LIMIT =&amp;gt; 5, // failure limit for server connection attempts&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  );*/&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // This is not necessary if you have only 1 memcached server on default port&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // (11211) but could be used to map &amp;amp; replicate bins between several servers&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // (see memcached module documentation).&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;memcache_servers&amp;#39;] = array(&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    &amp;#39;127.0.0.1:11211&amp;#39; =&amp;gt; &amp;#39;default&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  );&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // comment cache bins not used with memcached&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;memcache_bins&amp;#39;] = array(&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    &amp;#39;cache&amp;#39;            =&amp;gt; &amp;#39;default&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    //&amp;#39;cache_bootstrap&amp;#39;  =&amp;gt; &amp;#39;default&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    &amp;#39;cache_block&amp;#39;      =&amp;gt; &amp;#39;default&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    //&amp;#39;cache_content&amp;#39;    =&amp;gt; &amp;#39;default&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    //&amp;#39;cache_filter&amp;#39;     =&amp;gt; &amp;#39;default&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    //&amp;#39;cache_form&amp;#39;       =&amp;gt; &amp;#39;default&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    &amp;#39;cache_menu&amp;#39;       =&amp;gt; &amp;#39;default&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    &amp;#39;cache_page&amp;#39;       =&amp;gt; &amp;#39;default&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    &amp;#39;cache_pathdst&amp;#39;    =&amp;gt; &amp;#39;default&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    &amp;#39;cache_pathsrc&amp;#39;    =&amp;gt; &amp;#39;default&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    &amp;#39;cache_uc_price&amp;#39;   =&amp;gt; &amp;#39;default&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    //&amp;#39;cache_update&amp;#39;     =&amp;gt; &amp;#39;default&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    &amp;#39;cache_users&amp;#39;      =&amp;gt; &amp;#39;default&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    &amp;#39;cache_views&amp;#39;      =&amp;gt; &amp;#39;default&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    //&amp;#39;cache_views_data&amp;#39; =&amp;gt; &amp;#39;default&amp;#39;,    &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  );&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // Define Drupal cache settings:&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // Inactivate database connection if the cache backend doesn&amp;#39;t need it (for&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // cache_page bin only). If the page is not cached the db connection will be&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // made later.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;page_cache_without_database&amp;#39;] = TRUE;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // Avoid executing very early hooks in case of page cached (like hook_boot).&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;page_cache_invoke_hooks&amp;#39;]     = TRUE;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // Cached page lifetime.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;page_cache_maximum_age&amp;#39;]      = 3600;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // Default lifetime for all cache entries (except form and page), if no&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  // lifetime is specified by the module.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  $conf[&amp;#39;cache_lifetime&amp;#39;]              = 0;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;And the sessions?&lt;/h3&gt;
+
+&lt;p&gt;We've just been removing write and read requests from MySQL.
+But if you're tracking the request &amp;amp; locks usage in MySQL you will see that the main problem  is not really the cache backends, it's the session managmenent.
+Session Management in MySQL implies a very huge number of write operations in the session table.
+This single table is used in a very special way, no other table in the database is used with such read/write/delete ratio.
+So by definition it's quite hard to perform some fine tunning on the MySQL server if this table is not removed.
+To be honest statistics tracking can also make a lot of write requests,  but this is yet another problem&lt;/p&gt;
+
+&lt;p&gt;The Cache Backend management is not responsible of the session storage (at least  by default).
+Memcache module is providing a tool for that, Cache Router module  was announcing it as well.
+But The use of a new Module called &lt;a href=&quot;http://drupal.org/sandbox/pounard/1263216&quot;&gt;Session Proxy&lt;/a&gt; should be the definitive solution,
+allowing usage of a cache backend or usage of PHP native sessions (which can be set to memcache, mongodb, redis, etc.).
+Today it's still a sandboxed  module, no official release. available only with Drupal7.&lt;/p&gt;
+
+&lt;p&gt;More on this module when released (like how to manage session locks, how to configure the cache backend for sessions, etc).&lt;/p&gt;
+
+&lt;p&gt;We could also talk about the lock API in Drupal (lock.inc), with a default implementation using MySQL.
+Some modules provides lock alternatives which are faster (like the Redis module)...&lt;/p&gt;
+</description>
+				<published>2011-10-03 00:00:00 +0200</published>
+				<link>http://regilero.github.io//Drupal/English/2011/10/03/separate_cache_backends_d6_and_d7/</link>
+			</item>
+		
+			<item>
+				<title>More on Static file redirector</title>
+				<description>&lt;p&gt;So On &lt;a href=&quot;/Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/&quot;&gt;a previous blog entry&lt;/a&gt;
+I presented the basics for a rewriteRule settings to serve some targeted plone static files directly from apache and
+without proxying to Plone.&lt;/p&gt;
+
+&lt;p&gt;This article, in short introduce apache as a proxy for most pages but as a direct file server for static ressources,
+having a map of application url to filesystem real files stored in a text file and served via RewriteMap.&lt;/p&gt;
+
+&lt;p&gt;No let's make this solution even better.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;use a &lt;strong&gt;&lt;em&gt;hash map&lt;/em&gt;&lt;/strong&gt; for url mappings&lt;/li&gt;
+&lt;li&gt;create a virtual &lt;code&gt;/static&lt;/code&gt; url and apply some cache managment rules on his contents&lt;/li&gt;
+&lt;li&gt;allow the use of the &lt;code&gt;/satic/&lt;/code&gt; url directly&lt;/li&gt;
+&lt;li&gt;ensure only mapped static files are served via this static directory&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;So first thing to change, we used a simple text file for the mapping, mod_rewrite allows us to use a &lt;strong&gt;&lt;em&gt;hash file&lt;/em&gt;&lt;/strong&gt;.&lt;br/&gt;
+Simply change:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RewriteMap&lt;/span&gt; statics txt:/var/www/proxyplone/etc/staticplonefiles.txt
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;by:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# RewriteMap statics txt:/var/www/proxyplone//etc/staticplonefiles.txt&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# to generate hash version of previous file use (do not forget the rm):&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# rm /var/www/proxyplone//etc/staticplonefiles.map; &lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# httxt2dbm -i /var/www/proxyplone/etc/staticplonefiles.txt -o /var/www/proxyplone/etc/staticplonefiles.map&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteMap&lt;/span&gt; statics dbm:/var/www/proxyplone/etc/staticplonefiles.map
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And to generate the .map file simply read the comments. &lt;br/&gt;
+One important point, if you do not remove the old map before generating the new one,
+old entries are still in the .map, to see it without too much garbage use :&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;strings&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/etc/staticplonefiles.map&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Ok, so now let's look the current RewriteRule,
+for matched elements the rewrite is done and the file is directly served.
+We would like to add some apache settings to theses files,
+the solution is to add the &lt;code&gt;[PT]&lt;/code&gt; (pass-through) option to the rewrite rule.&lt;br/&gt;
+Then Apache will continue to analyse the resulting url as if it were an original
+requested url. &lt;br/&gt;
+That mean the proxy settings for example will be applied on it.&lt;br/&gt;
+So we will as well add a &lt;code&gt;/satic&lt;/code&gt; on the resulting url and prevent &lt;code&gt;/static&lt;/code&gt; to be served by the Proxy.&lt;br/&gt;
+The rewriteRule is now:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; ^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js)) &lt;span class=&quot;sx&quot;&gt;/static/&lt;/span&gt;${statics:$1} [NC,L,handler=default-handler,PT]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And we add this ProxyPass exception:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       &lt;span class=&quot;sx&quot;&gt;/static&lt;/span&gt;  !
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;We now have a virtual &lt;code&gt;/static&lt;/code&gt; directory with all theses mapped contents inside.
+We can use it to getBack the original DocumentRoot,
+and to use an alias to point &lt;code&gt;/static&lt;/code&gt; to our webapp sources (here &lt;code&gt;/opt/plone/source&lt;/code&gt;).
+And then we can add Expires settings from mod_expires on this &lt;code&gt;/static&lt;/code&gt; location... &lt;br/&gt;
+well in fact mod_expires requires a Directory directive so it will be on the &lt;code&gt;/opt/plone/source&lt;/code&gt; directory.&lt;/p&gt;
+
+&lt;p&gt;Reset DocumentRoot:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;DocumentRoot&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/htdocs&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Remove this line:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;Alias&lt;/span&gt; / &lt;span class=&quot;sx&quot;&gt;/opt/plone/source/&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And add theses settings:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;Alias&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/static&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/opt/plone/source/&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;Location&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/static&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;Options&lt;/span&gt; FollowSymLinks
+    &lt;span class=&quot;nb&quot;&gt;Order&lt;/span&gt; deny,allow
+    &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;DirectoryIndex&lt;/span&gt; index.html
+    &lt;span class=&quot;c&quot;&gt;# avoid execution of PHP  scripts&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;AddType&lt;/span&gt; text/plain .php
+    &lt;span class=&quot;nb&quot;&gt;AddType&lt;/span&gt; text/plain .php3
+    &lt;span class=&quot;nb&quot;&gt;AddType&lt;/span&gt; text/plain .phps
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/Location&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# adding some cache handling for static files&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/opt/plone/source&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;order&lt;/span&gt; allow,deny
+    &lt;span class=&quot;nb&quot;&gt;allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;ExpiresActive&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;On&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;ExpiresDefault&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;access plus 1 month&amp;quot;&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;ExpiresByType&lt;/span&gt; text/css &lt;span class=&quot;s2&quot;&gt;&amp;quot;access plus 1 day&amp;quot;&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;ExpiresByType&lt;/span&gt; text/javascript &lt;span class=&quot;s2&quot;&gt;&amp;quot;access plus 1 day&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;That's done. &lt;strong&gt;&lt;em&gt;Now we have a big security Hole :-(&lt;/em&gt;&lt;/strong&gt;.&lt;br/&gt;
+Most files from &lt;code&gt;/opt/plone/source&lt;/code&gt; are available via the &lt;code&gt;/static&lt;/code&gt; url. &lt;br/&gt;
+As &lt;code&gt;/static&lt;/code&gt; is not proxied anymore and is now an alias on the filesystem directory where we have an allow from all ...&lt;br/&gt;
+So we should add some rewriteRules to check which files are allowed via direct access on static.
+And by default it should be &lt;strong&gt;&lt;em&gt;none&lt;/em&gt;&lt;/strong&gt;.
+But that's sad, it would be nice to promote good behaviour for theses wtf programmers which aren't admins,
+we should let them use &lt;code&gt;/static&lt;/code&gt; urls for files known to be static.
+And maybe one day they'll think it's a good idea to make the distinction between known static files and dynamic content... &lt;br/&gt;
+So we'll ask developpers to add some entries in the &lt;strong&gt;&lt;em&gt;staticplonefiles.txt&lt;/em&gt;&lt;/strong&gt; making a mapping from static/files to real files this way (see, every entry is present 2 times):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# staticplonefiles.txt&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# url =&amp;gt; real filesystem file, from an arbitray root&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;zonea/images/clean&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;png&lt;/span&gt; foo/bar/img/clean.png
+&lt;span class=&quot;err&quot;&gt;/static/foo/bar/img/clean&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;png&lt;/span&gt; foo/bar/img/clean.png
+&lt;span class=&quot;err&quot;&gt;zonea/images/logo&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;jpg&lt;/span&gt; foo/src/module/foo/images/logo.png
+&lt;span class=&quot;err&quot;&gt;/static/foo/src/module/foo/images/logo&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;png&lt;/span&gt; foo/src/module/foo/images/logo.png
+&lt;span class=&quot;err&quot;&gt;/module/bar/images/people&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;png&lt;/span&gt; foo/src/module/bar/v1.2.5-5/images/people.png
+&lt;span class=&quot;err&quot;&gt;/static/foo/src/module/bar/v1&lt;/span&gt;.&lt;span class=&quot;err&quot;&gt;2&lt;/span&gt;.&lt;span class=&quot;err&quot;&gt;5-5/images/people&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;png&lt;/span&gt; foo/src/module/bar/v1.2.5-5/images/people.png
+&lt;span class=&quot;c&quot;&gt;# ... to be continued&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And now our 3 static examples are available as well with the /static url. Well in fact do not forget to add this rule:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# Security for uri containing our /static shortcut we should check only&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# listed files from rewritemap are served, as&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# in this current case the static directory contins as well&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# some unsecure files... yep.&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_URI} ^/static/ [NC]
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; ${statics:$1} =&lt;span class=&quot;s2&quot;&gt;&amp;quot;&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# F : force forbidden 403 response&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; ^(.*)$ - [F,L]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;This will check that all directly accessed files via &lt;code&gt;/static&lt;/code&gt; are present in our mapping.
+And it's all done.
+Like for the previous post you should really activate &lt;code&gt;RewriteLog&lt;/code&gt; and look at what he does
+for several different files, but now you should as well adjust Apache logLevel for this
+VirtualHost and check the errorLog to observe what is done After the rewrite.&lt;/p&gt;
+
+&lt;p&gt;As an example of debug here are some debug outputs for:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;a matched image&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;err&quot;&gt;(2)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;init&lt;/span&gt; rewrite engine with requested uri &lt;span class=&quot;sx&quot;&gt;/images/people.png&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;(3)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;applying&lt;/span&gt; pattern &amp;#39;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&amp;#39; to uri &amp;#39;/images/people.png&amp;#39;
+&lt;span class=&quot;err&quot;&gt;(6)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;cache&lt;/span&gt; lookup FAILED, forcing new map lookup
+&lt;span class=&quot;err&quot;&gt;(5)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;map&lt;/span&gt; lookup OK: map=statics[dbm] key=images/people.png -&amp;gt; val=test/img/clean.png
+&lt;span class=&quot;err&quot;&gt;(4)&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;RewriteCond:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;input=&amp;#39;test/img/clean&lt;/span&gt;.&lt;span class=&quot;err&quot;&gt;png&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;pattern=&amp;#39;!=&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;matched&lt;/span&gt;
+(5) cache lookup OK: map=statics[dbm] key=images/people.png -&amp;gt; val=test/img/clean.png
+&lt;span class=&quot;err&quot;&gt;(2)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;rewrite&lt;/span&gt; &amp;#39;/images/people.png&amp;#39; -&amp;gt; &amp;#39;/static/test/img/clean.png&amp;#39;
+&lt;span class=&quot;err&quot;&gt;(2)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;remember&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/static/test/img/clean.png&lt;/span&gt; to have Content-handler &amp;#39;default-handler&amp;#39;
+&lt;span class=&quot;err&quot;&gt;(2)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;forcing&lt;/span&gt; &amp;#39;/static/test/img/clean.png&amp;#39; to get passed through to next API URI-to-filename handler
+&lt;span class=&quot;err&quot;&gt;(1)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;force&lt;/span&gt; filename &lt;span class=&quot;sx&quot;&gt;/tmp/htdocs/test/img/clean.png&lt;/span&gt; to have the Content-handler &amp;#39;default-handler&amp;#39;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;ul&gt;
+&lt;li&gt;index.php which wont be proxified after&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;err&quot;&gt;(2)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;init&lt;/span&gt; rewrite engine with requested uri &lt;span class=&quot;sx&quot;&gt;/index.php&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;(3)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;applying&lt;/span&gt; pattern &amp;#39;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&amp;#39; to uri &amp;#39;/index.php&amp;#39;
+&lt;span class=&quot;err&quot;&gt;(3)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;applying&lt;/span&gt; pattern &amp;#39;^(.*)$&amp;#39; to uri &amp;#39;/index.php&amp;#39;
+&lt;span class=&quot;err&quot;&gt;(4)&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;RewriteCond:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;input=&amp;#39;/index&lt;/span&gt;.&lt;span class=&quot;err&quot;&gt;php&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;pattern=&amp;#39;^/static/&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;[NC]&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;not-&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;matched&lt;/span&gt;
+(1) pass through &lt;span class=&quot;sx&quot;&gt;/index.php&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;ul&gt;
+&lt;li&gt;the / base uri, which will be proxified&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;err&quot;&gt;(2)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;init&lt;/span&gt; rewrite engine with requested uri /
+&lt;span class=&quot;err&quot;&gt;(3)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;applying&lt;/span&gt; pattern &amp;#39;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&amp;#39; to uri &amp;#39;/&amp;#39;
+&lt;span class=&quot;err&quot;&gt;(3)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;applying&lt;/span&gt; pattern &amp;#39;^(.*)$&amp;#39; to uri &amp;#39;/&amp;#39;
+&lt;span class=&quot;err&quot;&gt;(4)&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;RewriteCond:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;input=&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;pattern=&amp;#39;^/static/&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;[NC]&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;not-&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;matched&lt;/span&gt;
+(1) pass through /
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;ul&gt;
+&lt;li&gt;an unmapped image&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;err&quot;&gt;(2)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;init&lt;/span&gt; rewrite engine with requested uri &lt;span class=&quot;sx&quot;&gt;/images/crystal/32/personal.png&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;(3)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;applying&lt;/span&gt; pattern &amp;#39;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&amp;#39; to uri &amp;#39;/images/crystal/32/personal.png&amp;#39;
+&lt;span class=&quot;err&quot;&gt;(6)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;cache&lt;/span&gt; lookup FAILED, forcing new map lookup
+&lt;span class=&quot;err&quot;&gt;(5)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;map&lt;/span&gt; lookup FAILED: map=statics[dbm] key=images/crystal/32/personal.png
+&lt;span class=&quot;err&quot;&gt;(4)&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;RewriteCond:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;input=&amp;#39;&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;pattern=&amp;#39;!=&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;not-&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;matched&lt;/span&gt;
+(3) applying pattern &amp;#39;^(.*)$&amp;#39; to uri &amp;#39;/images/crystal/32/personal.png&amp;#39;
+&lt;span class=&quot;err&quot;&gt;(4)&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;RewriteCond:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;input=&amp;#39;/images/crystal/32/personal&lt;/span&gt;.&lt;span class=&quot;err&quot;&gt;png&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;pattern=&amp;#39;^/static/&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;[NC]&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;not-&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;matched&lt;/span&gt;
+(1) pass through &lt;span class=&quot;sx&quot;&gt;/images/crystal/32/personal.png&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;ul&gt;
+&lt;li&gt;a direct access via /static for a forbidden file&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;err&quot;&gt;(2)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;init&lt;/span&gt; rewrite engine with requested uri &lt;span class=&quot;sx&quot;&gt;/static/config/config.ini&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;(3)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;applying&lt;/span&gt; pattern &amp;#39;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&amp;#39; to uri &amp;#39;/static/config/config.ini&amp;#39;
+&lt;span class=&quot;err&quot;&gt;(3)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;applying&lt;/span&gt; pattern &amp;#39;^(.*)$&amp;#39; to uri &amp;#39;/static/config/config.ini&amp;#39;
+&lt;span class=&quot;err&quot;&gt;(4)&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;RewriteCond:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;input=&amp;#39;/static/config/config&lt;/span&gt;.&lt;span class=&quot;err&quot;&gt;ini&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;pattern=&amp;#39;^/static/&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;[NC]&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;matched&lt;/span&gt;
+(6) cache lookup FAILED, forcing new map lookup
+&lt;span class=&quot;err&quot;&gt;(5)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;map&lt;/span&gt; lookup FAILED: map=statics[dbm] key=/static/config/config.ini
+&lt;span class=&quot;err&quot;&gt;(4)&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;RewriteCond:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;input=&amp;#39;&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;pattern=&amp;#39;=&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;matched&lt;/span&gt;
+(2) forcing responsecode &lt;span class=&quot;m&quot;&gt;403&lt;/span&gt; for &lt;span class=&quot;sx&quot;&gt;/static/config/config.ini&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Quite readable isn't it? But &lt;strong&gt;&lt;em&gt;do not forget to remove debug&lt;/em&gt;&lt;/strong&gt; for production env.&lt;/p&gt;
+</description>
+				<published>2009-11-06 00:00:00 +0100</published>
+				<link>http://regilero.github.io//Apache/English/2009/11/06/more_on_static_file_redirector/</link>
+			</item>
+		
+			<item>
+				<title>Use RewriteMap to prevent proxying for some static contents</title>
+				<description>&lt;p&gt;Let's say we would like to prevent an application server to serve static content.
+And let's take a complex example, &lt;strong&gt;&lt;em&gt;Plone&lt;/em&gt;&lt;/strong&gt;.
+Plone is a Zope based application server and is not using a clean url-map for static contents.&lt;/p&gt;
+
+&lt;p&gt;We'll take Plone as an example but it's not the only app which is not handling static files outside general uri-application-mapping.
+With url prefixed by a &lt;code&gt;/static/&lt;/code&gt; it would be quite easy to redirect apache handler for theses urls on the default-handler
+(static content handler) and prevent proxy settings from redirecting theses requests to the application server he is proxying
+(as in our case this app server is behind an Apache httpd proxy).&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;    &lt;span class=&quot;err&quot;&gt;Apache-&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;HTTPD&lt;/span&gt;
+    /            \
+&lt;span class=&quot;nb&quot;&gt;filesystem&lt;/span&gt;       proxied webapp
+&lt;span class=&quot;err&quot;&gt;static-&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;files&lt;/span&gt;     dynamic-pages
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;So lets say we know something like 100 or 150 files which are css files,
+some js and somes images which are actually served by this plone server,
+on a lot of different url &lt;code&gt;/foo/bar/toto.png&lt;/code&gt;, &lt;code&gt;/foobar/main.css&lt;/code&gt; which
+represents some directories where we do not have only static contents.
+And we want to prevent the webapp from handling theses known files.&lt;/p&gt;
+
+&lt;p&gt;Here's a nice solution based on &lt;strong&gt;&lt;em&gt;mod_rewrite&lt;/em&gt;&lt;/strong&gt;, and especially
+&lt;a href=&quot;http://httpd.apache.org/docs/current/rewrite/rewritemap.html&quot;&gt;rewriteMap&lt;/a&gt;,
+where all theses contents will be served by Apache directly from the filesystem,
+with some content-expiration settings and without openning back-doors to neighbour
+content which should certainly not be available statically
+(like for example python source code files).&lt;br/&gt;
+So first let's have a basic plone proxy setting for an apache Virtualhost,
+we serve &lt;strong&gt;&lt;em&gt;plone.from.outside.net&lt;/em&gt;&lt;/strong&gt; which is a proxy on &lt;strong&gt;&lt;em&gt;plone.inside.lan&lt;/em&gt;&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;VirtualHost&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;*:80&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;ServerName&lt;/span&gt;  plone.from.outside.net
+
+    &lt;span class=&quot;c&quot;&gt;# in case apache is not set in utf-8&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;AddDefaultCharset&lt;/span&gt; UTF-8
+
+    &lt;span class=&quot;nb&quot;&gt;DocumentRoot&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/htdocs&lt;/span&gt;
+
+    &lt;span class=&quot;nb&quot;&gt;LogLevel&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;info&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;#LogLevel debug&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;ErrorLog&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/var/log/error.log&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;CustomLog&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/var/log/access.log&lt;/span&gt; combined
+    &lt;span class=&quot;c&quot;&gt;## uncomment below to enter maintenance mode&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;#ErrorDocument 503 /htdocs/err/503.html&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;#RedirectMatch 503 ^/(?!err/)&lt;/span&gt;
+
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;IfModule&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;mod_proxy.c&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+            &lt;span class=&quot;c&quot;&gt;#&lt;/span&gt;
+            &lt;span class=&quot;c&quot;&gt;# No open proxy&lt;/span&gt;
+            &lt;span class=&quot;nb&quot;&gt;ProxyRequests&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;off&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;lt;Proxy&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+                    &lt;span class=&quot;nb&quot;&gt;Order&lt;/span&gt; allow,deny
+                    &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Proxy&amp;gt;&lt;/span&gt;
+            &lt;span class=&quot;nb&quot;&gt;ProxyTimeout&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;1200&lt;/span&gt;
+            &lt;span class=&quot;c&quot;&gt;#exceptions, do not proxy theses ones&lt;/span&gt;
+            &lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       &lt;span class=&quot;sx&quot;&gt;/server-status&lt;/span&gt;  !
+            &lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       &lt;span class=&quot;sx&quot;&gt;/index.php&lt;/span&gt; !
+            &lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       &lt;span class=&quot;sx&quot;&gt;/err/&lt;/span&gt; !
+            &lt;span class=&quot;c&quot;&gt;#Proxy rewriting&lt;/span&gt;
+            &lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       /       &amp;lt;a href=&lt;span class=&quot;s2&quot;&gt;&amp;quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;quot;&lt;/span&gt; title=&lt;span class=&quot;s2&quot;&gt;&amp;quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;quot;&lt;/span&gt;&amp;gt;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;lt;/a&amp;gt;
+            &lt;span class=&quot;nb&quot;&gt;ProxyPassReverse&lt;/span&gt; /      &amp;lt;a href=&lt;span class=&quot;s2&quot;&gt;&amp;quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;quot;&lt;/span&gt; title=&lt;span class=&quot;s2&quot;&gt;&amp;quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;quot;&lt;/span&gt;&amp;gt;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;lt;/a&amp;gt;
+            &lt;span class=&quot;c&quot;&gt;###########&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/IfModule&amp;gt;&lt;/span&gt;
+
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;Options&lt;/span&gt; FollowSymLinks
+        &lt;span class=&quot;c&quot;&gt;# prevent .htaccess reads on all the filesystem&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;AllowOverride&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;None&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;order&lt;/span&gt; allow,deny
+        &lt;span class=&quot;nb&quot;&gt;deny&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
+
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/var/www/proxyplone/htdocs&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;order&lt;/span&gt; allow,deny
+        &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;All&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;DirectoryIndex&lt;/span&gt; index.php
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/Virtualhost&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Ouch, in fact I've added a few more settings to be able to serve an index.php
+page from this same virtualhost, and being a proxy for anything else, just to
+have something more 'real-life wtf'.&lt;br/&gt;
+Oh and as well I've added a nice trick for maintenance mode via &lt;strong&gt;&lt;em&gt;RedirectMatch&lt;/em&gt;&lt;/strong&gt;,
+for the happy few.&lt;/p&gt;
+
+&lt;h3&gt;And now what about static files handling?&lt;/h3&gt;
+
+&lt;p&gt;Let's do it in 2 steps.&lt;br/&gt;
+We'll make a simple one first,
+redirecting targeted files on direct static handling and then next time we'll add a &lt;strong&gt;&lt;em&gt;virtual /static directory&lt;/em&gt;&lt;/strong&gt;
+(like serious apps).
+So the app dev will build for us a nice rewriteMap file.
+This file will map all static urls to the real filesystem file. In this way:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# staticplonefiles.txt&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# url =&amp;gt; real filesystem file, from an arbitray root&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;zonea/images/clean&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;png&lt;/span&gt; foo/bar/img/clean.png
+&lt;span class=&quot;err&quot;&gt;zonea/images/logo&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;jpg&lt;/span&gt; foo/src/module/foo/images/logo.png
+&lt;span class=&quot;err&quot;&gt;/module/bar/images/people&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;png&lt;/span&gt; foo/src/module/bar/v1.2.5-5/images/people.png
+&lt;span class=&quot;c&quot;&gt;# ... to be continued&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;We will store this file in &lt;strong&gt;/var/www/proxyplone/etc/staticplonefiles.txt&lt;/strong&gt; and reference it in the apache configuration.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RewriteMap&lt;/span&gt; statics txt:/var/www/proxyplone/etc/staticplonefiles.txt
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Then we can pass any url in &lt;code&gt;${static:/here/the/url}&lt;/code&gt; and obtain the filesystem mapping as the result.
+Let's look at a rewriteRule catching potientially static contents
+with a regex like that: &lt;code&gt;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&lt;/code&gt;.&lt;br/&gt;
+Catched urls will be available in the next part of the rewrite rule,
+or in preceding RewriteConds as &lt;em&gt;$1&lt;/em&gt;.
+We will serve the static contents from the plone source code base,
+which is available in the server at &lt;em&gt;/opt/plone/source&lt;/em&gt;.
+So the &lt;em&gt;foo/bar/img/clean.png&lt;/em&gt; in the rewritemap file is
+in fact &lt;em&gt;/opt/plone/source/foo/bar/img/clean.png&lt;/em&gt;.&lt;br/&gt;
+Here you see Apache needs direct access to the files via is filesystem,
+if real files aren't directly there you should ensure they will.
+You can use &lt;strong&gt;&lt;em&gt;rsync&lt;/em&gt;&lt;/strong&gt; or &lt;em&gt;&lt;strong&gt;NFS&lt;/strong&gt; for example,
+but &lt;/em&gt;&lt;strong&gt;the apache server must have direct access to theses files&lt;/strong&gt;*,
+as he will not proxy them.&lt;/p&gt;
+
+&lt;p&gt;Starting with a rule:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; ^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js)) &lt;span class=&quot;sx&quot;&gt;/opt/plone/source/&lt;/span&gt;${statics:$1}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;wont work, as the rewrite engine will prefix the final destination with the current documentRoot. So we should better use:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; ^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js)) ${statics:$1}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;and change the DocumentRoot to:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;DocumentRoot&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/opt/plone/source&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And to do it we must fix accordingly previous content like our index.php,
+which is not anymore in the documentRoot.
+To keep the same fonctionnal DocumentRoot we can add a rule:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;Alias&lt;/span&gt; / &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/htdocs/&lt;/span&gt; (do not forget last &amp;#39;/&amp;#39;)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Now a finished rule must always contains some flags at the end. here we'll use:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;err&quot;&gt;[NC,L,handler=default-handler]&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;NC&lt;/code&gt; will make the match-rule case-insensitive (to catch .PNG for example)&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;L&lt;/code&gt; will stop rewrite execution on succesfull match&lt;/li&gt;
+&lt;li&gt;and the &lt;code&gt;handler&lt;/code&gt; is just a security, we force apache to treat static contents as static contents :-)&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;And last but not least we'll need a RewriteCond juste before this rule, to ensure unmatched documents
+(static files not listed in the rewrite map) won't be handled by our rewriteRule
+and will still be served by the app server.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; ${statics:$1} !=&lt;span class=&quot;s2&quot;&gt;&amp;quot;&amp;quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;will do that for us,
+it ensure the result is not empty,
+and &lt;em&gt;$1&lt;/em&gt; is the matching content from the related rewriteRule.
+Let's note as well the rewriteMap is stored in a cache
+and not re-read at each request.&lt;/p&gt;
+
+&lt;p&gt;Put it all together we have:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;VirtualHost&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;*:80&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;ServerName&lt;/span&gt;  plone.from.outside.net
+    
+    &lt;span class=&quot;c&quot;&gt;# in case apache is not set in utf-8&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;AddDefaultCharset&lt;/span&gt; UTF-8
+ 
+    &lt;span class=&quot;nb&quot;&gt;DocumentRoot&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/opt/plone/source&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;LogLevel&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;info&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;#LogLevel debug&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;ErrorLog&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/var/log/error.log&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;CustomLog&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/var/log/access.log&lt;/span&gt; combined
+    &lt;span class=&quot;c&quot;&gt;## uncomment below to enter maintenance mode&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;#ErrorDocument 503 /htdocs/err/503.html&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;#RedirectMatch 503 ^/(?!err/)&lt;/span&gt;
+
+    &lt;span class=&quot;c&quot;&gt;# REWRITER for Static files managment rules&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;# we need:&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;RewriteEngine&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;#RewriteLog /var/www/proxyplone/var/log/rewrite.log&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;# from 0 to 9&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;#RewriteLogLevel 9&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;RewriteMap&lt;/span&gt; statics txt:/var/www/proxyplone/etc/staticplonefiles.txt
+    &lt;span class=&quot;c&quot;&gt;# only apply the rewriterule for entries listed in the rewritemap, $1 refers to the $1 from next rewriteRule&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; ${statics:$1} !=&lt;span class=&quot;s2&quot;&gt;&amp;quot;&amp;quot;&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;# prevent rewritemap parsing for URI not containing static file extensions&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;# NC: case insensitive in comparison of testString and Pattern&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;# L: stop rewriting&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; ^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js)) /${statics:$1} [NC,L,handler=default-handler]
+
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;IfModule&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;mod_proxy.c&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+            &lt;span class=&quot;c&quot;&gt;#&lt;/span&gt;
+            &lt;span class=&quot;c&quot;&gt;# No open proxy&lt;/span&gt;
+            &lt;span class=&quot;nb&quot;&gt;ProxyRequests&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;off&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;lt;Proxy&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+                    &lt;span class=&quot;nb&quot;&gt;Order&lt;/span&gt; allow,deny
+                    &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Proxy&amp;gt;&lt;/span&gt;
+            &lt;span class=&quot;nb&quot;&gt;ProxyTimeout&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;1200&lt;/span&gt;
+            &lt;span class=&quot;c&quot;&gt;#exceptions, do not proxy theses ones&lt;/span&gt;
+            &lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       &lt;span class=&quot;sx&quot;&gt;/server-status&lt;/span&gt;  !
+            &lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       &lt;span class=&quot;sx&quot;&gt;/index.php&lt;/span&gt; !
+            &lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       &lt;span class=&quot;sx&quot;&gt;/err/&lt;/span&gt; !
+            &lt;span class=&quot;c&quot;&gt;#Proxy rewriting&lt;/span&gt;
+            &lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       /       &amp;lt;a href=&lt;span class=&quot;s2&quot;&gt;&amp;quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;quot;&lt;/span&gt; title=&lt;span class=&quot;s2&quot;&gt;&amp;quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;quot;&lt;/span&gt;&amp;gt;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;lt;/a&amp;gt;
+            &lt;span class=&quot;nb&quot;&gt;ProxyPassReverse&lt;/span&gt; /      &amp;lt;a href=&lt;span class=&quot;s2&quot;&gt;&amp;quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;quot;&lt;/span&gt; title=&lt;span class=&quot;s2&quot;&gt;&amp;quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;quot;&lt;/span&gt;&amp;gt;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;lt;/a&amp;gt;
+            &lt;span class=&quot;c&quot;&gt;###########&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/IfModule&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;Options&lt;/span&gt; FollowSymLinks
+        &lt;span class=&quot;c&quot;&gt;# prevent .htaccess reads on all the filesystem&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;AllowOverride&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;None&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;order&lt;/span&gt; allow,deny
+        &lt;span class=&quot;nb&quot;&gt;deny&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;Alias&lt;/span&gt; / &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/htdocs/&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/var/www/proxyplone/htdocs&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;order&lt;/span&gt; allow,deny
+        &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;All&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;DirectoryIndex&lt;/span&gt; index.php
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/opt/plone/source&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;order&lt;/span&gt; allow,deny
+        &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;All&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/Virtualhost&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And &lt;strong&gt;&lt;em&gt;it works&lt;/em&gt;&lt;/strong&gt;, at this point you should note the rewriteRule
+is a endpoint for matching content,
+no other apache rule can be applied,
+but at least you need a Directory directive
+to allow content from your plone source to be acceded.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;No security Hole&lt;/em&gt;&lt;/strong&gt;, as some could think with the documentRoot
+in plone source,&lt;br/&gt;
+asking for &lt;code&gt;/&lt;/code&gt; url wont serve your source content as:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;there's an &lt;strong&gt;&lt;em&gt;alias on /&lt;/em&gt;&lt;/strong&gt; redirecting to /var/www/proxyplone/htdocs/&lt;/li&gt;
+&lt;li&gt;there's a &lt;strong&gt;&lt;em&gt;proxy on /&lt;/em&gt;&lt;/strong&gt; redirecting to plone app server.&lt;/li&gt;
+&lt;li&gt;but &lt;strong&gt;&lt;em&gt;do not&lt;/em&gt;&lt;/strong&gt; remove mod_alias and mod_proxy from apache :-)&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;Do not hesitate to uncomment RewriteLog and RewriteLogLevel directives to see what is done.
+Next time we'll make a static virtual directory and we'll be able to apply
+some more rule from Apache after the rewrite part.&lt;/p&gt;
+</description>
+				<published>2009-11-05 00:00:00 +0100</published>
+				<link>http://regilero.github.io//Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/</link>
+			</item>
+		
+			<item>
+				<title>Temps de réponse réél d'une page web avec ... netcat</title>
+				<description>&lt;p&gt;Bon, j'imagine que la plupart des gens (heu.. d'un certain type) savent qu'on peut faire du web &lt;strong&gt;à la main&lt;/strong&gt; avec telnet ou netcat.
+Et bien on peut. Donc.
+Je voulais me servir de cela pour tracer quelques temps de réponse de pages html précises.
+Le tout en une seule ligne histoire de se servir de l'historique et pas de mon cerveau pour la retaper.&lt;/p&gt;
+
+&lt;p&gt;Commencons par un telnet sur &lt;a href=&quot;http://www.google.com&quot;&gt;www.google.com&lt;/a&gt; sur le port 80 (web).
+On tape la requète comme si nous étions un navigateur web (très basique le navigateur). La requète HTTP va donc être:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;http&quot;&gt;&lt;span class=&quot;err&quot;&gt;  &lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;GET&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;/&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;HTTP&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1.0&lt;/span&gt;
+ &lt;span class=&quot;l&quot;&gt; &lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Remarquez qu'il y a une ligne vide (donc deux fois entrée).&lt;/p&gt;
+
+&lt;p&gt;Cela donne en résultat une page de redirection vers le site français de google, parfait.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;  nii:~&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;telnet www.google.com 80
+  Trying 209.85.129.147...
+  Connected to www.l.google.com.
+  Escape character is &lt;span class=&quot;s1&quot;&gt;&amp;#39;^]&amp;#39;&lt;/span&gt;.
+  GET / HTTP/1.0
+  .
+  HTTP/1.0 302 Found
+  Location: http://www.google.fr/
+  &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;.. je vous passe le reste ...&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+  Connection closed by foreign host.
+  nii:~&lt;span class=&quot;err&quot;&gt;$&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Bon, maintenant je veux mesurer le temps de réponse. Avec tout bètement la commande 'time'.
+Pour faire cela l'idéal est de taper ma commande en une seule fois,
+et là telnet n'est plus très souple pour automatiser la saisie utilisateur On va commencer par tester la même chose avec netcat (nc)&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;http&quot;&gt;&lt;span class=&quot;err&quot;&gt;  nii:~$ printf &amp;#39;GET / HTTP/1.0\n\n&amp;#39; | \&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;  nc -w 10 www.exemple.com 80&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;On avance. Par contre on a de fortes chances de ne pas tomber sur la page web que l'on recherche vraiment.
+On a de très fortes chances de tomber sur le VirtualHost par défaut du serveur HTTP
+à l'autre bout.
+Mais pour servir le bon site il faut taper du &lt;strong&gt;&lt;em&gt;HTTP/1.1&lt;/em&gt;&lt;/strong&gt; au lieu de 1.0 et ajouter un header à notre
+requète indiquant au serveur le nom du site que l'on veut (parmi ceux qu'il héberge),
+revoyez le protocole &lt;a href=&quot;http://en.wikipedia.org/wiki/HTTP#Request_Message&quot;&gt;http version 1.1&lt;/a&gt; si vous ne comprenez rien à ce que je dis.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;http&quot;&gt;&lt;span class=&quot;err&quot;&gt;  nii:~$ printf &amp;#39;GET / HTTP/1.1\nHost:www.exemple.com\n\n&amp;#39; | \&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;  nc -w 10 -q 10 www.exemple.com 80&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Et maintenant pour avoir le temps de la commande je rajoute time au début et je fais sauter le temps d'affichage de la réponse...&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;http&quot;&gt;&lt;span class=&quot;err&quot;&gt;  nii:~$ time printf &amp;#39;GET / HTTP/1.1\nHost:www.exemple.com\n\n&amp;#39; | \&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;  nc -w 10 -q 10 www.exemple.com 80 1&amp;gt;/dev/null&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;  .&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;  real    0m0.627s&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;  user    0m0.000s&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;  sys     0m0.004s&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;  nc -w 10 -q 10 www.exemple.com 80&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;Mais...&lt;/em&gt;&lt;/strong&gt;&lt;br/&gt;
+Il y a une grosse erreur.
+On se prends &lt;strong&gt;&lt;em&gt;le temps d'une requète DNS&lt;/em&gt;&lt;/strong&gt; de la machine sur laquelle on est qui cherche l'adresse IP de l'hôte
+que l'on a donné à netcat (après le nc -w 10) pour aller ouvrir une connexion tcp sur le port 80 de cet hôte.
+Ce temps DNS ne sert à rien, il fausse notre résultat (et c'est souvent très long le DNS).
+Il faut utiliser l'adresse IP du serveur web directement.
+De toutes façons c'est à l'intérieur du protocole HTTP, avec notre entête &lt;strong&gt;Host:&lt;/strong&gt; que l'on indique le site web
+demandé au serveur, et pas du tout avec le nom DNS utilisé pour résoudre l'adresse IP du serveur web.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;http&quot;&gt;&lt;span class=&quot;err&quot;&gt;  nii:~$ nslookup ww.exemple.com&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;  66.116.125.121&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;  nii:~$ time printf &amp;#39;GET / HTTP/1.1\nHost:www.exemple.com\n\n&amp;#39; | \&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;  nc -w 10 -q 10 66.116.125.121 80 1&amp;gt;/dev/null&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;  .&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;  real    0m0.408s&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;  user    0m0.004s&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;  sys     0m0.000s&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;0.408s&lt;/em&gt;&lt;/strong&gt; est déjà plus proche du temps de réponse réèl du site (depuis le point du réseau où on se trouve,
+ il y a des pertes dues au réseau, forcément).&lt;/p&gt;
+
+&lt;p&gt;PS: vive les sites &lt;a href=&quot;http://www.dgate.org/~brg/bvtelnet80/&quot;&gt;Best Viewed with telnet to port 80&lt;/a&gt;&lt;/p&gt;
+</description>
+				<published>2008-05-25 00:00:00 +0200</published>
+				<link>http://regilero.github.io//Monitoring/Francais/2008/05/25/temps_de_reponse_reel_d_une_page_web_avec_netcat/</link>
+			</item>
+		
+	</channel>
+</rss>
