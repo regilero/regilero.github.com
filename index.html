@@ -1,29 +1,34 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+---
+layout: default
+title: Home
+top: Home
+---
 
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-  <head>
-    <meta http-equiv="content-type" content="text/html;charset=UTF-8" />
-    <title> Regilero's blog </title>
+<!-- Show last 5 posts here -->
+{% for post in site.posts limit: 6  %}
+  <div class="home-article column span-7 {% cycle '', 'preprend-1 last' %}">
+  	<article>
 
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <link rel="icon" type="image/x-icon" href="/images/regilero.ico" />
-    <link rel="shortcut icon" type="image/x-icon" href="/images/regilero.ico" />
-
-    <link rel="stylesheet" href="/css/main.css" type="text/css" />
-
-  </head>
-
-  <body >
-    <div id="container">
-      <div id="header">
-        <h1> Regilero's blog </h1>
-        <h2> Soon to come I hope.</h2>
+        <header>
+            <h2 class="home-header"><a href="{{site.baseurl}}{{post.url}}">{{ post.title }}</a></h2>
+        </header>
+          
+      <div class="effect">
+    		<div class="entry">
+    		  <a href="{{site.baseurl}}{{post.url}}"><img src="/theme/img/pix/{{ post.pic }}" width="260" alt="{{post.title}}"/></a>
+    		</div>
+        <div class="cover cover-bottom">
+          <span class="date"><i class="icon-clock"></i><time datetime="{{post.date|date:"%F"}}">{{post.date|date:"%b %d, %Y"}}</time></span><br/>
+          <span class="category"><i class="icon-list"></i>{{ post.categories | category_links }}</span><br/>
+          <hr/>
+          <a href="{{site.baseurl}}{{post.url}}">
+          {{ post.excerpt }}</a><br/>
+          <hr/>
+          <span class="tag">{{ post.tags | tags_links }}</span><br/>
+        </div>
       </div>
-      <div id="main-content">
-        <p>Work in progress.</p>
-      </div>
-      <div id="footer"><p>&nbsp;</p></div>
-    </div>
-  </body>
-</html>
-
+  	</article>
+  </div>
+  {% cycle '', '<div class="clear"></div>' %}
+{% endfor %}
+<div class="clear"></div>

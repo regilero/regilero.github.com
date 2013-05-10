@@ -1,0 +1,17 @@
+name: RBleug
+description: Regilero's blog; Mostly tech things about web stuff.
+author: regilero
+author_email: regis.leroy@gmail.com
+category_dir: /
+tag_dir: tag
+url: http://regilero.github.io/
+markdown: rdiscount
+auto: true
+permalink: pretty
+# this willprevent default github usage
+safe: false
+lsi: false
+pygments: true
+server: false
+auto: false
+watch: false

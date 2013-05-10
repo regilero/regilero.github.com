@@ -1,0 +1,106 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>{% if page.title %} {{ page.title }} | {% endif %} {{ site.name }}</title>
+    <meta name="description" content="{{site.description}}"/>
+    <meta name="author" content="{{site.author}}"/>
+    <link rel="icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="{{site.baseurl}}/feed.xml" />
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.5.2/jquery.min.js"></script>
+    <script src="/theme/js/effects.js" ></script>
+    <!-- <script src="/theme/js/jquery.jparallax.js"></script> -->
+    <link rel="stylesheet" href="/theme/blueprint/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/blueprint/print.css" type="text/css" media="print">
+    <link rel="stylesheet" href="/theme/syntax.css" type="text/css" />
+    <!--[if lt IE 8]>
+      <link rel="stylesheet" href="/theme/blueprint/ie.css" type="text/css" media="screen, projection">
+    <![endif]-->
+    <link rel="stylesheet" href="/theme/blueprint/plugins/link-icons/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/fontello/css/fontello.css">
+    <!--[if IE 7]><link rel="stylesheet" href="/theme/fontello/css/fontello-ie7.css"><![endif]-->
+    <link href="/theme/style.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body>
+    <div class="container">
+       <div id="branding" class="column span-24 last">
+         <h1 class="logo"><a href="{{site.baseurl}}/">{{ site.name }}</a></h1>
+         <hr/>
+         <h2 class="alt">{{site.description}}</h2>
+       </div>
+       
+       <div id="menu" class="column span-24 last">
+         <ul class="topNav">
+            <li><a href="{{site.baseurl}}/" {% if page.id or page.top == 'Home' %}class="topNavAct"{% endif %} ><i class="icon-home"></i>Tech notes</a></li>
+            <li><a href="{{site.baseurl}}/archive/"  {% if  page.top == 'Archive' %}class="topNavAct"{% endif %} ><i class="icon-th"></i>Archives</a></li>
+            <li><a href="{{site.baseurl}}/contact/" {% if page.top == 'Contact' %}class="topNavAct"{% endif %} ><i class="icon-phone"></i>Contact</a></li>
+            <li><a href="{{site.baseurl}}/feed.xml"><i class="icon-rss"></i>RSS Feed</a></li>
+         </ul>
+         <div class="clear"></div>
+       </div>
+       
+       <div id="content" class="">
+           <div id="left-content" class="column span-15 prepend-1">
+             
+            {{ content }}    
+    
+           </div>
+           <div id="sideBar" class="column span-8 last">
+            {% if page.id %}
+            <div class="sideBarListBox">
+              <h3>Related posts</h3>
+              <ul>
+                {% for post in site.related_posts limit: 5 %}
+                   <li><a href="{{ post.url }}">{{ post.title }}</a></li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% endif %}
+    
+        <div class="sideBarListBox">
+          <h3>Latest posts</h3>
+          <ul>
+              {% for post in site.posts limit: 5  %}
+                 <li><a href="{{ post.url }}">{{ post.title }}</a></li>
+              {% endfor %}
+          </ul>
+        </div>
+        
+        <div class="sideBarMore">
+          <h3>More</h3>
+            <a href="http://stackoverflow.com/users/550618/regilero">
+            <img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers">
+            </a>
+            <a href="http://stackexchange.com/users/264377/regilero"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+        </div>
+        
+        <div class="sideBarListBox">
+          <h3>Tags</h3>
+          {% tag_cloud %}
+        </div>
+        
+        <div class="sideBarItem">
+          <h3>Friends</h3>
+            <ul>
+              <li><a class="effect" target="_blank" href="http://www.makina-corpus.org">Blogs Makina Corpus<div class="cover-right"><img src="/theme/img/makinaorg.png" height="30" width="30"><img src="/theme/img/makinaorg_banner.png" height="30" width="117"></div></a></li>
+              <li><a class="effect" target="_blank" href="http://www.makina-corpus.com">Makina Corpus<div class="cover-right"><img src="/theme/img/makinacom.png" height="30" width="30"><img src="/theme/img/makinacom_banner.png" height="30" width="117"></div></a></li>
+              <li><a class="effect" target="_blank" href="http://www.processus.org/">Pounard, processus.org<div class="cover-right"><img src="/theme/img/pounard.png" height="30" width="30"><img src="/theme/img/pounard_banner.png" height="30" width="117"></div></a></li>
+              <li><a class="effect" target="_blank" href="http://toutpt.makina-corpus.org/" >Toupt<div class="cover-right"><img src="/theme/img/toupt.png" height="30" width="30"><img src="/theme/img/toupt_banner.png" height="30" width="117"></div></a></li>
+              <li><a class="effect" target="_blank" href="http://francoisgaudin.com/">François Gaudin<div class="cover-right"><img src="/theme/img/gaudin.png" height="30" width="30"><img src="/theme/img/gaudin_banner.png" height="30" width="117"></div></a></li>
+            </ul>
+            <div class="clear"></div>
+        </div>
+        
+      </div> <!-- end sidebar -->
+        
+         </div><!-- end content -->
+         
+         <div id="footer" class="column span-24 last">
+            <hr />
+            <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/"><img alt="Licence Creative Commons" style="border-width:0" src="http://i.creativecommons.org/l/by-sa/3.0/fr/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/Text" property="dct:title" rel="dct:type">regilero's blog</span> est mis à disposition selon les termes de la <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/">licence Creative Commons Attribution -  Partage dans les Mêmes Conditions 3.0 France</a>.<br />Fondé(e) sur une œuvre à <a xmlns:dct="http://purl.org/dc/terms/" href="http://regilero.github.io" rel="dct:source">http://regilero.github.io</a>.
+         </div>
+
+      </div><!-- end container -->
+    </body>
+</html>

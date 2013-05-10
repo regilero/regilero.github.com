@@ -1,0 +1,16 @@
+---
+layout: page
+top: Archive
+---
+
+    <section>
+        <table>
+            {% for post in site.tags[page.tag] %}
+            <tr>
+                <td><i class="icon-clock"></i><time datetime="{{post.date|date:"%F"}}">{{post.date|date:"%b %d, %Y"}}</time></td>  
+                <td><a href="{{site.baseurl}}{{ post.url }}">{{ post.title }}</a></td>
+                <td><span class="tag">{{post.tags  | tags_links}}</span></td>
+            </tr>
+            {% endfor %}
+        </table>
+    </section>

@@ -1,0 +1,19 @@
+---
+layout: default
+---
+
+<article>
+        <header>
+            <h2>{{ page.title }}
+            <span><i class="icon-clock"></i><time datetime="{{page.date|date:"%F"}}">{{page.date|date:"%b %d, %Y"}}</time></span><br/>
+            <span class="category"><i class="icon-list"></i> {{ page.categories | category_links }}</span>
+            </h2>
+        </header>
+
+        <div class="entry">
+          <img class="left" src="/theme/img/pic/{{ page.pic }}" width="260" alt="{{page.excerpt}}" title="{{page.excerpt}}" />
+          {{ content }}
+        </div>
+        <div class="tag">{{page.tags  | tags_links}}</div>
+</article>
+
