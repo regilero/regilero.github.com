@@ -18,12 +18,12 @@ having a map of application url to filesystem real files stored in a text file a
 
 No let's make this solution even better. 
 
- * use a ***hash map*** for url mappings
+ * use a **hash map** for url mappings
  * create a virtual `/static` url and apply some cache managment rules on his contents
  * allow the use of the `/satic/` url directly
  * ensure only mapped static files are served via this static directory
 
-So first thing to change, we used a simple text file for the mapping, mod_rewrite allows us to use a ***hash file***.  
+So first thing to change, we used a simple text file for the mapping, mod_rewrite allows us to use a **hash file**.  
 Simply change:
 
 {% highlight apache %}
@@ -111,15 +111,15 @@ Alias /static /opt/plone/source/
 </Directory>
 {% endhighlight %}
 
-That's done. ***Now we have a big security Hole :-(***.  
+That's done. **Now we have a big security Hole :-(**.  
 Most files from `/opt/plone/source` are available via the `/static` url.   
 As `/static` is not proxied anymore and is now an alias on the filesystem directory where we have an allow from all ...  
 So we should add some rewriteRules to check which files are allowed via direct access on static.
-And by default it should be ***none***.
+And by default it should be *none**.
 But that's sad, it would be nice to promote good behaviour for theses wtf programmers which aren't admins,
 we should let them use `/static` urls for files known to be static.
 And maybe one day they'll think it's a good idea to make the distinction between known static files and dynamic content...   
-So we'll ask developpers to add some entries in the ***staticplonefiles.txt*** making a mapping from static/files to real files this way (see, every entry is present 2 times):
+So we'll ask developpers to add some entries in the **staticplonefiles.txt** making a mapping from static/files to real files this way (see, every entry is present 2 times):
 
 {% highlight apache %}
 # staticplonefiles.txt
@@ -215,5 +215,5 @@ As an example of debug here are some debug outputs for:
 (2) forcing responsecode 403 for /static/config/config.ini
 {% endhighlight %}
 
-Quite readable isn't it? But ***do not forget to remove debug*** for production env.
+Quite readable isn't it? But **do not forget to remove debug** for production env.
 

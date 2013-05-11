@@ -99,14 +99,14 @@ You may wonder why it is smart to use something which is not the database to per
 I said before cache engines can be faster in both write and read operations.
 So now you may ask "why don't we use Cache engines for everything?". And the answer is that a relational database provides more services, it can for example provides a better persitency,
 or manage better simultaneous writes, or allow handling relationship between objects.
-***Use the right tool for the right thing***.
+**Use the right tool for the right thing**.
 But this is still a good question. Drupal 8 studies & discussions are actually requesting whether a document based backend for most Drupal storage wouldn't be  more appropriate than a relational database.
 For now we'll just have a look at the cache tables problems.
 
 ###Cache backends with Drupal7###
 
 Now comes Drupal7. The cache management has been rewritten, using cache router and memcached ideas and try to put the things one step further in the core.
-Cache bins are used, for example the bin ***'foo'*** will use the cache table ***cache_foo***.
+Cache bins are used, for example the bin **'foo'** will use the cache table **cache_foo**.
 And **for each bin you can specify which storage backend will be used**.
 
 Available cache backends are:</p>
@@ -116,21 +116,21 @@ Available cache backends are:</p>
  * Memcache (module memcache): To use the well known memcached daemon. where you could use a basic mono-server setting or a complex multi-servers with replications usage
 
 But other backends could be written.
-And you can already find two Redis backends implementations (***Predis*** & ***PhpRedis***) with the  [redis module](http://drupal.org/project/redis) (alpha).
-Module maintained by ***pounard***, a Makina Corpus worker.
+And you can already find two Redis backends implementations (**Predis** & **PhpRedis**) with the  [redis module](http://drupal.org/project/redis) (alpha).
+Module maintained by **pounard**, a Makina Corpus worker.
 There is also a [MongoDB module](http://drupal.org/project/mongodb) providing a mongodb cache backend (beta2), that I did not test yet, powered by Damien Tournoud.
 
 ###Having a drupal6? Or do you want some configuration details?###
 
 The only thing we need know is a documentation on how to configure these.
 This is always (almost) provided in the module documentation but we will use the [cache backport module](http://drupal.org/project/cache_backport) documentation as an example.
-This module, again maintained by  ***pounard***, is a backport of Drupal7 cache engine (separating  backends) for Drupal6.
+This module, again maintained by  **pounard**, is a backport of Drupal7 cache engine (separating  backends) for Drupal6.
 So it's a replacement for Cache Router where you can reuse the cache parts of Drupal7 cache backends in a Drupal6 website.
 And One of the good points of this module is that it provides a centralized documentation on several cache backends which is spread on the different modules for Drupal7.
 
 The first question is "where should I put each separate cache bin (or each cache table for short) ?"
 
-The ***cache*** and ***cache_bootstrap*** bins contains short and often used data.
+The **cache** and **cache_bootstrap** bins contains short and often used data.
 They will love the APC cache backend.
 
 For all the others bins you could apply a different policy.

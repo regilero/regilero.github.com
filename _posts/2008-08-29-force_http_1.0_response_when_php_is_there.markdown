@@ -1,0 +1,63 @@
+---
+layout: post
+title: Force HTTP/1.0 Apache response when PHP is there...
+categories: [Apache, English]
+tags: [HTTP, Apache, PHP, Bug]
+pic: bee1.png
+excerpt: Trying to user force-response-1.0 downgrade-1.0 apache setting when using PHP is not working - a PHP bug - here is a workaround.
+
+---
+
+Recently I had to force an `HTTP/1.0` response with Apache because of a bad Java Parser.  
+This parser/browser was asking for `HTTP/1.1` responses but did'nt understood [chunked content encoding](http://en.wikipedia.org/wiki/Chunked_transfer_encoding).  
+And so giving me a nice Sax exception "content not allowed in prolog".
+
+So, well, I won't fix this #$*%! code.  
+Better trying to talk to this special User Agent in `HTTP/1.0,` he might handle it in a better way.  
+Here's what a **chunked** content looks like. See the **306c** hexa lenght code before the body of the response?
+
+{% highlight http %}
+HTTP/1.1 207 Multi-Status
+(... lot of headers, but no lenght one ...)
+Content-Type: text/xml; charset="utf-8"
+
+306c
+<?xml version="1.0" encoding="utf-8"?>
+(... here the content ...)
+{% endhighlight %}
+
+So I have the user agent of this Java HTTP Client, let's call it 'NoobieJavaParser'.  
+I simply wrote in my apache virtualhost config file:
+
+{% highlight apache %}
+BrowserMatch "^NoobieJavaParser" nokeepalive force-response-1.0 downgrade-1.0
+{% endhighlight %}
+
+And it **should be sufficient**.  
+In fact it's not because of a **very old PHP bug** (saw first bug report in 2004, [#16218](https://bugs.php.net/bug.php?id=16218),[#39927](https://bugs.php.net/bug.php?id=39927),[#45947](https://bugs.php.net/bug.php?id=45947)).
+PHP is building is `$_SERVER` variable by reading Apache env, and PHP doesn't want any
+dot in this parsed content. The `downgrade-1.0` env name seem malicious for PHP.  
+So the env setting looks like that in PHP:
+
+{% highlight php %}
+echo $_SERVER['downgrade-1_0'];
+-> 1
+{% endhighlight %}
+
+See the dots is now a `_`. It should not hurt anyone, except **PHP changed this env name in Apache as well**.  
+So when apache is sending the response, he does not care anymore about this `downgrade-1_0` settings.
+If you want Apache to have the real behaviour, i.e: sending `HTTP/1.0` responses for this 'NoobieJavaParser' User Agent
+you must **re-set the env** of Apache in PHP, with something like that:
+
+{% highlight php %}
+if ($_SERVER['downgrade-1_0']){
+        apache_setenv('downgrade-1.0','true');
+}
+if ($_SERVER['force-response-1_0']){
+        apache_setenv('force-response-1.0','true');
+}
+{% endhighlight %}
+
+Ugly, but it's PHP's fault.  
+And no more chunked content after that.
+And the nice thing is that apache_setenv is not changing $_SERVER, so PHP still does not have this *malicious* dot.

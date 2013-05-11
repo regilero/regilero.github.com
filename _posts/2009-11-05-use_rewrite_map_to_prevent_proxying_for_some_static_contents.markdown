@@ -11,7 +11,7 @@ next: 2009-11-06-more_on_static_file_redirector
 
 
 Let's say we would like to prevent an application server to serve static content.
-And let's take a complex example, ***Plone***.
+And let's take a complex example, **Plone**.
 Plone is a Zope based application server and is not using a clean url-map for static contents.
 
 We'll take Plone as an example but it's not the only app which is not handling static files outside general uri-application-mapping.
@@ -32,14 +32,14 @@ on a lot of different url `/foo/bar/toto.png`, `/foobar/main.css` which
 represents some directories where we do not have only static contents.
 And we want to prevent the webapp from handling theses known files.
 
-Here's a nice solution based on ***mod_rewrite***, and especially
+Here's a nice solution based on **mod_rewrite**, and especially
 [rewriteMap](http://httpd.apache.org/docs/current/rewrite/rewritemap.html),
 where all theses contents will be served by Apache directly from the filesystem,
 with some content-expiration settings and without openning back-doors to neighbour
 content which should certainly not be available statically
 (like for example python source code files).  
 So first let's have a basic plone proxy setting for an apache Virtualhost,
-we serve ***plone.from.outside.net*** which is a proxy on ***plone.inside.lan***.
+we serve `plone.from.outside.net` which is a proxy on `plone.inside.lan`.
 
 {% highlight apache %}
 <VirtualHost *:80>
@@ -96,14 +96,14 @@ we serve ***plone.from.outside.net*** which is a proxy on ***plone.inside.lan***
 Ouch, in fact I've added a few more settings to be able to serve an index.php
 page from this same virtualhost, and being a proxy for anything else, just to
 have something more 'real-life wtf'.  
-Oh and as well I've added a nice trick for maintenance mode via ***RedirectMatch***,
+Oh and as well I've added a nice trick for maintenance mode via **RedirectMatch**,
 for the happy few.  
 
 ###And now what about static files handling?###
 
 Let's do it in 2 steps.  
 We'll make a simple one first,
-redirecting targeted files on direct static handling and then next time we'll add a ***virtual /static directory***
+redirecting targeted files on direct static handling and then next time we'll add a **virtual /static directory**
 (like serious apps). 
 So the app dev will build for us a nice rewriteMap file.
 This file will map all static urls to the real filesystem file. In this way:
@@ -134,8 +134,8 @@ So the *foo/bar/img/clean.png* in the rewritemap file is
 in fact */opt/plone/source/foo/bar/img/clean.png*.  
 Here you see Apache needs direct access to the files via is filesystem,
 if real files aren't directly there you should ensure they will.
-You can use ***rsync*** or ***NFS** for example,
-but ***the apache server must have direct access to theses files***,
+You can use **rsync** or **NFS** for example,
+but **the apache server must have direct access to theses files**,
 as he will not proxy them.
 
 Starting with a rule:
@@ -258,19 +258,19 @@ Put it all together we have:
 </Virtualhost>
 {% endhighlight %}
 
-And ***it works***, at this point you should note the rewriteRule
+And **it works**, at this point you should note the rewriteRule
 is a endpoint for matching content,
 no other apache rule can be applied,
 but at least you need a Directory directive
 to allow content from your plone source to be acceded.
 
-***No security Hole***, as some could think with the documentRoot
+**No security Hole**, as some could think with the documentRoot
 in plone source,  
 asking for `/` url wont serve your source content as:
 
- * there's an ***alias on /*** redirecting to /var/www/proxyplone/htdocs/
- * there's a ***proxy on /*** redirecting to plone app server.
- * but ***do not*** remove mod_alias and mod_proxy from apache :-)
+ * there's an **alias on /** redirecting to /var/www/proxyplone/htdocs/
+ * there's a **proxy on /** redirecting to plone app server.
+ * but **do not** remove mod_alias and mod_proxy from apache :-)
 
 Do not hesitate to uncomment RewriteLog and RewriteLogLevel directives to see what is done.
 Next time we'll make a static virtual directory and we'll be able to apply

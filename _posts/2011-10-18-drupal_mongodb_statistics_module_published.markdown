@@ -24,4 +24,4 @@ On the things added :
  * batch migration of previous node_counter statistics if any (not yet for accesslog)
  * post-synchronisation of node_counter mongodb table to a sql table (via cron), so that you could query it via views (not for accesslog, are you mad?)
  * time based caching of the popular content block
- * Still lot of thing to do (see the [TODO](https://github.com/regilero/drupal_mongodb_statistics/blob/master/mongodb_statistics/TODO.txt)) but it was a nice way to learn ***mongodb***. I especially like the idea of [mapReduce](http://nosql.mypopescu.com/post/392418792/translate-sql-to-mongodb-mapreduce) functions applied for complex `GROUP BY` equivalents.
+ * Still lot of thing to do (see the [TODO](https://github.com/regilero/drupal_mongodb_statistics/blob/master/mongodb_statistics/TODO.txt)) but it was a nice way to learn **mongodb**. I especially like the idea of [mapReduce](http://nosql.mypopescu.com/post/392418792/translate-sql-to-mongodb-mapreduce) functions applied for complex `GROUP BY` equivalents.

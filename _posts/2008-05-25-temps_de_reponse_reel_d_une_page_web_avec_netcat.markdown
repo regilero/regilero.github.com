@@ -51,7 +51,7 @@ et là telnet n'est plus très souple pour automatiser la saisie utilisateur On 
 On avance. Par contre on a de fortes chances de ne pas tomber sur la page web que l'on recherche vraiment.
 On a de très fortes chances de tomber sur le VirtualHost par défaut du serveur HTTP
 à l'autre bout.
-Mais pour servir le bon site il faut taper du ***HTTP/1.1*** au lieu de 1.0 et ajouter un header à notre
+Mais pour servir le bon site il faut taper du **HTTP/1.1** au lieu de 1.0 et ajouter un header à notre
 requète indiquant au serveur le nom du site que l'on veut (parmi ceux qu'il héberge),
 revoyez le protocole [http version 1.1](http://en.wikipedia.org/wiki/HTTP#Request_Message) si vous ne comprenez rien à ce que je dis.
 
@@ -72,9 +72,9 @@ Et maintenant pour avoir le temps de la commande je rajoute time au début et je
   nc -w 10 -q 10 www.exemple.com 80
 {% endhighlight %}
 
-***Mais...***  
+**Mais...**  
 Il y a une grosse erreur.
-On se prends ***le temps d'une requète DNS*** de la machine sur laquelle on est qui cherche l'adresse IP de l'hôte
+On se prends **le temps d'une requète DNS** de la machine sur laquelle on est qui cherche l'adresse IP de l'hôte
 que l'on a donné à netcat (après le nc -w 10) pour aller ouvrir une connexion tcp sur le port 80 de cet hôte.
 Ce temps DNS ne sert à rien, il fausse notre résultat (et c'est souvent très long le DNS).
 Il faut utiliser l'adresse IP du serveur web directement.
@@ -92,7 +92,7 @@ demandé au serveur, et pas du tout avec le nom DNS utilisé pour résoudre l'ad
   sys     0m0.000s
 {% endhighlight %}
 
-***0.408s*** est déjà plus proche du temps de réponse réèl du site (depuis le point du réseau où on se trouve,
+**0.408s** est déjà plus proche du temps de réponse réèl du site (depuis le point du réseau où on se trouve,
  il y a des pertes dues au réseau, forcément).
  
 PS: vive les sites [Best Viewed with telnet to port 80](http://www.dgate.org/~brg/bvtelnet80/)
