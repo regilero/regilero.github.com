@@ -1,0 +1,307 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title> Autocomplete Ajax search with Dojo and Zend Framework |  RBleug</title>
+    <meta name="description" content="Regilero's blog; Mostly tech things about web stuff."/>
+    <meta name="author" content="regilero"/>
+    <link rel="icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/feed.xml" />
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.5.2/jquery.min.js"></script>
+    <script src="/theme/js/effects.js" ></script>
+    <!-- <script src="/theme/js/jquery.jparallax.js"></script> -->
+    <link rel="stylesheet" href="/theme/blueprint/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/blueprint/print.css" type="text/css" media="print">
+    <link rel="stylesheet" href="/theme/syntax.css" type="text/css" />
+    <!--[if lt IE 8]>
+      <link rel="stylesheet" href="/theme/blueprint/ie.css" type="text/css" media="screen, projection">
+    <![endif]-->
+    <link rel="stylesheet" href="/theme/blueprint/plugins/link-icons/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/fontello/css/fontello.css">
+    <!--[if IE 7]><link rel="stylesheet" href="/theme/fontello/css/fontello-ie7.css"><![endif]-->
+    <link href="/theme/style.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body>
+    <div class="container">
+       <div id="branding" class="column span-24 last">
+         <h1 class="logo"><a href="/">RBleug</a></h1>
+         <hr/>
+         <h2 class="alt">Regilero's blog; Mostly tech things about web stuff.</h2>
+       </div>
+       
+       <div id="menu" class="column span-24 last">
+         <ul class="topNav">
+            <li><a href="/" class="topNavAct" ><i class="icon-home"></i>Tech notes</a></li>
+            <li><a href="/archive/"   ><i class="icon-th"></i>Archives</a></li>
+            <li><a href="/contact/"  ><i class="icon-phone"></i>Contact</a></li>
+            <li><a href="/feed.xml"><i class="icon-rss"></i>RSS Feed</a></li>
+         </ul>
+         <div class="clear"></div>
+       </div>
+       
+       <div id="content" class="">
+           <div id="left-content" class="column span-15 prepend-1">
+             
+            <article>
+        <header>
+            <h2>Autocomplete Ajax search with Dojo and Zend Framework
+            <span><i class="icon-clock"></i><time datetime="2008-10-26">Oct 26, 2008</time></span><br/>
+            <span class="category"><i class="icon-list"></i> <a href="/English/">English</a> and <a href="/Zend Framework/">Zend Framework</a></span>
+            </h2>
+        </header>
+
+        <div class="entry">
+          <img class="left" src="/theme/img/pic/libellule1.png" width="260" alt="How to build a Dojo autocomplete with ZF 1.6, with a nice json response." title="How to build a Dojo autocomplete with ZF 1.6, with a nice json response." />
+          <p>With the new Zend Framework 1.6 we've these nice Dojo widgets.</p>
+
+<p>New things lacks documentations most of times. <br/>
+So if you want to build something really usefull like theses nice autocomplete search combobox this example could save you a lot of time.</p>
+
+<p>We'll assume you have Dojo already installed and activated on your views,
+and that acl verifications are done elsewhere, on your Controller plugins for example.</p>
+
+<p>First let's see HTML code (in your view):</p>
+
+<div class="highlight"><pre><code class="html">  <span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
+    <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dojo.parser&quot;</span><span class="p">);</span>
+    <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dojox.data.QueryReadStore&quot;</span><span class="p">);</span>
+    <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dijit.form.ComboBox&quot;</span><span class="p">);</span>
+    <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dijit.form.FilteringSelect&quot;</span><span class="p">);</span>
+    <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;custom.FindAutoCompleteReadStore&quot;</span><span class="p">);</span>
+    <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dijit.form.Form&quot;</span><span class="p">);</span>
+    <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dijit.form.Button&quot;</span><span class="p">);</span>
+  <span class="nt">&lt;/script&gt;</span>
+  <span class="nt">&lt;form</span> <span class="na">id=</span><span class="s">&quot;Find_Form&quot;</span> <span class="na">action=</span><span class="s">&quot;/module/foo/edit&quot;</span> <span class="na">method=</span><span class="s">&quot;get&quot;</span> <span class="na">dojoType=</span><span class="s">&quot;dijit.form.Form&quot;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;div</span> <span class="na">dojoType=</span><span class="s">&quot;custom.FindAutoCompleteReadStore&quot;</span> <span class="na">jsId=</span><span class="s">&quot;NameStore&quot;</span> <span class="na">url=</span><span class="s">&quot;/module/foo/find/format/json&quot;</span> <span class="na">requestMethod=</span><span class="s">&quot;get&quot;</span><span class="nt">&gt;&lt;/div&gt;</span>
+    <span class="nt">&lt;label</span> <span class="na">for=</span><span class="s">&quot;id&quot;</span> <span class="na">class=</span><span class="s">&quot;optional&quot;</span><span class="nt">&gt;</span>Recherchez un nom:<span class="nt">&lt;/label&gt;</span>
+    <span class="nt">&lt;span</span> <span class="na">class=</span><span class="s">&quot;formelement&quot;</span><span class="nt">&gt;&lt;select</span> <span class="na">name=</span><span class="s">&quot;id&quot;</span> <span class="na">id=</span><span class="s">&quot;FindByName&quot;</span> <span class="na">hasDownArrow=</span><span class="s">&quot;&quot;</span> <span class="na">store=</span><span class="s">&quot;NameStore&quot;</span> <span class="na">size=</span><span class="s">&quot;25&quot;</span> <span class="na">tabindex=</span><span class="s">&quot;99&quot;</span> <span class="na">autocomplete=</span><span class="s">&quot;1&quot;</span> <span class="na">dojoType=</span><span class="s">&quot;dijit.form.FilteringSelect&quot;</span> <span class="na">pageSize=</span><span class="s">&quot;10&quot;</span> <span class="nt">&gt;&lt;/select&gt;&lt;/span&gt;</span>
+    <span class="nt">&lt;span</span> <span class="na">class=</span><span class="s">&quot;actionbuttons&quot;</span><span class="nt">&gt;&lt;input</span> <span class="na">id=</span><span class="s">&quot;Find_go&quot;</span> <span class="na">name=</span><span class="s">&quot;Find_go&quot;</span> <span class="na">value=</span><span class="s">&quot;Go:&quot;</span> <span class="na">type=</span><span class="s">&quot;submit&quot;</span> <span class="na">label=</span><span class="s">&quot;go:&quot;</span><span class="na">dojoType=</span><span class="s">&quot;dijit.form.Button&quot;</span> <span class="nt">/&gt;&lt;/span&gt;</span>
+  <span class="nt">&lt;/form&gt;</span>
+</code></pre></div>
+
+
+<p>As we can see you'll need an additional custom js: <strong>custom.FindAutoCompleteReadStore</strong>.</p>
+
+<p>This is a really simple js to write, create your custom directory in the same level
+as dojo or dijit directory and create <code>FindAutoCompleteReadStore.js</code> like that:</p>
+
+<div class="highlight"><pre><code class="js"><span class="nx">dojo</span><span class="p">.</span><span class="nx">provide</span><span class="p">(</span><span class="s2">&quot;custom.FindAutoCompleteReadStore&quot;</span><span class="p">);</span>
+<span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dojox.data.QueryReadStore&quot;</span><span class="p">);</span>
+<span class="nx">dojo</span><span class="p">.</span><span class="nx">declare</span><span class="p">(</span><span class="s2">&quot;custom.FindAutoCompleteReadStore&quot;</span><span class="p">,</span> <span class="nx">dojox</span><span class="p">.</span><span class="nx">data</span><span class="p">.</span><span class="nx">QueryReadStore</span><span class="p">,</span> <span class="p">{</span>
+  <span class="nx">fetch</span><span class="o">:</span><span class="kd">function</span> <span class="p">(</span><span class="nx">request</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">request</span><span class="p">.</span><span class="nx">serverQuery</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">Find</span><span class="o">:</span><span class="nx">request</span><span class="p">.</span><span class="nx">query</span><span class="p">.</span><span class="nx">name</span> <span class="p">};</span>
+    <span class="c1">// cal superclass fecth</span>
+    <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">inherited</span><span class="p">(</span><span class="s2">&quot;fetch&quot;</span><span class="p">,</span> <span class="nx">arguments</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">});</span>
+</code></pre></div>
+
+
+<p>Now you'll need to serve the requested Ajax query
+(requested by the Dojo store linked with our FilteringSelect or Combobox) : <code>/module/foo/find/format/json</code><br/>
+This is the method <strong>'findAction'</strong> in the Controller <strong>'foo'</strong> on module <strong>'module'</strong>.<br/>
+But first let's see the preDispatch function of this controller where we handle the <code>format/json</code> instruction to switch in Ajax mode:</p>
+
+<div class="highlight"><pre><code class="php"><span class="x">public function preDispatch()</span>
+<span class="x">{</span>
+<span class="x">    $contextSwitch =   $this-&gt;_helper-&gt;getHelper(&#39;contextSwitch&#39;);</span>
+<span class="x">    $contextSwitch-&gt;setAutoJsonSerialization( true );</span>
+<span class="x">    $contextSwitch-&gt;addActionContext(&#39;find&#39;, &#39;json&#39;);</span>
+<span class="x">    $contextSwitch-&gt;initContext();</span>
+<span class="x">}</span>
+</code></pre></div>
+
+
+<p>So now let's write the find function:</p>
+
+<div class="highlight"><pre><code class="php"><span class="x">  public function findAction()</span>
+<span class="x">  {</span>
+<span class="x">      // handle filtering of recieved data</span>
+<span class="x">      $replacer = new Zend_Filter_pregReplace(&#39;/\*/&#39;,&#39;%&#39;);</span>
+<span class="x">      // emulate alpha+num filter with some more characters enabled</span>
+<span class="x">      //**** &lt;a href=&quot;http://www.regular-expressions.info/unicode.html&quot; title=&quot;http://www.regular-expressions.info/unicode.html&quot;&gt;http://www.regular-expressions.info/unicode.html&lt;/a&gt; ****</span>
+<span class="x">      // \p{N} --&gt; numeric chars of any language</span>
+<span class="x">      // \s -&gt; withespace</span>
+<span class="x">      //\x0027 : APOSTROPHE</span>
+<span class="x">      //\x002C : COMMA</span>
+<span class="x">      //\x0025% : % in UTF-8 and not in utf-8</span>
+<span class="x">      //\x002D : HYPHEN / MINUS</span>
+<span class="x">      //\x005F : UNDERSCORE</span>
+<span class="x">      //\. DOT</span>
+<span class="x">      $mylimit = new Zend_Filter_pregReplace(&#39;/[^\p{L}\p{N}\s\x0027\x002C\x002D\x005F\x0025%\.]/u&#39;,&#39;&#39;);</span>
+<span class="x">      $filters = array(</span>
+<span class="x">              &#39;*&#39; =&gt; &#39;StringTrim&#39;</span>
+<span class="x">              ,&#39;Find&#39; =&gt; array(</span>
+<span class="x">              &#39;StripNewlines&#39;</span>
+<span class="x">              ,$replacer</span>
+<span class="x">              ,$mylimit</span>
+<span class="x">              ,&#39;StripTags&#39;</span>
+<span class="x">          )</span>
+<span class="x">          ,&#39;start&#39; =&gt; &#39;Int&#39;</span>
+<span class="x">          ,&#39;count&#39; =&gt; &#39;Int&#39;</span>
+<span class="x">      );</span>
+<span class="x">      $validators =array();</span>
+<span class="x">      $input = new Zend_Filter_Input($filters, $validators, $_GET);</span>
+<span class="x">      $find = $input-&gt;getUnescaped(&#39;Find&#39;);</span>
+<span class="x">      if (empty($find)) $find = &#39;%&#39;;</span>
+<span class="x">      $start = intval($input-&gt;getUnescaped(&#39;start&#39;));</span>
+<span class="x">      if (empty($start)) $start = 0;</span>
+<span class="x">      $count = intval($input-&gt;getUnescaped(&#39;count&#39;));</span>
+<span class="x">      if (empty($count)) $count = 3;</span>
+<span class="x">      // get the model, here you should adjust with the way you work</span>
+<span class="x">      // then make your query with limits</span>
+<span class="x">      $this-&gt;_modeltable = new My_Zend_Db_Table_Foo($this-&gt;db)</span>
+<span class="x">      $fieldid = &#39;my_id_field&#39;;</span>
+<span class="x">      $fieldident = &#39;my_name_field&#39;;</span>
+<span class="x">      $select = $this-&gt;_modeltable-&gt;select();</span>
+<span class="x">      $db = $this-&gt;_modeltable-&gt;getAdapter();</span>
+<span class="x">      $select-&gt;where($db-&gt;quoteinto($db-&gt;quoteIdentifier($fieldident).&#39; LIKE ?&#39;, $find));</span>
+<span class="x">      $select-&gt;limit($count, $start);</span>
+<span class="x">      $rows= $this-&gt;_modeltable-&gt;fetchAll($select);</span>
+<span class="x">      $rowsarray = $rows-&gt;ToArray();</span>
+<span class="x">      $finalarray=array();</span>
+<span class="x">      foreach ($rowsarray as $row)</span>
+<span class="x">      {</span>
+<span class="x">          $key = $row[$fieldid];</span>
+<span class="x">          $finalarray[$key] = $row[$fieldident];</span>
+<span class="x">      }</span>
+<span class="x">      //Zend_Debug::dump($finalarray);</span>
+<span class="x">      //die(__METHOD__);</span>
+<span class="x">      $this-&gt;_helper-&gt;autoCompleteDojo($finalarray);</span>
+<span class="x">  }</span>
+</code></pre></div>
+
+
+<p>And it should be sufficient, pffiuu.<br/>
+But... there's one remaining problem after that.
+We put the search autocomplete inside a form and we wanted the <strong>'go'</strong> button to send a request to something like that:</p>
+
+<p><code>/module/foo/edit/id/1245</code> OR <code>/module/foo/edit?id=1245</code></p>
+
+<p>But we'll have something like:</p>
+
+<p><code>/module/foo/edit?id=THE NAME</code></p>
+
+<p>too bad...</p>
+
+<p>To get it done I had to change one thing in Zend Framework library on the Zend/Controller/Action/Helper/AutoCompleteDojo.php Helper:</p>
+
+<div class="highlight"><pre><code class="php"><span class="x">  public function prepareAutoCompletion($data, $keepLayouts = false)</span>
+<span class="x">  {</span>
+<span class="x">    $items = array();</span>
+<span class="x">    foreach ($data as $key =&gt; $value) {</span>
+<span class="x">      $items[] = array(&#39;label&#39; =&gt; $value, &#39;name&#39; =&gt; $value, &#39;key&#39; =&gt; $key);</span>
+<span class="x">    }</span>
+<span class="x">    $final = array(</span>
+<span class="x">      &#39;identifier&#39; =&gt; &#39;key&#39;,</span>
+<span class="x">      &#39;items&#39; =&gt; $items,</span>
+<span class="x">     );</span>
+<span class="x">    return $this-&gt;encodeJson($final, $keepLayouts);</span>
+<span class="x">  }</span>
+</code></pre></div>
+
+
+<p>Line 66 <code>'key'</code> is added on the item and line 69 <code>'identifier'</code> is set to <code>'key'</code> and not <code>'name'</code>.<br/>
+<code>'identifier'</code> is used by the Dojo Filtering Select to decide which field will be used for the form,
+for more info see <a href="http://dojotoolkit.org/reference-guide/1.9/">dojo book page</a> and search <code>'abbreviation'</code>.</p>
+
+<p>There's also a bug talking about that for Zend Framework,
+to get other solutions or info on the way it will be fixed later look <a href="http://framework.zend.com/issues/browse/ZF-4494">there</a>.</p>
+
+        </div>
+        <div class="tag"><i class="icon-tag"></i><a href="/tag/Ajax/">Ajax</a>, <i class="icon-tag"></i><a href="/tag/Dojo/">Dojo</a>, <i class="icon-tag"></i><a href="/tag/ZendFramework/">ZendFramework</a>, <i class="icon-tag"></i><a href="/tag/js/">js</a></div>
+</article>
+
+    
+    
+           </div>
+           <div id="sideBar" class="column span-8 last">
+            
+            <div class="sideBarListBox">
+              <h3>Related posts</h3>
+              <ul>
+                
+              </ul>
+            </div>
+            
+    
+        <div class="sideBarListBox">
+          <h3>Latest posts</h3>
+          <ul>
+              
+                 <li><a href="/Drupal/English/2011/10/18/drupal_mongodb_statistics_module_published/">Drupal - Mongodb statistics module published</a></li>
+              
+                 <li><a href="/Drupal/English/2011/10/03/separate_cache_backends_d6_and_d7/">Separate cache Backends with Drupal6 and Drupal7.</a></li>
+              
+                 <li><a href="/Js/English/2010/08/16/nice_webapps_and_tools_using_canvas/">Nice Webapps and tools using canvas</a></li>
+              
+                 <li><a href="/Apache/English/2009/11/06/more_on_static_file_redirector/">More on Static file redirector</a></li>
+              
+                 <li><a href="/Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/">Use RewriteMap to prevent proxying for some static contents</a></li>
+              
+          </ul>
+        </div>
+        
+        <div class="sideBarMore">
+          <h3>More</h3>
+            <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
+            <a href="https://github.com/regilero" target="_blank"><img src="/theme/img/github_thumb.png" width="48" height="48" alt="Github regilero" title="Github regilero"></a>
+            <a href="https://plus.google.com/111280074129555323484/posts" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
+            <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
+            <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+        </div>
+        
+        <div class="sideBarListBox">
+          <h3>Tags</h3>
+          <a style='font-size: 113%' href='/tag/Web/'>Web</a>
+<a style='font-size: 70%' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 70%' href='/tag/js/'>js</a>
+<a style='font-size: 70%' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 138%' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 70%' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 70%' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 70%' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 70%' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 113%' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 70%' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 70%' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 70%' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 113%' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 138%' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 70%' href='/tag/Js/'>Js</a>
+<a style='font-size: 70%' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 170%' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 113%' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 70%' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 156%' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 113%' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 70%' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 113%' href='/tag/PHP/'>PHP</a>
+
+        </div>
+        
+        <div class="sideBarItem">
+          <h3>Friends</h3>
+            <ul>
+              <li><a class="effect" target="_blank" href="http://www.makina-corpus.org">Blogs Makina Corpus<div class="cover-right"><img src="/theme/img/makinaorg.png" height="30" width="30"><img src="/theme/img/makinaorg_banner.png" height="30" width="117"></div></a></li>
+              <li><a class="effect" target="_blank" href="http://www.makina-corpus.com">Makina Corpus<div class="cover-right"><img src="/theme/img/makinacom.png" height="30" width="30"><img src="/theme/img/makinacom_banner.png" height="30" width="117"></div></a></li>
+              <li><a class="effect" target="_blank" href="http://www.processus.org/">Pounard, processus.org<div class="cover-right"><img src="/theme/img/pounard.png" height="30" width="30"><img src="/theme/img/pounard_banner.png" height="30" width="117"></div></a></li>
+              <li><a class="effect" target="_blank" href="http://toutpt.makina-corpus.org/" >Toupt<div class="cover-right"><img src="/theme/img/toupt.png" height="30" width="30"><img src="/theme/img/toupt_banner.png" height="30" width="117"></div></a></li>
+              <li><a class="effect" target="_blank" href="http://francoisgaudin.com/">François Gaudin<div class="cover-right"><img src="/theme/img/gaudin.png" height="30" width="30"><img src="/theme/img/gaudin_banner.png" height="30" width="117"></div></a></li>
+            </ul>
+            <div class="clear"></div>
+        </div>
+        
+      </div> <!-- end sidebar -->
+        
+         </div><!-- end content -->
+         
+         <div id="footer" class="column span-24 last">
+            <hr />
+            <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/"><img alt="Licence Creative Commons" style="border-width:0" src="http://i.creativecommons.org/l/by-sa/3.0/fr/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/Text" property="dct:title" rel="dct:type">regilero's blog</span> est mis à disposition selon les termes de la <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/">licence Creative Commons Attribution -  Partage dans les Mêmes Conditions 3.0 France</a>.<br />Fondé(e) sur une œuvre à <a xmlns:dct="http://purl.org/dc/terms/" href="http://regilero.github.io" rel="dct:source">http://regilero.github.io</a>.
+         </div>
+
+      </div><!-- end container -->
+    </body>
+</html>

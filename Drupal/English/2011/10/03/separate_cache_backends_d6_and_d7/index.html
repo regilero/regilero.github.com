@@ -146,14 +146,14 @@ And the "cache router" module applied some of the ideas we'll study later on thi
 <p>I said before cache engines can be faster in both write and read operations.
 So now you may ask "why don't we use Cache engines for everything?". And the answer is that a relational database provides more services, it can for example provides a better persitency,
 or manage better simultaneous writes, or allow handling relationship between objects.
-<strong><em>Use the right tool for the right thing</em></strong>.
+<strong>Use the right tool for the right thing</strong>.
 But this is still a good question. Drupal 8 studies &amp; discussions are actually requesting whether a document based backend for most Drupal storage wouldn't be  more appropriate than a relational database.
 For now we'll just have a look at the cache tables problems.</p>
 
 <h3>Cache backends with Drupal7</h3>
 
 <p>Now comes Drupal7. The cache management has been rewritten, using cache router and memcached ideas and try to put the things one step further in the core.
-Cache bins are used, for example the bin <strong><em>'foo'</em></strong> will use the cache table <strong><em>cache_foo</em></strong>.
+Cache bins are used, for example the bin <strong>'foo'</strong> will use the cache table <strong>cache_foo</strong>.
 And <strong>for each bin you can specify which storage backend will be used</strong>.</p>
 
 <p>Available cache backends are:</p>
@@ -163,21 +163,21 @@ And <strong>for each bin you can specify which storage backend will be used</str
  * Memcache (module memcache): To use the well known memcached daemon. where you could use a basic mono-server setting or a complex multi-servers with replications usage</p>
 
 <p>But other backends could be written.
-And you can already find two Redis backends implementations (<strong><em>Predis</em></strong> &amp; <strong><em>PhpRedis</em></strong>) with the  <a href="http://drupal.org/project/redis">redis module</a> (alpha).
-Module maintained by <strong><em>pounard</em></strong>, a Makina Corpus worker.
+And you can already find two Redis backends implementations (<strong>Predis</strong> &amp; <strong>PhpRedis</strong>) with the  <a href="http://drupal.org/project/redis">redis module</a> (alpha).
+Module maintained by <strong>pounard</strong>, a Makina Corpus worker.
 There is also a <a href="http://drupal.org/project/mongodb">MongoDB module</a> providing a mongodb cache backend (beta2), that I did not test yet, powered by Damien Tournoud.</p>
 
 <h3>Having a drupal6? Or do you want some configuration details?</h3>
 
 <p>The only thing we need know is a documentation on how to configure these.
 This is always (almost) provided in the module documentation but we will use the <a href="http://drupal.org/project/cache_backport">cache backport module</a> documentation as an example.
-This module, again maintained by  <strong><em>pounard</em></strong>, is a backport of Drupal7 cache engine (separating  backends) for Drupal6.
+This module, again maintained by  <strong>pounard</strong>, is a backport of Drupal7 cache engine (separating  backends) for Drupal6.
 So it's a replacement for Cache Router where you can reuse the cache parts of Drupal7 cache backends in a Drupal6 website.
 And One of the good points of this module is that it provides a centralized documentation on several cache backends which is spread on the different modules for Drupal7.</p>
 
 <p>The first question is "where should I put each separate cache bin (or each cache table for short) ?"</p>
 
-<p>The <strong><em>cache</em></strong> and <strong><em>cache_bootstrap</em></strong> bins contains short and often used data.
+<p>The <strong>cache</strong> and <strong>cache_bootstrap</strong> bins contains short and often used data.
 They will love the APC cache backend.</p>
 
 <p>For all the others bins you could apply a different policy.
@@ -366,39 +366,50 @@ Some modules provides lock alternatives which are faster (like the Redis module)
               
                  <li><a href="/Drupal/English/2011/10/03/separate_cache_backends_d6_and_d7/">Separate cache Backends with Drupal6 and Drupal7.</a></li>
               
+                 <li><a href="/Js/English/2010/08/16/nice_webapps_and_tools_using_canvas/">Nice Webapps and tools using canvas</a></li>
+              
                  <li><a href="/Apache/English/2009/11/06/more_on_static_file_redirector/">More on Static file redirector</a></li>
               
                  <li><a href="/Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/">Use RewriteMap to prevent proxying for some static contents</a></li>
-              
-                 <li><a href="/Monitoring/Francais/2008/05/25/temps_de_reponse_reel_d_une_page_web_avec_netcat/">Temps de réponse réél d'une page web avec ... netcat</a></li>
               
           </ul>
         </div>
         
         <div class="sideBarMore">
           <h3>More</h3>
-            <a href="http://stackoverflow.com/users/550618/regilero">
-            <img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers">
-            </a>
-            <a href="http://stackexchange.com/users/264377/regilero"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+            <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
+            <a href="https://github.com/regilero" target="_blank"><img src="/theme/img/github_thumb.png" width="48" height="48" alt="Github regilero" title="Github regilero"></a>
+            <a href="https://plus.google.com/111280074129555323484/posts" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
+            <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
+            <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
         </div>
         
         <div class="sideBarListBox">
           <h3>Tags</h3>
-          <a style='font-size: 70%' href='/tag/Apache/'>Apache</a>
+          <a style='font-size: 113%' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 113%' href='/tag/Web/'>Web</a>
+<a style='font-size: 113%' href='/tag/RewriteMap/'>RewriteMap</a>
 <a style='font-size: 70%' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 113%' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 138%' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 70%' href='/tag/js/'>js</a>
 <a style='font-size: 70%' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 70%' href='/tag/HTML5/'>HTML5</a>
 <a style='font-size: 70%' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 120%' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 120%' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 70%' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 113%' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 138%' href='/tag/Proxy/'>Proxy</a>
 <a style='font-size: 70%' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 70%' href='/tag/Js/'>Js</a>
+<a style='font-size: 70%' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 70%' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 170%' href='/tag/HTTP/'>HTTP</a>
 <a style='font-size: 70%' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 170%' href='/tag/Performance/'>Performance</a>
 <a style='font-size: 70%' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 120%' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 120%' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 149%' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 120%' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 113%' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 156%' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 70%' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 70%' href='/tag/PostgreSQL/'>PostgreSQL</a>
 
         </div>
         

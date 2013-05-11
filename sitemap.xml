@@ -11,6 +11,11 @@
       <changefreq>never</changefreq>
   </url>
   <url>
+      <loc>http://regilero.github.io/Js/English/2010/08/16/nice_webapps_and_tools_using_canvas/</loc>
+      <lastmod>2010-08-16</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
       <loc>http://regilero.github.io/Apache/English/2009/11/06/more_on_static_file_redirector/</loc>
       <lastmod>2009-11-06</lastmod>
       <changefreq>never</changefreq>
@@ -18,6 +23,26 @@
   <url>
       <loc>http://regilero.github.io/Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/</loc>
       <lastmod>2009-11-05</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
+      <loc>http://regilero.github.io/Apache/English/2009/06/03/relative_absolute_urls_and_proxies/</loc>
+      <lastmod>2009-06-03</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
+      <loc>http://regilero.github.io/PostgreSQL/English/2008/10/30/6_nice_things_not_known_enough_about_postgresql/</loc>
+      <lastmod>2008-10-30</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
+      <loc>http://regilero.github.io/Zend%20Framework/English/2008/10/26/autocomplete_ajax_search_dojo_zend_framework/</loc>
+      <lastmod>2008-10-26</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
+      <loc>http://regilero.github.io/Apache/English/2008/08/29/force_http_1.0_response_when_php_is_there/</loc>
+      <lastmod>2008-08-29</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>

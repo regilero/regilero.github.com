@@ -54,7 +54,7 @@
         <div class="entry">
           <img class="left" src="/theme/img/pic/alienflower.png" width="260" alt="How to use the not well known RewriteMap Apache feature to proxy static resources on a web app without clean url separation between static and dynamic content (here Plone)." title="How to use the not well known RewriteMap Apache feature to proxy static resources on a web app without clean url separation between static and dynamic content (here Plone)." />
           <p>Let's say we would like to prevent an application server to serve static content.
-And let's take a complex example, <strong><em>Plone</em></strong>.
+And let's take a complex example, <strong>Plone</strong>.
 Plone is a Zope based application server and is not using a clean url-map for static contents.</p>
 
 <p>We'll take Plone as an example but it's not the only app which is not handling static files outside general uri-application-mapping.
@@ -75,14 +75,14 @@ on a lot of different url <code>/foo/bar/toto.png</code>, <code>/foobar/main.css
 represents some directories where we do not have only static contents.
 And we want to prevent the webapp from handling theses known files.</p>
 
-<p>Here's a nice solution based on <strong><em>mod_rewrite</em></strong>, and especially
+<p>Here's a nice solution based on <strong>mod_rewrite</strong>, and especially
 <a href="http://httpd.apache.org/docs/current/rewrite/rewritemap.html">rewriteMap</a>,
 where all theses contents will be served by Apache directly from the filesystem,
 with some content-expiration settings and without openning back-doors to neighbour
 content which should certainly not be available statically
 (like for example python source code files).<br/>
 So first let's have a basic plone proxy setting for an apache Virtualhost,
-we serve <strong><em>plone.from.outside.net</em></strong> which is a proxy on <strong><em>plone.inside.lan</em></strong>.</p>
+we serve <code>plone.from.outside.net</code> which is a proxy on <code>plone.inside.lan</code>.</p>
 
 <div class="highlight"><pre><code class="apache"><span class="nt">&lt;VirtualHost</span> <span class="s">*:80</span><span class="nt">&gt;</span>
     <span class="nb">ServerName</span>  plone.from.outside.net
@@ -139,14 +139,14 @@ we serve <strong><em>plone.from.outside.net</em></strong> which is a proxy on <s
 <p>Ouch, in fact I've added a few more settings to be able to serve an index.php
 page from this same virtualhost, and being a proxy for anything else, just to
 have something more 'real-life wtf'.<br/>
-Oh and as well I've added a nice trick for maintenance mode via <strong><em>RedirectMatch</em></strong>,
+Oh and as well I've added a nice trick for maintenance mode via <strong>RedirectMatch</strong>,
 for the happy few.</p>
 
 <h3>And now what about static files handling?</h3>
 
 <p>Let's do it in 2 steps.<br/>
 We'll make a simple one first,
-redirecting targeted files on direct static handling and then next time we'll add a <strong><em>virtual /static directory</em></strong>
+redirecting targeted files on direct static handling and then next time we'll add a <strong>virtual /static directory</strong>
 (like serious apps).
 So the app dev will build for us a nice rewriteMap file.
 This file will map all static urls to the real filesystem file. In this way:</p>
@@ -177,8 +177,8 @@ So the <em>foo/bar/img/clean.png</em> in the rewritemap file is
 in fact <em>/opt/plone/source/foo/bar/img/clean.png</em>.<br/>
 Here you see Apache needs direct access to the files via is filesystem,
 if real files aren't directly there you should ensure they will.
-You can use <strong><em>rsync</em></strong> or <em><strong>NFS</strong> for example,
-but </em><strong>the apache server must have direct access to theses files</strong>*,
+You can use <strong>rsync</strong> or <strong>NFS</strong> for example,
+but <strong>the apache server must have direct access to theses files</strong>,
 as he will not proxy them.</p>
 
 <p>Starting with a rule:</p>
@@ -304,20 +304,20 @@ and not re-read at each request.</p>
 </code></pre></div>
 
 
-<p>And <strong><em>it works</em></strong>, at this point you should note the rewriteRule
+<p>And <strong>it works</strong>, at this point you should note the rewriteRule
 is a endpoint for matching content,
 no other apache rule can be applied,
 but at least you need a Directory directive
 to allow content from your plone source to be acceded.</p>
 
-<p><strong><em>No security Hole</em></strong>, as some could think with the documentRoot
+<p><strong>No security Hole</strong>, as some could think with the documentRoot
 in plone source,<br/>
 asking for <code>/</code> url wont serve your source content as:</p>
 
 <ul>
-<li>there's an <strong><em>alias on /</em></strong> redirecting to /var/www/proxyplone/htdocs/</li>
-<li>there's a <strong><em>proxy on /</em></strong> redirecting to plone app server.</li>
-<li>but <strong><em>do not</em></strong> remove mod_alias and mod_proxy from apache :-)</li>
+<li>there's an <strong>alias on /</strong> redirecting to /var/www/proxyplone/htdocs/</li>
+<li>there's a <strong>proxy on /</strong> redirecting to plone app server.</li>
+<li>but <strong>do not</strong> remove mod_alias and mod_proxy from apache :-)</li>
 </ul>
 
 
@@ -340,11 +340,13 @@ some more rule from Apache after the rewrite part.</p>
                 
                    <li><a href="/Apache/English/2009/11/06/more_on_static_file_redirector/">More on Static file redirector</a></li>
                 
-                   <li><a href="/Monitoring/Francais/2008/05/25/temps_de_reponse_reel_d_une_page_web_avec_netcat/">Temps de réponse réél d'une page web avec ... netcat</a></li>
+                   <li><a href="/Apache/English/2009/06/03/relative_absolute_urls_and_proxies/">Relative/Absolute URL and Proxies</a></li>
                 
                    <li><a href="/Drupal/English/2011/10/18/drupal_mongodb_statistics_module_published/">Drupal - Mongodb statistics module published</a></li>
                 
                    <li><a href="/Drupal/English/2011/10/03/separate_cache_backends_d6_and_d7/">Separate cache Backends with Drupal6 and Drupal7.</a></li>
+                
+                   <li><a href="/Apache/English/2008/08/29/force_http_1.0_response_when_php_is_there/">Force HTTP/1.0 Apache response when PHP is there...</a></li>
                 
               </ul>
             </div>
@@ -358,39 +360,50 @@ some more rule from Apache after the rewrite part.</p>
               
                  <li><a href="/Drupal/English/2011/10/03/separate_cache_backends_d6_and_d7/">Separate cache Backends with Drupal6 and Drupal7.</a></li>
               
+                 <li><a href="/Js/English/2010/08/16/nice_webapps_and_tools_using_canvas/">Nice Webapps and tools using canvas</a></li>
+              
                  <li><a href="/Apache/English/2009/11/06/more_on_static_file_redirector/">More on Static file redirector</a></li>
               
                  <li><a href="/Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/">Use RewriteMap to prevent proxying for some static contents</a></li>
-              
-                 <li><a href="/Monitoring/Francais/2008/05/25/temps_de_reponse_reel_d_une_page_web_avec_netcat/">Temps de réponse réél d'une page web avec ... netcat</a></li>
               
           </ul>
         </div>
         
         <div class="sideBarMore">
           <h3>More</h3>
-            <a href="http://stackoverflow.com/users/550618/regilero">
-            <img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers">
-            </a>
-            <a href="http://stackexchange.com/users/264377/regilero"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+            <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
+            <a href="https://github.com/regilero" target="_blank"><img src="/theme/img/github_thumb.png" width="48" height="48" alt="Github regilero" title="Github regilero"></a>
+            <a href="https://plus.google.com/111280074129555323484/posts" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
+            <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
+            <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
         </div>
         
         <div class="sideBarListBox">
           <h3>Tags</h3>
-          <a style='font-size: 70%' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 120%' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 70%' href='/tag/Nginx/'>Nginx</a>
+          <a style='font-size: 113%' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 113%' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 156%' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 70%' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 113%' href='/tag/Web/'>Web</a>
+<a style='font-size: 70%' href='/tag/Ajax/'>Ajax</a>
 <a style='font-size: 70%' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 120%' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 70%' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 170%' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 149%' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 120%' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 120%' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 120%' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 170%' href='/tag/HTTP/'>HTTP</a>
 <a style='font-size: 70%' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 70%' href='/tag/Js/'>Js</a>
+<a style='font-size: 70%' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 138%' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 113%' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 70%' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 138%' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 70%' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 70%' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 70%' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 113%' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 70%' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 113%' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 70%' href='/tag/js/'>js</a>
+<a style='font-size: 70%' href='/tag/ZendFramework/'>ZendFramework</a>
 <a style='font-size: 70%' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 70%' href='/tag/Apache/'>Apache</a>
 
         </div>
         

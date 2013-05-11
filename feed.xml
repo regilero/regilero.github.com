@@ -24,7 +24,7 @@ So it's not the nicest piece of code I could write :-)&lt;/p&gt;
 &lt;li&gt;batch migration of previous node_counter statistics if any (not yet for accesslog)&lt;/li&gt;
 &lt;li&gt;post-synchronisation of node_counter mongodb table to a sql table (via cron), so that you could query it via views (not for accesslog, are you mad?)&lt;/li&gt;
 &lt;li&gt;time based caching of the popular content block&lt;/li&gt;
-&lt;li&gt;Still lot of thing to do (see the &lt;a href=&quot;https://github.com/regilero/drupal_mongodb_statistics/blob/master/mongodb_statistics/TODO.txt&quot;&gt;TODO&lt;/a&gt;) but it was a nice way to learn &lt;strong&gt;&lt;em&gt;mongodb&lt;/em&gt;&lt;/strong&gt;. I especially like the idea of &lt;a href=&quot;http://nosql.mypopescu.com/post/392418792/translate-sql-to-mongodb-mapreduce&quot;&gt;mapReduce&lt;/a&gt; functions applied for complex &lt;code&gt;GROUP BY&lt;/code&gt; equivalents.&lt;/li&gt;
+&lt;li&gt;Still lot of thing to do (see the &lt;a href=&quot;https://github.com/regilero/drupal_mongodb_statistics/blob/master/mongodb_statistics/TODO.txt&quot;&gt;TODO&lt;/a&gt;) but it was a nice way to learn &lt;strong&gt;mongodb&lt;/strong&gt;. I especially like the idea of &lt;a href=&quot;http://nosql.mypopescu.com/post/392418792/translate-sql-to-mongodb-mapreduce&quot;&gt;mapReduce&lt;/a&gt; functions applied for complex &lt;code&gt;GROUP BY&lt;/code&gt; equivalents.&lt;/li&gt;
 &lt;/ul&gt;
 
 </description>
@@ -127,14 +127,14 @@ And the &quot;cache router&quot; module applied some of the ideas we'll study la
 &lt;p&gt;I said before cache engines can be faster in both write and read operations.
 So now you may ask &quot;why don't we use Cache engines for everything?&quot;. And the answer is that a relational database provides more services, it can for example provides a better persitency,
 or manage better simultaneous writes, or allow handling relationship between objects.
-&lt;strong&gt;&lt;em&gt;Use the right tool for the right thing&lt;/em&gt;&lt;/strong&gt;.
+&lt;strong&gt;Use the right tool for the right thing&lt;/strong&gt;.
 But this is still a good question. Drupal 8 studies &amp;amp; discussions are actually requesting whether a document based backend for most Drupal storage wouldn't be  more appropriate than a relational database.
 For now we'll just have a look at the cache tables problems.&lt;/p&gt;
 
 &lt;h3&gt;Cache backends with Drupal7&lt;/h3&gt;
 
 &lt;p&gt;Now comes Drupal7. The cache management has been rewritten, using cache router and memcached ideas and try to put the things one step further in the core.
-Cache bins are used, for example the bin &lt;strong&gt;&lt;em&gt;'foo'&lt;/em&gt;&lt;/strong&gt; will use the cache table &lt;strong&gt;&lt;em&gt;cache_foo&lt;/em&gt;&lt;/strong&gt;.
+Cache bins are used, for example the bin &lt;strong&gt;'foo'&lt;/strong&gt; will use the cache table &lt;strong&gt;cache_foo&lt;/strong&gt;.
 And &lt;strong&gt;for each bin you can specify which storage backend will be used&lt;/strong&gt;.&lt;/p&gt;
 
 &lt;p&gt;Available cache backends are:&lt;/p&gt;
@@ -144,21 +144,21 @@ And &lt;strong&gt;for each bin you can specify which storage backend will be use
  * Memcache (module memcache): To use the well known memcached daemon. where you could use a basic mono-server setting or a complex multi-servers with replications usage&lt;/p&gt;
 
 &lt;p&gt;But other backends could be written.
-And you can already find two Redis backends implementations (&lt;strong&gt;&lt;em&gt;Predis&lt;/em&gt;&lt;/strong&gt; &amp;amp; &lt;strong&gt;&lt;em&gt;PhpRedis&lt;/em&gt;&lt;/strong&gt;) with the  &lt;a href=&quot;http://drupal.org/project/redis&quot;&gt;redis module&lt;/a&gt; (alpha).
-Module maintained by &lt;strong&gt;&lt;em&gt;pounard&lt;/em&gt;&lt;/strong&gt;, a Makina Corpus worker.
+And you can already find two Redis backends implementations (&lt;strong&gt;Predis&lt;/strong&gt; &amp;amp; &lt;strong&gt;PhpRedis&lt;/strong&gt;) with the  &lt;a href=&quot;http://drupal.org/project/redis&quot;&gt;redis module&lt;/a&gt; (alpha).
+Module maintained by &lt;strong&gt;pounard&lt;/strong&gt;, a Makina Corpus worker.
 There is also a &lt;a href=&quot;http://drupal.org/project/mongodb&quot;&gt;MongoDB module&lt;/a&gt; providing a mongodb cache backend (beta2), that I did not test yet, powered by Damien Tournoud.&lt;/p&gt;
 
 &lt;h3&gt;Having a drupal6? Or do you want some configuration details?&lt;/h3&gt;
 
 &lt;p&gt;The only thing we need know is a documentation on how to configure these.
 This is always (almost) provided in the module documentation but we will use the &lt;a href=&quot;http://drupal.org/project/cache_backport&quot;&gt;cache backport module&lt;/a&gt; documentation as an example.
-This module, again maintained by  &lt;strong&gt;&lt;em&gt;pounard&lt;/em&gt;&lt;/strong&gt;, is a backport of Drupal7 cache engine (separating  backends) for Drupal6.
+This module, again maintained by  &lt;strong&gt;pounard&lt;/strong&gt;, is a backport of Drupal7 cache engine (separating  backends) for Drupal6.
 So it's a replacement for Cache Router where you can reuse the cache parts of Drupal7 cache backends in a Drupal6 website.
 And One of the good points of this module is that it provides a centralized documentation on several cache backends which is spread on the different modules for Drupal7.&lt;/p&gt;
 
 &lt;p&gt;The first question is &quot;where should I put each separate cache bin (or each cache table for short) ?&quot;&lt;/p&gt;
 
-&lt;p&gt;The &lt;strong&gt;&lt;em&gt;cache&lt;/em&gt;&lt;/strong&gt; and &lt;strong&gt;&lt;em&gt;cache_bootstrap&lt;/em&gt;&lt;/strong&gt; bins contains short and often used data.
+&lt;p&gt;The &lt;strong&gt;cache&lt;/strong&gt; and &lt;strong&gt;cache_bootstrap&lt;/strong&gt; bins contains short and often used data.
 They will love the APC cache backend.&lt;/p&gt;
 
 &lt;p&gt;For all the others bins you could apply a different policy.
@@ -321,6 +321,23 @@ Some modules provides lock alternatives which are faster (like the Redis module)
 			</item>
 		
 			<item>
+				<title>Nice Webapps and tools using canvas</title>
+				<description>&lt;p&gt;Doing some research on HTML5/Canvas usage I found theses tools on the web:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;http://pencil.evolus.vn/en-US/Home.aspx&quot;&gt;Pencil Project&lt;/a&gt;: graphic editor, nice replacement for dia&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://www.websequencediagrams.com/&quot;&gt;Web Sequence Diagrams&lt;/a&gt;: simple and useful UML sequence diagrams tool, I also like the &lt;a href=&quot;http://zwibbler.com/&quot;&gt;Human Drawing editor&lt;/a&gt; from the same author, nice code.&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://typeface.neocracy.org/&quot;&gt;Typeface&lt;/a&gt; , &lt;a href=&quot;http://cufon.shoqolate.com&quot;&gt;Cufon&lt;/a&gt;, &lt;a href=&quot;http://www.netzgesta.de/dev/text/&quot;&gt;StrokeText&lt;/a&gt;: 3 libraries used to add embeded font support on a page (and for other js usage).&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://www.benjoffe.com/code/all&quot;&gt;demos there&lt;/a&gt;, I especially like the '3D walker'&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://code.google.com/p/iecanvas/&quot;&gt;http://code.google.com/p/iecanvas/&lt;/a&gt;, &lt;a href=&quot;http://code.google.com/p/explorercanvas/&quot;&gt;http://code.google.com/p/explorercanvas/&lt;/a&gt; some libs to try adding canvas support in IE&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+				<published>2010-08-16 00:00:00 +0200</published>
+				<link>http://regilero.github.io//Js/English/2010/08/16/nice_webapps_and_tools_using_canvas/</link>
+			</item>
+		
+			<item>
 				<title>More on Static file redirector</title>
 				<description>&lt;p&gt;So On &lt;a href=&quot;/Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/&quot;&gt;a previous blog entry&lt;/a&gt;
 I presented the basics for a rewriteRule settings to serve some targeted plone static files directly from apache and
@@ -332,14 +349,14 @@ having a map of application url to filesystem real files stored in a text file a
 &lt;p&gt;No let's make this solution even better.&lt;/p&gt;
 
 &lt;ul&gt;
-&lt;li&gt;use a &lt;strong&gt;&lt;em&gt;hash map&lt;/em&gt;&lt;/strong&gt; for url mappings&lt;/li&gt;
+&lt;li&gt;use a &lt;strong&gt;hash map&lt;/strong&gt; for url mappings&lt;/li&gt;
 &lt;li&gt;create a virtual &lt;code&gt;/static&lt;/code&gt; url and apply some cache managment rules on his contents&lt;/li&gt;
 &lt;li&gt;allow the use of the &lt;code&gt;/satic/&lt;/code&gt; url directly&lt;/li&gt;
 &lt;li&gt;ensure only mapped static files are served via this static directory&lt;/li&gt;
 &lt;/ul&gt;
 
 
-&lt;p&gt;So first thing to change, we used a simple text file for the mapping, mod_rewrite allows us to use a &lt;strong&gt;&lt;em&gt;hash file&lt;/em&gt;&lt;/strong&gt;.&lt;br/&gt;
+&lt;p&gt;So first thing to change, we used a simple text file for the mapping, mod_rewrite allows us to use a &lt;strong&gt;hash file&lt;/strong&gt;.&lt;br/&gt;
 Simply change:&lt;/p&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RewriteMap&lt;/span&gt; statics txt:/var/www/proxyplone/etc/staticplonefiles.txt
@@ -427,15 +444,15 @@ well in fact mod_expires requires a Directory directive so it will be on the &lt
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 
-&lt;p&gt;That's done. &lt;strong&gt;&lt;em&gt;Now we have a big security Hole :-(&lt;/em&gt;&lt;/strong&gt;.&lt;br/&gt;
+&lt;p&gt;That's done. &lt;strong&gt;Now we have a big security Hole :-(&lt;/strong&gt;.&lt;br/&gt;
 Most files from &lt;code&gt;/opt/plone/source&lt;/code&gt; are available via the &lt;code&gt;/static&lt;/code&gt; url. &lt;br/&gt;
 As &lt;code&gt;/static&lt;/code&gt; is not proxied anymore and is now an alias on the filesystem directory where we have an allow from all ...&lt;br/&gt;
 So we should add some rewriteRules to check which files are allowed via direct access on static.
-And by default it should be &lt;strong&gt;&lt;em&gt;none&lt;/em&gt;&lt;/strong&gt;.
+And by default it should be *none&lt;strong&gt;.
 But that's sad, it would be nice to promote good behaviour for theses wtf programmers which aren't admins,
 we should let them use &lt;code&gt;/static&lt;/code&gt; urls for files known to be static.
 And maybe one day they'll think it's a good idea to make the distinction between known static files and dynamic content... &lt;br/&gt;
-So we'll ask developpers to add some entries in the &lt;strong&gt;&lt;em&gt;staticplonefiles.txt&lt;/em&gt;&lt;/strong&gt; making a mapping from static/files to real files this way (see, every entry is present 2 times):&lt;/p&gt;
+So we'll ask developpers to add some entries in the &lt;/strong&gt;staticplonefiles.txt** making a mapping from static/files to real files this way (see, every entry is present 2 times):&lt;/p&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# staticplonefiles.txt&lt;/span&gt;
 &lt;span class=&quot;c&quot;&gt;# url =&amp;gt; real filesystem file, from an arbitray root&lt;/span&gt;
@@ -546,7 +563,7 @@ VirtualHost and check the errorLog to observe what is done After the rewrite.&lt
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 
-&lt;p&gt;Quite readable isn't it? But &lt;strong&gt;&lt;em&gt;do not forget to remove debug&lt;/em&gt;&lt;/strong&gt; for production env.&lt;/p&gt;
+&lt;p&gt;Quite readable isn't it? But &lt;strong&gt;do not forget to remove debug&lt;/strong&gt; for production env.&lt;/p&gt;
 </description>
 				<published>2009-11-06 00:00:00 +0100</published>
 				<link>http://regilero.github.io//Apache/English/2009/11/06/more_on_static_file_redirector/</link>
@@ -555,7 +572,7 @@ VirtualHost and check the errorLog to observe what is done After the rewrite.&lt
 			<item>
 				<title>Use RewriteMap to prevent proxying for some static contents</title>
 				<description>&lt;p&gt;Let's say we would like to prevent an application server to serve static content.
-And let's take a complex example, &lt;strong&gt;&lt;em&gt;Plone&lt;/em&gt;&lt;/strong&gt;.
+And let's take a complex example, &lt;strong&gt;Plone&lt;/strong&gt;.
 Plone is a Zope based application server and is not using a clean url-map for static contents.&lt;/p&gt;
 
 &lt;p&gt;We'll take Plone as an example but it's not the only app which is not handling static files outside general uri-application-mapping.
@@ -576,14 +593,14 @@ on a lot of different url &lt;code&gt;/foo/bar/toto.png&lt;/code&gt;, &lt;code&g
 represents some directories where we do not have only static contents.
 And we want to prevent the webapp from handling theses known files.&lt;/p&gt;
 
-&lt;p&gt;Here's a nice solution based on &lt;strong&gt;&lt;em&gt;mod_rewrite&lt;/em&gt;&lt;/strong&gt;, and especially
+&lt;p&gt;Here's a nice solution based on &lt;strong&gt;mod_rewrite&lt;/strong&gt;, and especially
 &lt;a href=&quot;http://httpd.apache.org/docs/current/rewrite/rewritemap.html&quot;&gt;rewriteMap&lt;/a&gt;,
 where all theses contents will be served by Apache directly from the filesystem,
 with some content-expiration settings and without openning back-doors to neighbour
 content which should certainly not be available statically
 (like for example python source code files).&lt;br/&gt;
 So first let's have a basic plone proxy setting for an apache Virtualhost,
-we serve &lt;strong&gt;&lt;em&gt;plone.from.outside.net&lt;/em&gt;&lt;/strong&gt; which is a proxy on &lt;strong&gt;&lt;em&gt;plone.inside.lan&lt;/em&gt;&lt;/strong&gt;.&lt;/p&gt;
+we serve &lt;code&gt;plone.from.outside.net&lt;/code&gt; which is a proxy on &lt;code&gt;plone.inside.lan&lt;/code&gt;.&lt;/p&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;VirtualHost&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;*:80&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
     &lt;span class=&quot;nb&quot;&gt;ServerName&lt;/span&gt;  plone.from.outside.net
@@ -640,14 +657,14 @@ we serve &lt;strong&gt;&lt;em&gt;plone.from.outside.net&lt;/em&gt;&lt;/strong&gt
 &lt;p&gt;Ouch, in fact I've added a few more settings to be able to serve an index.php
 page from this same virtualhost, and being a proxy for anything else, just to
 have something more 'real-life wtf'.&lt;br/&gt;
-Oh and as well I've added a nice trick for maintenance mode via &lt;strong&gt;&lt;em&gt;RedirectMatch&lt;/em&gt;&lt;/strong&gt;,
+Oh and as well I've added a nice trick for maintenance mode via &lt;strong&gt;RedirectMatch&lt;/strong&gt;,
 for the happy few.&lt;/p&gt;
 
 &lt;h3&gt;And now what about static files handling?&lt;/h3&gt;
 
 &lt;p&gt;Let's do it in 2 steps.&lt;br/&gt;
 We'll make a simple one first,
-redirecting targeted files on direct static handling and then next time we'll add a &lt;strong&gt;&lt;em&gt;virtual /static directory&lt;/em&gt;&lt;/strong&gt;
+redirecting targeted files on direct static handling and then next time we'll add a &lt;strong&gt;virtual /static directory&lt;/strong&gt;
 (like serious apps).
 So the app dev will build for us a nice rewriteMap file.
 This file will map all static urls to the real filesystem file. In this way:&lt;/p&gt;
@@ -678,8 +695,8 @@ So the &lt;em&gt;foo/bar/img/clean.png&lt;/em&gt; in the rewritemap file is
 in fact &lt;em&gt;/opt/plone/source/foo/bar/img/clean.png&lt;/em&gt;.&lt;br/&gt;
 Here you see Apache needs direct access to the files via is filesystem,
 if real files aren't directly there you should ensure they will.
-You can use &lt;strong&gt;&lt;em&gt;rsync&lt;/em&gt;&lt;/strong&gt; or &lt;em&gt;&lt;strong&gt;NFS&lt;/strong&gt; for example,
-but &lt;/em&gt;&lt;strong&gt;the apache server must have direct access to theses files&lt;/strong&gt;*,
+You can use &lt;strong&gt;rsync&lt;/strong&gt; or &lt;strong&gt;NFS&lt;/strong&gt; for example,
+but &lt;strong&gt;the apache server must have direct access to theses files&lt;/strong&gt;,
 as he will not proxy them.&lt;/p&gt;
 
 &lt;p&gt;Starting with a rule:&lt;/p&gt;
@@ -805,20 +822,20 @@ and not re-read at each request.&lt;/p&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 
-&lt;p&gt;And &lt;strong&gt;&lt;em&gt;it works&lt;/em&gt;&lt;/strong&gt;, at this point you should note the rewriteRule
+&lt;p&gt;And &lt;strong&gt;it works&lt;/strong&gt;, at this point you should note the rewriteRule
 is a endpoint for matching content,
 no other apache rule can be applied,
 but at least you need a Directory directive
 to allow content from your plone source to be acceded.&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;&lt;em&gt;No security Hole&lt;/em&gt;&lt;/strong&gt;, as some could think with the documentRoot
+&lt;p&gt;&lt;strong&gt;No security Hole&lt;/strong&gt;, as some could think with the documentRoot
 in plone source,&lt;br/&gt;
 asking for &lt;code&gt;/&lt;/code&gt; url wont serve your source content as:&lt;/p&gt;
 
 &lt;ul&gt;
-&lt;li&gt;there's an &lt;strong&gt;&lt;em&gt;alias on /&lt;/em&gt;&lt;/strong&gt; redirecting to /var/www/proxyplone/htdocs/&lt;/li&gt;
-&lt;li&gt;there's a &lt;strong&gt;&lt;em&gt;proxy on /&lt;/em&gt;&lt;/strong&gt; redirecting to plone app server.&lt;/li&gt;
-&lt;li&gt;but &lt;strong&gt;&lt;em&gt;do not&lt;/em&gt;&lt;/strong&gt; remove mod_alias and mod_proxy from apache :-)&lt;/li&gt;
+&lt;li&gt;there's an &lt;strong&gt;alias on /&lt;/strong&gt; redirecting to /var/www/proxyplone/htdocs/&lt;/li&gt;
+&lt;li&gt;there's a &lt;strong&gt;proxy on /&lt;/strong&gt; redirecting to plone app server.&lt;/li&gt;
+&lt;li&gt;but &lt;strong&gt;do not&lt;/strong&gt; remove mod_alias and mod_proxy from apache :-)&lt;/li&gt;
 &lt;/ul&gt;
 
 
@@ -828,6 +845,413 @@ some more rule from Apache after the rewrite part.&lt;/p&gt;
 </description>
 				<published>2009-11-05 00:00:00 +0100</published>
 				<link>http://regilero.github.io//Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/</link>
+			</item>
+		
+			<item>
+				<title>Relative/Absolute URL and Proxies</title>
+				<description>&lt;p&gt;If you develop a web application you'll come soon at the moment of building your URLs.&lt;br/&gt;
+The best thing to do, either, is handling relative URL.&lt;/p&gt;
+
+&lt;p&gt;If your app can behave with &lt;strong&gt;relative URL&lt;/strong&gt; and handle a &lt;strong&gt;base_url&lt;/strong&gt; prefix for sites installed in sub-directories
+(like &lt;code&gt;'/myapp/is/here/'&lt;/code&gt;) you'll be friend with sysadmins. -- if you use Zend Framework have a look at the &lt;code&gt;setBaseUrl()&lt;/code&gt; router function--&lt;br/&gt;
+But most app do not handle &lt;code&gt;URL&lt;/code&gt;s this way, and &lt;strong&gt;absolute urls&lt;/strong&gt; are used, sad world.&lt;br/&gt;
+Then you'll find theses &lt;code&gt;URL&lt;/code&gt; in HTML content, in css, in javascript, and every object generated by your web application.&lt;br/&gt;
+ That's hell for admins. So lets look deeper.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;First &lt;strong&gt;moving&lt;/strong&gt; your app on a &lt;strong&gt;different domain&lt;/strong&gt; will maybe be harder
+(especially if you're a bad coder and this absolute URL is not written once in a &lt;strong&gt;config file&lt;/strong&gt;).&lt;/li&gt;
+&lt;li&gt;Then &lt;strong&gt;serving&lt;/strong&gt; your app with &lt;strong&gt;different domains&lt;/strong&gt; in the &lt;strong&gt;same time&lt;/strong&gt; won't be possible.&lt;/li&gt;
+&lt;li&gt;And harder, you'll &lt;strong&gt;break proxy rewriting&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h3&gt;Exemple and workarounds&lt;/h3&gt;
+
+&lt;p&gt;The job of the proxy is to serve your web application on a different namespace.
+Maybe you have a &lt;strong&gt;myapp.localnetwork.net&lt;/strong&gt; application, that every people in &lt;strong&gt;localnetwork.net&lt;/strong&gt; will see.&lt;br/&gt;
+The proxy will server &lt;strong&gt;myapp.publicdomain.com&lt;/strong&gt; or even &lt;strong&gt;publicdomain.com/myapp/is/here&lt;/strong&gt;.&lt;br/&gt;
+And the &lt;strong&gt;job of the proxy is only handling HTTP headers&lt;/strong&gt;. &lt;br/&gt;
+That means it will only rewrite things like &lt;strong&gt;redirections&lt;/strong&gt; (which is a code and url in headers of the response, not in the HTTP content).&lt;/p&gt;
+
+&lt;pre&gt;
+browser
+\-&gt;myapp.publicdomain.com (proxy)
+\-&gt;myapp.anotherproxy.domain.com (proxy)
+\-&gt;myapp.localnetwork.net
+&lt;/pre&gt;
+
+
+&lt;p&gt;So you'll maybe ask the proxy maintainer to rewrite things on the &lt;strong&gt;content&lt;/strong&gt; as well.&lt;br/&gt;
+OK, this can be done with &lt;strong&gt;mod_proxy_html&lt;/strong&gt; for example in Apache.
+But this as 2 drawbacks:
+ * this module is parsing every content and rewriting it, that's really slower.
+ * And this module cannot handle all content, it will maybe forget one of your unknow &lt;code&gt;localnetwork.net&lt;/code&gt; url in a javascript file... big bugs.&lt;/p&gt;
+
+&lt;h3&gt;Real app Solutions&lt;/h3&gt;
+
+&lt;p&gt;So... if you either use &lt;strong&gt;absolute_url&lt;/strong&gt;, then you should test if any proxy is between you
+and the guy requesting the page.&lt;br/&gt;
+This is given by Apache to PHP in the &lt;strong&gt;HTTP_X_FORWARDED_HOST&lt;/strong&gt; parameter (or something similar
+if you're not in PHP, that means it's something your webserver knows by HTTP headers of the request).&lt;br/&gt;
+There you'll find a list of proxy used (if any) between you and the browser. &lt;strong&gt;Be careful&lt;/strong&gt;, it's a &lt;strong&gt;coma separated list&lt;/strong&gt;, with &lt;strong&gt;spaces&lt;/strong&gt;.&lt;br/&gt;
+The name you should use as the base name of your site is the &lt;strong&gt;first name of this list&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;In our example we'll have: &lt;code&gt;&quot;myapp.publicdomain.com, myapp.anotherproxy.domain.com&quot;&lt;/code&gt; and your absolute url to use is &lt;code&gt;http://myapp.publicdomain.com&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;With that name overriding your default base name you'll have a better app.
+But the problem is not really completly fixed in fact. What you have is the &lt;strong&gt;host name&lt;/strong&gt;,
+but you do not have any information about the &lt;strong&gt;protocol&lt;/strong&gt;.&lt;br/&gt;
+Maybe you'll prefix the name with &lt;strong&gt;'http://'&lt;/strong&gt; and it will be ok,
+but maybe the proxy is using &lt;strong&gt;ssl&lt;/strong&gt;
+(because using ssl for a public filtering proxy before intranet
+application is something used a lot). And the protocol should be &lt;strong&gt;'https://'&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;If you decide to handle this in a config file of your application you'll obtain &lt;strong&gt;'https://'&lt;/strong&gt; even in your local network,
+where you should'nt. &lt;br/&gt;
+Your only solution will be to tell your app which protocol to use for which name. Quite dirty.&lt;br/&gt;
+Well, in fact there's a solution, the proxy can set:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RequestHeader&lt;/span&gt; set X-Forwarded-Proto &lt;span class=&quot;s2&quot;&gt;&amp;quot;https&amp;quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;On his SSL configuration and you'll have &lt;strong&gt;HTTP_X_FORWARDED_PROTO&lt;/strong&gt; available on your code.&lt;/p&gt;
+
+&lt;p&gt;All theses things works because of 'de facto' http headers added by mod_proxy on Apache.
+You'll maybe wont have them, and your application will rely on proxy configuration. Remember &lt;strong&gt;relative URL&lt;/strong&gt; is still the best solution.&lt;/p&gt;
+</description>
+				<published>2009-06-03 00:00:00 +0200</published>
+				<link>http://regilero.github.io//Apache/English/2009/06/03/relative_absolute_urls_and_proxies/</link>
+			</item>
+		
+			<item>
+				<title>6 nice things not know enough about PostgreSQL</title>
+				<description>&lt;p&gt;With the new PostgreSQL server versions in place (8.2 and 8.3) and in a more general way with the 8.x series
+some nice fonctionnalities have benn added.&lt;/p&gt;
+
+&lt;p&gt;Let's have a short look at som interesting ones:&lt;br/&gt;
+&lt;code&gt;FILLFACTOR=50&lt;/code&gt;, Id on &lt;code&gt;INSERT&lt;/code&gt;, &lt;code&gt;TOAST&lt;/code&gt; fields, &lt;code&gt;TABLE INHERITANCE&lt;/code&gt;, &lt;code&gt;TABLE PARTITIONNING&lt;/code&gt;, &lt;code&gt;NOTIFY&lt;/code&gt; and &lt;code&gt;LISTEN&lt;/code&gt;.&lt;/p&gt;
+
+&lt;h3&gt;WITH FILLFACTOR=50 in CREATE TABLE instructions (since 8.2):&lt;/h3&gt;
+
+&lt;p&gt;FILLFACTOR is 100% by default and is a good default setting for tables
+where the basic usage is &lt;code&gt;INSERT&lt;/code&gt;s (and select).&lt;br/&gt;
+But when you know that you'll make a lot of &lt;code&gt;UPDATE&lt;/code&gt;s on your rows you should decrease this factor.&lt;/p&gt;
+
+&lt;p&gt;This way &lt;strong&gt;some space on the table will be reserved near your inserted rows&lt;/strong&gt;.
+This space will then be used as a work zone when you'll make an &lt;code&gt;UPDATE&lt;/code&gt; on the row.&lt;br/&gt;
+And the magic effect is that this work zone won't be at the end of the table but near your row,
+in the same page in memory.&lt;/p&gt;
+
+&lt;p&gt;see &lt;a href=&quot;http://www.postgresql.org/docs/8.3/interactive/sql-createtable.html#SQL-CREATETABLE-STORAGE-PARAMETERS&quot;&gt;postgreSQL documentation page&lt;/a&gt; for details.&lt;/p&gt;
+
+&lt;h3&gt;2) RETURNING on INSERT INTO to get your INSERTED Id (since 8.2):&lt;/h3&gt;
+
+&lt;p&gt;The classical way to get your &lt;strong&gt;'last insert Id'&lt;/strong&gt; in PostgreSQl as always been using &lt;code&gt;currval(SEQUENCE)&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;This is right and secure as &lt;code&gt;PRIMARY KEYS&lt;/code&gt; are usually defined as &lt;code&gt;SEQUENCE&lt;/code&gt;s with &lt;code&gt;DEFAULT nextval(SEQUENCE)&lt;/code&gt;.&lt;br/&gt;
+And &lt;code&gt;currvall&lt;/code&gt; renders the last value set by &lt;code&gt;nextval&lt;/code&gt; in the current session (others concurrent sessions cannot interfere with it).&lt;/p&gt;
+
+&lt;p&gt;But that's not something easy to understand for newbies and very bad examples with &lt;code&gt;max(id)&lt;/code&gt; can always be found googling around.&lt;/p&gt;
+
+&lt;p&gt;Now you can add a &lt;strong&gt;RETURNING MyId&lt;/strong&gt; code on your &lt;code&gt;INSERT&lt;/code&gt; query and the result of your insert won't be the row &lt;code&gt;OID&lt;/code&gt; anymore
+but your &lt;code&gt;Id&lt;/code&gt; (or anything else if you want).&lt;/p&gt;
+
+&lt;p&gt;Consult &lt;a href=&quot;http://www.postgresql.org/docs/8.3/interactive/sql-insert.html&quot;&gt;postgreSQL documentation page&lt;/a&gt; for details.&lt;/p&gt;
+
+&lt;h3&gt;3) TOAST FIELDS:&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;TOAST&lt;/code&gt; means &lt;strong&gt;'The Oversized-Attribute Storage Technique'.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;You can set up to &lt;strong&gt;1Gb&lt;/strong&gt; in &lt;strong&gt;one field&lt;/strong&gt; of your &lt;strong&gt;row&lt;/strong&gt;.&lt;br/&gt;
+This column won't be saved in the same physical file as the others. Another file will be created to store
+such big fields.&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;http://www.postgresql.org/docs/8.3/interactive/storage-toast.html&quot;&gt;PostgreSQL documentation page&lt;/a&gt; is still the best reference.&lt;/p&gt;
+
+&lt;p&gt;If you wonder about the size of your tables and the physical files on your filesystem you should not.
+Your tables are always split in files of &lt;strong&gt;2Gb&lt;/strong&gt;. And Toast values are stored on their own files.&lt;/p&gt;
+
+&lt;h3&gt;4) TABLE INHERITANCE:&lt;/h3&gt;
+
+&lt;p&gt;You can define a &lt;strong&gt;table B as child of table A&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;Request on table &lt;code&gt;A&lt;/code&gt; will then render rows from &lt;code&gt;A&lt;/code&gt; and &lt;code&gt;B&lt;/code&gt; tables.&lt;br/&gt;
+With &lt;code&gt;ONLY&lt;/code&gt; keyword you can limit requests on &lt;code&gt;A&lt;/code&gt; with &lt;code&gt;A&lt;/code&gt; rows.&lt;br/&gt;
+&lt;code&gt;A&lt;/code&gt; could have several tables (B, C, D, etc). Indexes are done tables by table, and are by this way shorter.&lt;/p&gt;
+
+&lt;p&gt;This is quite powerfull but you'll have some problems with &lt;strong&gt;contraints&lt;/strong&gt;. &lt;code&gt;UNIQUE&lt;/code&gt; constraints for example
+are done for each table. You cannot ensure &lt;code&gt;A+B+C+D&lt;/code&gt; rows will not share the same value for this &lt;strong&gt;'UNIQUE'&lt;/strong&gt; constraint.&lt;/p&gt;
+
+&lt;p&gt;Setting Referential integrity from one of this table to a &lt;code&gt;Z&lt;/code&gt; table is easy (but should be done for each table).&lt;br/&gt;
+But setting the reverse relation from &lt;code&gt;Z&lt;/code&gt; to &lt;code&gt;A+B+C+D&lt;/code&gt; isn't possible.&lt;/p&gt;
+
+&lt;p&gt;You should really look &lt;a href=&quot;http://www.postgresql.org/docs/8.3/interactive/ddl-inherit.html&quot;&gt;postgreSQL documentation page&lt;/a&gt;, as always.&lt;/p&gt;
+
+&lt;h3&gt;5) TABLE PARTITIONNING:&lt;/h3&gt;
+
+&lt;p&gt;One of the most powerfull thing you can do with &lt;code&gt;INHERITANCE&lt;/code&gt; is table &lt;code&gt;PARTITIONNING&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Using &lt;code&gt;TABLESPACE&lt;/code&gt;s you can define several different physical storage locations for your databases.&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;TABLESPACES&lt;/code&gt; can easily be used for a database, a table, or even for an index (or the WAL sync log).&lt;br/&gt;
+This is fine. You can use several storage devices with different characteristics, each one fitting
+your differents needs (capacity, speed, sync/async, etc).&lt;br/&gt;
+But this combined with &lt;code&gt;INHERITANCE&lt;/code&gt; becomes even more powerfull:&lt;br/&gt;
+Define table &lt;code&gt;A&lt;/code&gt; as an empty table.&lt;br/&gt;
+Define table &lt;code&gt;B&lt;/code&gt; and &lt;code&gt;C&lt;/code&gt; as child tables of &lt;code&gt;A&lt;/code&gt;, and use different tablespaces for &lt;code&gt;B&lt;/code&gt; and &lt;code&gt;C&lt;/code&gt;.&lt;br/&gt;
+You then have a &lt;strong&gt;virtual A table&lt;/strong&gt; with his content spread on diferent storage devices
+(or not, you could use the TABLESPACE on the same storage but you'll lose most of the power of the 'thing').&lt;/p&gt;
+
+&lt;p&gt;Your benefits? &lt;strong&gt;smaller indexes&lt;/strong&gt;, on different devices, which can run in &lt;strong&gt;parallel&lt;/strong&gt;,
+some problems with constraints as with previous part,
+but this is not a problem for all tables, and for a huge table this &lt;code&gt;TABLESPACE&lt;/code&gt; splitting could be
+a cool thing to study.&lt;/p&gt;
+
+&lt;p&gt;Have a look at &lt;a href=&quot;http://www.postgresql.org/docs/8.3/interactive/ddl-partitioning.html&quot;&gt;postgreSQL documentation page&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;One last point, you'll have to defined how the rows are splitted with the different tables
+(ranges, or domains, or anything else),
+you'll maybe have to check &lt;code&gt;RULES&lt;/code&gt; as well, even with simple &lt;code&gt;INHERITANCE&lt;/code&gt;, because &lt;code&gt;INSERT&lt;/code&gt;
+for example should be done on the child table, and &lt;code&gt;INSERT&lt;/code&gt; on the main &lt;code&gt;TABLE&lt;/code&gt; should be redirected elsewhere.&lt;/p&gt;
+
+&lt;h3&gt;6) NOTIFY/LISTEN:&lt;/h3&gt;
+
+&lt;p&gt;PostgreSQL has a builtin fonctionnality for &lt;strong&gt;Observer/observable Design Pattern&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;You can &lt;code&gt;NOTIFY&lt;/code&gt; something, as an &lt;code&gt;SQL&lt;/code&gt; command and at the end of your transaction
+(or directly if you're not in a transaction) others SQL sessions which have registered this notification with &lt;code&gt;LISTEN&lt;/code&gt;
+will get your notification (&lt;a href=&quot;http://www.postgresql.org/docs/8.1/interactive/libpq-notify.html&quot;&gt;the doc&lt;/a&gt;).&lt;br/&gt;
+Usefull with server processes (while true processes), a cli process in PHP for example with builtin &lt;a href=&quot;http://www.php.net/manual/en/function.pg-get-notify.php&quot;&gt;pg lib&lt;/a&gt;
+but not with PDO actually.&lt;/p&gt;
+
+&lt;p&gt;Here is as well a &lt;a href=&quot;http://jdbc.postgresql.org/documentation/83/listennotify.html&quot;&gt;Java example&lt;/a&gt; and examples in &lt;a href=&quot;http://pypgsql.cvs.sourceforge.net/viewvc/pypgsql/pypgsql/examples/&quot;&gt;python, the demo2a/b&lt;/a&gt; files.&lt;/p&gt;
+</description>
+				<published>2008-10-30 00:00:00 +0100</published>
+				<link>http://regilero.github.io//PostgreSQL/English/2008/10/30/6_nice_things_not_known_enough_about_postgresql/</link>
+			</item>
+		
+			<item>
+				<title>Autocomplete Ajax search with Dojo and Zend Framework</title>
+				<description>&lt;p&gt;With the new Zend Framework 1.6 we've these nice Dojo widgets.&lt;/p&gt;
+
+&lt;p&gt;New things lacks documentations most of times. &lt;br/&gt;
+So if you want to build something really usefull like theses nice autocomplete search combobox this example could save you a lot of time.&lt;/p&gt;
+
+&lt;p&gt;We'll assume you have Dojo already installed and activated on your views,
+and that acl verifications are done elsewhere, on your Controller plugins for example.&lt;/p&gt;
+
+&lt;p&gt;First let's see HTML code (in your view):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;html&quot;&gt;  &lt;span class=&quot;nt&quot;&gt;&amp;lt;script &lt;/span&gt;&lt;span class=&quot;na&quot;&gt;type=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;text/javascript&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;dojo.parser&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;dojox.data.QueryReadStore&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;dijit.form.ComboBox&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;dijit.form.FilteringSelect&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;custom.FindAutoCompleteReadStore&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;dijit.form.Form&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;dijit.form.Button&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;form&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;id=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;Find_Form&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;action=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;/module/foo/edit&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;method=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;get&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;dojoType=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;dijit.form.Form&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;dojoType=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;custom.FindAutoCompleteReadStore&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;jsId=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;NameStore&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;url=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;/module/foo/find/format/json&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;requestMethod=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;get&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;/div&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;label&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;for=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;id&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;optional&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;Recherchez un nom:&lt;span class=&quot;nt&quot;&gt;&amp;lt;/label&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;span&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;formelement&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;select&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;name=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;id&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;id=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;FindByName&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;hasDownArrow=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;store=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;NameStore&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;size=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;25&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;tabindex=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;99&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;autocomplete=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;1&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;dojoType=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;dijit.form.FilteringSelect&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;pageSize=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;10&amp;quot;&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;/select&amp;gt;&amp;lt;/span&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;span&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;actionbuttons&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;input&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;id=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;Find_go&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;name=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;Find_go&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;value=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;Go:&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;type=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;submit&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;label=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;go:&amp;quot;&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;dojoType=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;dijit.form.Button&amp;quot;&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;/&amp;gt;&amp;lt;/span&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;/form&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;As we can see you'll need an additional custom js: &lt;strong&gt;custom.FindAutoCompleteReadStore&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;This is a really simple js to write, create your custom directory in the same level
+as dojo or dijit directory and create &lt;code&gt;FindAutoCompleteReadStore.js&lt;/code&gt; like that:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;js&quot;&gt;&lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;provide&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;custom.FindAutoCompleteReadStore&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;dojox.data.QueryReadStore&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;declare&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;custom.FindAutoCompleteReadStore&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;dojox&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;QueryReadStore&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;fetch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;request&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;request&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;serverQuery&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;Find&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;request&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// cal superclass fecth&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;inherited&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;fetch&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;arguments&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Now you'll need to serve the requested Ajax query
+(requested by the Dojo store linked with our FilteringSelect or Combobox) : &lt;code&gt;/module/foo/find/format/json&lt;/code&gt;&lt;br/&gt;
+This is the method &lt;strong&gt;'findAction'&lt;/strong&gt; in the Controller &lt;strong&gt;'foo'&lt;/strong&gt; on module &lt;strong&gt;'module'&lt;/strong&gt;.&lt;br/&gt;
+But first let's see the preDispatch function of this controller where we handle the &lt;code&gt;format/json&lt;/code&gt; instruction to switch in Ajax mode:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;public function preDispatch()&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;{&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    $contextSwitch =   $this-&amp;gt;_helper-&amp;gt;getHelper(&amp;#39;contextSwitch&amp;#39;);&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    $contextSwitch-&amp;gt;setAutoJsonSerialization( true );&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    $contextSwitch-&amp;gt;addActionContext(&amp;#39;find&amp;#39;, &amp;#39;json&amp;#39;);&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    $contextSwitch-&amp;gt;initContext();&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;So now let's write the find function:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;  public function findAction()&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  {&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      // handle filtering of recieved data&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $replacer = new Zend_Filter_pregReplace(&amp;#39;/\*/&amp;#39;,&amp;#39;%&amp;#39;);&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      // emulate alpha+num filter with some more characters enabled&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      //**** &amp;lt;a href=&amp;quot;http://www.regular-expressions.info/unicode.html&amp;quot; title=&amp;quot;http://www.regular-expressions.info/unicode.html&amp;quot;&amp;gt;http://www.regular-expressions.info/unicode.html&amp;lt;/a&amp;gt; ****&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      // \p{N} --&amp;gt; numeric chars of any language&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      // \s -&amp;gt; withespace&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      //\x0027 : APOSTROPHE&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      //\x002C : COMMA&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      //\x0025% : % in UTF-8 and not in utf-8&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      //\x002D : HYPHEN / MINUS&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      //\x005F : UNDERSCORE&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      //\. DOT&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $mylimit = new Zend_Filter_pregReplace(&amp;#39;/[^\p{L}\p{N}\s\x0027\x002C\x002D\x005F\x0025%\.]/u&amp;#39;,&amp;#39;&amp;#39;);&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $filters = array(&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;              &amp;#39;*&amp;#39; =&amp;gt; &amp;#39;StringTrim&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;              ,&amp;#39;Find&amp;#39; =&amp;gt; array(&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;              &amp;#39;StripNewlines&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;              ,$replacer&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;              ,$mylimit&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;              ,&amp;#39;StripTags&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;          )&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;          ,&amp;#39;start&amp;#39; =&amp;gt; &amp;#39;Int&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;          ,&amp;#39;count&amp;#39; =&amp;gt; &amp;#39;Int&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      );&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $validators =array();&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $input = new Zend_Filter_Input($filters, $validators, $_GET);&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $find = $input-&amp;gt;getUnescaped(&amp;#39;Find&amp;#39;);&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      if (empty($find)) $find = &amp;#39;%&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $start = intval($input-&amp;gt;getUnescaped(&amp;#39;start&amp;#39;));&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      if (empty($start)) $start = 0;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $count = intval($input-&amp;gt;getUnescaped(&amp;#39;count&amp;#39;));&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      if (empty($count)) $count = 3;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      // get the model, here you should adjust with the way you work&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      // then make your query with limits&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $this-&amp;gt;_modeltable = new My_Zend_Db_Table_Foo($this-&amp;gt;db)&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $fieldid = &amp;#39;my_id_field&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $fieldident = &amp;#39;my_name_field&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $select = $this-&amp;gt;_modeltable-&amp;gt;select();&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $db = $this-&amp;gt;_modeltable-&amp;gt;getAdapter();&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $select-&amp;gt;where($db-&amp;gt;quoteinto($db-&amp;gt;quoteIdentifier($fieldident).&amp;#39; LIKE ?&amp;#39;, $find));&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $select-&amp;gt;limit($count, $start);&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $rows= $this-&amp;gt;_modeltable-&amp;gt;fetchAll($select);&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $rowsarray = $rows-&amp;gt;ToArray();&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $finalarray=array();&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      foreach ($rowsarray as $row)&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      {&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;          $key = $row[$fieldid];&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;          $finalarray[$key] = $row[$fieldident];&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      }&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      //Zend_Debug::dump($finalarray);&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      //die(__METHOD__);&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $this-&amp;gt;_helper-&amp;gt;autoCompleteDojo($finalarray);&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  }&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And it should be sufficient, pffiuu.&lt;br/&gt;
+But... there's one remaining problem after that.
+We put the search autocomplete inside a form and we wanted the &lt;strong&gt;'go'&lt;/strong&gt; button to send a request to something like that:&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;/module/foo/edit/id/1245&lt;/code&gt; OR &lt;code&gt;/module/foo/edit?id=1245&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;But we'll have something like:&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;/module/foo/edit?id=THE NAME&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;too bad...&lt;/p&gt;
+
+&lt;p&gt;To get it done I had to change one thing in Zend Framework library on the Zend/Controller/Action/Helper/AutoCompleteDojo.php Helper:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;  public function prepareAutoCompletion($data, $keepLayouts = false)&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  {&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    $items = array();&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    foreach ($data as $key =&amp;gt; $value) {&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      $items[] = array(&amp;#39;label&amp;#39; =&amp;gt; $value, &amp;#39;name&amp;#39; =&amp;gt; $value, &amp;#39;key&amp;#39; =&amp;gt; $key);&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    }&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    $final = array(&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      &amp;#39;identifier&amp;#39; =&amp;gt; &amp;#39;key&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;      &amp;#39;items&amp;#39; =&amp;gt; $items,&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;     );&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    return $this-&amp;gt;encodeJson($final, $keepLayouts);&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;  }&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Line 66 &lt;code&gt;'key'&lt;/code&gt; is added on the item and line 69 &lt;code&gt;'identifier'&lt;/code&gt; is set to &lt;code&gt;'key'&lt;/code&gt; and not &lt;code&gt;'name'&lt;/code&gt;.&lt;br/&gt;
+&lt;code&gt;'identifier'&lt;/code&gt; is used by the Dojo Filtering Select to decide which field will be used for the form,
+for more info see &lt;a href=&quot;http://dojotoolkit.org/reference-guide/1.9/&quot;&gt;dojo book page&lt;/a&gt; and search &lt;code&gt;'abbreviation'&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;There's also a bug talking about that for Zend Framework,
+to get other solutions or info on the way it will be fixed later look &lt;a href=&quot;http://framework.zend.com/issues/browse/ZF-4494&quot;&gt;there&lt;/a&gt;.&lt;/p&gt;
+</description>
+				<published>2008-10-26 00:00:00 +0200</published>
+				<link>http://regilero.github.io//Zend%20Framework/English/2008/10/26/autocomplete_ajax_search_dojo_zend_framework/</link>
+			</item>
+		
+			<item>
+				<title>Force HTTP/1.0 Apache response when PHP is there...</title>
+				<description>&lt;p&gt;Recently I had to force an &lt;code&gt;HTTP/1.0&lt;/code&gt; response with Apache because of a bad Java Parser.&lt;br/&gt;
+This parser/browser was asking for &lt;code&gt;HTTP/1.1&lt;/code&gt; responses but did'nt understood &lt;a href=&quot;http://en.wikipedia.org/wiki/Chunked_transfer_encoding&quot;&gt;chunked content encoding&lt;/a&gt;.&lt;br/&gt;
+And so giving me a nice Sax exception &quot;content not allowed in prolog&quot;.&lt;/p&gt;
+
+&lt;p&gt;So, well, I won't fix this #$*%! code.&lt;br/&gt;
+Better trying to talk to this special User Agent in &lt;code&gt;HTTP/1.0,&lt;/code&gt; he might handle it in a better way.&lt;br/&gt;
+Here's what a &lt;strong&gt;chunked&lt;/strong&gt; content looks like. See the &lt;strong&gt;306c&lt;/strong&gt; hexa lenght code before the body of the response?&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;http&quot;&gt;&lt;span class=&quot;kr&quot;&gt;HTTP&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1.1&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;207&lt;/span&gt; &lt;span class=&quot;ne&quot;&gt;Multi-Status&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;(...&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;lot of headers, but no lenght one ...)&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Type&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;text/xml; charset=&amp;quot;utf-8&amp;quot;&lt;/span&gt;
+
+306c
+&lt;span class=&quot;cp&quot;&gt;&amp;lt;?xml version=&amp;quot;1.0&amp;quot; encoding=&amp;quot;utf-8&amp;quot;?&amp;gt;&lt;/span&gt;
+(... here the content ...)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;So I have the user agent of this Java HTTP Client, let's call it 'NoobieJavaParser'.&lt;br/&gt;
+I simply wrote in my apache virtualhost config file:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;BrowserMatch&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;^NoobieJavaParser&amp;quot;&lt;/span&gt; nokeepalive force-response-1.0 downgrade-1.0
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And it &lt;strong&gt;should be sufficient&lt;/strong&gt;.&lt;br/&gt;
+In fact it's not because of a &lt;strong&gt;very old PHP bug&lt;/strong&gt; (saw first bug report in 2004, &lt;a href=&quot;https://bugs.php.net/bug.php?id=16218&quot;&gt;#16218&lt;/a&gt;,&lt;a href=&quot;https://bugs.php.net/bug.php?id=39927&quot;&gt;#39927&lt;/a&gt;,&lt;a href=&quot;https://bugs.php.net/bug.php?id=45947&quot;&gt;#45947&lt;/a&gt;).
+PHP is building is &lt;code&gt;$_SERVER&lt;/code&gt; variable by reading Apache env, and PHP doesn't want any
+dot in this parsed content. The &lt;code&gt;downgrade-1.0&lt;/code&gt; env name seem malicious for PHP.&lt;br/&gt;
+So the env setting looks like that in PHP:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;echo $_SERVER[&amp;#39;downgrade-1_0&amp;#39;];&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;-&amp;gt; 1&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;See the dots is now a &lt;code&gt;_&lt;/code&gt;. It should not hurt anyone, except &lt;strong&gt;PHP changed this env name in Apache as well&lt;/strong&gt;.&lt;br/&gt;
+So when apache is sending the response, he does not care anymore about this &lt;code&gt;downgrade-1_0&lt;/code&gt; settings.
+If you want Apache to have the real behaviour, i.e: sending &lt;code&gt;HTTP/1.0&lt;/code&gt; responses for this 'NoobieJavaParser' User Agent
+you must &lt;strong&gt;re-set the env&lt;/strong&gt; of Apache in PHP, with something like that:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;if ($_SERVER[&amp;#39;downgrade-1_0&amp;#39;]){&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;        apache_setenv(&amp;#39;downgrade-1.0&amp;#39;,&amp;#39;true&amp;#39;);&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;if ($_SERVER[&amp;#39;force-response-1_0&amp;#39;]){&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;        apache_setenv(&amp;#39;force-response-1.0&amp;#39;,&amp;#39;true&amp;#39;);&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Ugly, but it's PHP's fault.&lt;br/&gt;
+And no more chunked content after that.
+And the nice thing is that apache_setenv is not changing $_SERVER, so PHP still does not have this &lt;em&gt;malicious&lt;/em&gt; dot.&lt;/p&gt;
+</description>
+				<published>2008-08-29 00:00:00 +0200</published>
+				<link>http://regilero.github.io//Apache/English/2008/08/29/force_http_1.0_response_when_php_is_there/</link>
 			</item>
 		
 			<item>
@@ -875,7 +1299,7 @@ et là telnet n'est plus très souple pour automatiser la saisie utilisateur On 
 &lt;p&gt;On avance. Par contre on a de fortes chances de ne pas tomber sur la page web que l'on recherche vraiment.
 On a de très fortes chances de tomber sur le VirtualHost par défaut du serveur HTTP
 à l'autre bout.
-Mais pour servir le bon site il faut taper du &lt;strong&gt;&lt;em&gt;HTTP/1.1&lt;/em&gt;&lt;/strong&gt; au lieu de 1.0 et ajouter un header à notre
+Mais pour servir le bon site il faut taper du &lt;strong&gt;HTTP/1.1&lt;/strong&gt; au lieu de 1.0 et ajouter un header à notre
 requète indiquant au serveur le nom du site que l'on veut (parmi ceux qu'il héberge),
 revoyez le protocole &lt;a href=&quot;http://en.wikipedia.org/wiki/HTTP#Request_Message&quot;&gt;http version 1.1&lt;/a&gt; si vous ne comprenez rien à ce que je dis.&lt;/p&gt;
 
@@ -896,9 +1320,9 @@ revoyez le protocole &lt;a href=&quot;http://en.wikipedia.org/wiki/HTTP#Request_
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 
-&lt;p&gt;&lt;strong&gt;&lt;em&gt;Mais...&lt;/em&gt;&lt;/strong&gt;&lt;br/&gt;
+&lt;p&gt;&lt;strong&gt;Mais...&lt;/strong&gt;&lt;br/&gt;
 Il y a une grosse erreur.
-On se prends &lt;strong&gt;&lt;em&gt;le temps d'une requète DNS&lt;/em&gt;&lt;/strong&gt; de la machine sur laquelle on est qui cherche l'adresse IP de l'hôte
+On se prends &lt;strong&gt;le temps d'une requète DNS&lt;/strong&gt; de la machine sur laquelle on est qui cherche l'adresse IP de l'hôte
 que l'on a donné à netcat (après le nc -w 10) pour aller ouvrir une connexion tcp sur le port 80 de cet hôte.
 Ce temps DNS ne sert à rien, il fausse notre résultat (et c'est souvent très long le DNS).
 Il faut utiliser l'adresse IP du serveur web directement.
@@ -916,7 +1340,7 @@ demandé au serveur, et pas du tout avec le nom DNS utilisé pour résoudre l'ad
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 
-&lt;p&gt;&lt;strong&gt;&lt;em&gt;0.408s&lt;/em&gt;&lt;/strong&gt; est déjà plus proche du temps de réponse réèl du site (depuis le point du réseau où on se trouve,
+&lt;p&gt;&lt;strong&gt;0.408s&lt;/strong&gt; est déjà plus proche du temps de réponse réèl du site (depuis le point du réseau où on se trouve,
  il y a des pertes dues au réseau, forcément).&lt;/p&gt;
 
 &lt;p&gt;PS: vive les sites &lt;a href=&quot;http://www.dgate.org/~brg/bvtelnet80/&quot;&gt;Best Viewed with telnet to port 80&lt;/a&gt;&lt;/p&gt;
