@@ -11,6 +11,16 @@
       <changefreq>never</changefreq>
   </url>
   <url>
+      <loc>http://regilero.github.io/Drupal/English/2011/09/01/better_rewrite_rules_for_drupal/</loc>
+      <lastmod>2011-09-01</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
+      <loc>http://regilero.github.io/PostgreSQL/Francais/2010/10/14/requetes_recursives_avec_postgresql_8_4/</loc>
+      <lastmod>2010-10-14</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
       <loc>http://regilero.github.io/Js/English/2010/08/16/nice_webapps_and_tools_using_canvas/</loc>
       <lastmod>2010-08-16</lastmod>
       <changefreq>never</changefreq>

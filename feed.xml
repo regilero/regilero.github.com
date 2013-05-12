@@ -321,6 +321,689 @@ Some modules provides lock alternatives which are faster (like the Redis module)
 			</item>
 		
 			<item>
+				<title>Better rewriteRules for Drupal</title>
+				<description>&lt;p&gt;Drupal comes with a default set of &lt;code&gt;Rewrite Rules&lt;/code&gt; in the &lt;code&gt;.htaccess&lt;/code&gt; file given by the project.&lt;/p&gt;
+
+&lt;p&gt;In this article I'll try to provides some recipes for an enhanced mod-rewrite set.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;getting rid of .htaccess&lt;/li&gt;
+&lt;li&gt;forbid usage of direct requests to &lt;code&gt;index.php?q=foo&lt;/code&gt; (when clean url is activated)&lt;/li&gt;
+&lt;li&gt;forbid usage of 'new' unwanted PHP scripts appearing in the website (attackers?)&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h3&gt;Oh my God, a .htaccess!&lt;/h3&gt;
+
+&lt;p&gt;So this will be the first thing, a &lt;strong&gt;must-do&lt;/strong&gt;. Drupal Apache configuration is on a &lt;code&gt;.htaccess&lt;/code&gt; file, and there is a reason for that.
+On most places you wont be allowed to alter apache configuration, as &lt;strong&gt;you do not own the server&lt;/strong&gt;, and the &lt;code&gt;.htaccess&lt;/code&gt; file is the
+only way for this PHP application to set some apache Directives.&lt;br/&gt;
+But let's say this is &lt;strong&gt;your&lt;/strong&gt; server, you have &lt;strong&gt;access to Apache configuration&lt;/strong&gt;, then a &lt;code&gt;.htaccess&lt;/code&gt; is the &lt;strong&gt;worst place to put
+some configurations details&lt;/strong&gt;.&lt;br/&gt;
+For each received requests Apache must check existence of &lt;code&gt;.htaccess&lt;/code&gt; files on the requested file directory and on all the parent
+directories, this means a lot of file access, so it's quite &lt;strong&gt;slow&lt;/strong&gt;. If you own the server you do not need or want this slowdown.&lt;/p&gt;
+
+&lt;p&gt;The rule is quite simple &lt;strong&gt;&quot;Everything found in a &lt;code&gt;.htaccess&lt;/code&gt; in directory &lt;code&gt;/this/is/my/dir&lt;/code&gt; can be set in a &lt;code&gt;&amp;lt;Directory /this/is/my/dir&amp;gt;&amp;lt;/Directory&amp;gt;&lt;/code&gt;
+section in an apache Virtualhost or global configuration.&quot;&lt;/strong&gt;.&lt;br/&gt;
+So first create your &lt;strong&gt;VirtualHost&lt;/strong&gt; for this Drupal website (please do not use global configuration,
+you do not need to share directives for all your websites). Then we'll make 2 things:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;prevent the read of any &lt;code&gt;.htaccess&lt;/code&gt; from the filesystem root, so for all the descendant of &lt;code&gt;/&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;transfer the &lt;code&gt;.htaccess&lt;/code&gt; content in a &lt;code&gt;Directory&lt;/code&gt; directive&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;For the first thing simply add this (wel I've added the &lt;code&gt;.svn&lt;/code&gt; and &lt;code&gt;.git&lt;/code&gt; things as well):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt;  &lt;span class=&quot;s&quot;&gt;/  &lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;Order&lt;/span&gt; deny,allow
+    &lt;span class=&quot;nb&quot;&gt;deny&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;Options&lt;/span&gt; FollowSymLinks
+    &lt;span class=&quot;c&quot;&gt;# PREVENT .htaccess reading&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;AllowOverride&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;None&lt;/span&gt;
+ 
+    &lt;span class=&quot;c&quot;&gt;#.svn &amp;amp; .git directories must be avoided!!&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;RedirectMatch&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;404&lt;/span&gt; /\.svn(/|$)
+    &lt;span class=&quot;nb&quot;&gt;RedirectMatch&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;404&lt;/span&gt; /\.git(/|$)
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Notice that this does not concern the &lt;code&gt;'/'&lt;/code&gt; url (that would be &lt;code&gt;&amp;lt;Location /&amp;gt;&lt;/code&gt;) but the &lt;code&gt;'/'&lt;/code&gt; &lt;strong&gt;directory on the server&lt;/strong&gt;,
+means the &lt;code&gt;'C:\'&lt;/code&gt; if you were a windows user.&lt;br/&gt;
+&lt;code&gt;Location&lt;/code&gt; directives works on the url, &lt;code&gt;Directory&lt;/code&gt; directives works on the &lt;strong&gt;filesystem tree&lt;/strong&gt; (absolute path).&lt;/p&gt;
+
+&lt;p&gt;Then add another &lt;code&gt;Directory&lt;/code&gt; directive, with the absolute path of your project web root
+(this should be the same as the &lt;code&gt;DocumentRoot&lt;/code&gt; directive of this Virtualhost). And put inside the &lt;code&gt;.htaccess&lt;/code&gt; content.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/var/www/mydrupalproject/www&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;c&quot;&gt;#Order allow,deny&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
+ 
+        &lt;span class=&quot;c&quot;&gt;# Follow symbolic links in this directory.&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;Options&lt;/span&gt; +FollowSymLinks -Indexes -Multiviews
+         
+        &lt;span class=&quot;c&quot;&gt;# Set the default handler.&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;DirectoryIndex&lt;/span&gt; index.php
+ 
+        &lt;span class=&quot;c&quot;&gt;# Protect files and directories from prying eyes.&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;FilesMatch&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;\.(engine|inc|info|install|make|module|profile|test|po|sh|.*sql|theme|tpl(\.php)?|xtmpl)$|^(\..*|Entries.*|Repository|Root|Tag|Template)$&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+          &lt;span class=&quot;nb&quot;&gt;Order&lt;/span&gt; allow,deny
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;/FilesMatch&amp;gt;&lt;/span&gt;
+         
+        &lt;span class=&quot;c&quot;&gt;# Force simple error message for requests for non-existent favicon.ico.&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;Files&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;favicon.ico&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+          &lt;span class=&quot;c&quot;&gt;# There is no end quote below, for compatibility with Apache 1.3.&lt;/span&gt;
+          &lt;span class=&quot;nb&quot;&gt;ErrorDocument&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;404&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;&amp;quot;&lt;/span&gt;The requested file favicon.ico was not found.
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Files&amp;gt;&lt;/span&gt;
+
+        &lt;span class=&quot;nb&quot;&gt;etc&lt;/span&gt;
+        (...)
+         
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;What does this as to do with &lt;strong&gt;mod-rewrite&lt;/strong&gt;? Well mod-rewrites behave quite the same in a &lt;code&gt;Directory&lt;/code&gt; directive and in a &lt;code&gt;.htaccess&lt;/code&gt;,
+but faster here, and without the need of any &lt;code&gt;rewriteBase&lt;/code&gt; prefix.&lt;br/&gt;
+You could even use mod-rewrite in the VirtualHost, in a global way, not in the &lt;code&gt;Directory&lt;/code&gt; section, that would even be faster.&lt;br/&gt;
+But for Drupal rules we need the &lt;code&gt;SCRIPT_FILENAME&lt;/code&gt; and even using &lt;code&gt;LUA&lt;/code&gt; hacks on mod-rewrite we would not get a big gain.
+So we'll keep the mod-rewrite rules in this Directory &lt;code&gt;/var/www/mydrupalproject/www&lt;/code&gt; section.&lt;/p&gt;
+
+&lt;h3&gt;Let's check what are the default rules&lt;/h3&gt;
+
+&lt;p&gt;So, if we do not care about the final mod-rewrite rules about gzip contents the main rules defined by Drupal are:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# always activate modRewrite on this directory&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# (do not forget it, even if you activated it on the Virtualhost)&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteEngine&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt;
+ 
+&lt;span class=&quot;c&quot;&gt;# test the requested document is not a real file (like a css or js or even index.php or update.php)&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_FILENAME} !-f
+ 
+&lt;span class=&quot;c&quot;&gt;# test the requested document is not a real directory&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_FILENAME} !-d
+ 
+&lt;span class=&quot;c&quot;&gt;# test the requested document is not the favicon.ico (if you do not have one,&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# else it would have been catched by the first test). As we do not want to launch&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# the whole Drupal environment to imply return a 404 for the favicon.&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# you could see other apache rules for this with the File directive&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_URI} !=/favicon.ico
+ 
+&lt;span class=&quot;c&quot;&gt;# still there, ok so take the whole request things (without the hostname) and give it to&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# the index.php file in the &amp;#39;q&amp;#39; GET argument. Then stop the rewriting process (L) and add any&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# GET argument after a ? in the request after this q argument (QSA)&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; ^(.*)$ index.php?q=$1 [L,QSA]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;in Drupal 6. And Drupal7 added a new rule before this one which is:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# catch anything starting with a dot and return a 403 Forbidden&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;(^|/)\.&amp;quot;&lt;/span&gt; - [F]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The only goal of this rule is to avoid access on directory with a dot in the name (such as .git or .svn).&lt;br/&gt;
+So if you used the &lt;code&gt;Redirect&lt;/code&gt; instructions on the root directory section as I did you do not need to activate this rule.
+Always remember that simple &lt;code&gt;Redirect&lt;/code&gt;, &lt;code&gt;RedirectMatch&lt;/code&gt;, &lt;code&gt;Alias&lt;/code&gt;, &lt;code&gt;File&lt;/code&gt;, &lt;code&gt;FileMatch&lt;/code&gt; directives in Apache may perform really
+faster than a &lt;code&gt;rewriteRule&lt;/code&gt;, check this official &lt;a href=&quot;http://httpd.apache.org/docs/current/rewrite/avoid.html&quot;&gt;&quot;when not to use mod-rewrite&quot; section&lt;/a&gt; in mod-rewrite documentation.&lt;/p&gt;
+
+&lt;p&gt;So, this default &lt;strong&gt;'everything not existing to index.php'&lt;/strong&gt; rule does the job, of course.&lt;br/&gt;
+When &lt;strong&gt;clean url&lt;/strong&gt; is not activated all your url are already in the &lt;code&gt;index.php?q=foo&lt;/code&gt; form and when clean url is activated
+this rule make the transformation.&lt;/p&gt;
+
+&lt;p&gt;But we still have some things to make better:&lt;/p&gt;
+
+&lt;h2&gt;We have clean url, we want to force usage of clean urls&lt;/h2&gt;
+
+&lt;p&gt;Now that you have activated clean url in Drupal (or you should, really).&lt;br/&gt;
+Instead of requesting &lt;code&gt;http://example.com/index.php?q=/admin&lt;/code&gt; you can request &lt;code&gt;http://example.com/admin&lt;/code&gt;.&lt;br/&gt;
+That's cool, and you could apply some url-based settings with your proxy or directly in apache,
+let's say everything in &lt;code&gt;/admin&lt;/code&gt; or &lt;code&gt;/user&lt;/code&gt; is restricted to some IP only, etc.&lt;/p&gt;
+
+&lt;p&gt;But &lt;strong&gt;nothings prevents a malicious user to use the direct &lt;code&gt;?q=foo&lt;/code&gt; form of the url&lt;/strong&gt;.
+And if we're talking about security, access to &lt;code&gt;/admin&lt;/code&gt; could be done via several urls:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;http://example.com/index.php?q=/admin&lt;/li&gt;
+&lt;li&gt;http://example.com/index.php?q=/////admin&lt;/li&gt;
+&lt;li&gt;http://example.com/index.php? %71=/////%61dmin&lt;/li&gt;
+&lt;li&gt;http://example.com/index.php?q=titi&amp;amp; %71=/////%61dmin&lt;/li&gt;
+&lt;li&gt;...&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;Benoit once tried to prevent all theses access with mod-rewrite in this &lt;a href=&quot;http://www.makina-corpus.org/blog/how-prevent-access-drupal-admin-url-apache-and-mod-rewrite&quot;&gt;article&lt;/a&gt;.
+But a condition filtering theses requests, only on &lt;code&gt;/admin&lt;/code&gt;, would be (AFAIK):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{QUERY_STRING} (^|&amp;amp;|%26|%20)(q|Q|%71|%51)(=|%3D)(/|%2F)+?(a|A|%61|%41)(d|D|%64|%44)(m|M|%6D|%4D)(i|I|%69|%49)(n|N|%6E|%4E)(/|%2F|&amp;amp;|%26|$) [NC]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Which is pretty &lt;strong&gt;awfull&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;The &lt;strong&gt;real solution&lt;/strong&gt; is &lt;strong&gt;to prevent any direct via the &lt;code&gt;q=xxx&lt;/code&gt; argument&lt;/strong&gt;.&lt;br/&gt;
+But that mean as well without restricting the real final Drupal request on &lt;code&gt;index.php&lt;/code&gt; with this &lt;code&gt;q=xxx&lt;/code&gt; argument. This is the way to do it:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# always activate modRewrite on this directory&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# (do not forget it, even if you activated it on the Virtualhost)&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteEngine&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;######### START RULE 1 ##################################&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# clean url is activated so ALL urls&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# MUST be accessed on /too/titi and MUSN&amp;#39;T be accessed on index.php?q=/toto/titi&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# main reason is that applying url rules (like restricting /admin access is far easier&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# in the clean url form than in parameter form&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# WARNING: need to alter any &amp;#39;q&amp;#39; parameter that could be present&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# on original QUERY_STRING (part after the ?), or something&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# like /toto?q=admin could become a q=toto&amp;amp;q=admin&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# which is finally a q=admin, so we do not restrict&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# this rule to index.php&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;#########################################################&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# WARNING: must prevent real internal redirect of :&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# /toto/titi to q=/toto/titi (done in rule 2)&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# to be forbidden, so the rule apply only&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# if the rewriting process is starting&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{ENV:REDIRECT_STATUS} ^$
+ 
+&lt;span class=&quot;c&quot;&gt;#detect non-blank QUERY_STRING (some parameters are present after the ?)&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# else we have nothing to fear about blank queries&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{QUERY_STRING} . [NC]
+ 
+&lt;span class=&quot;c&quot;&gt;# we prevent any query with a q= parameter&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{QUERY_STRING} (^|&amp;amp;|%26|%20)(q|Q|%71|%51)(=|%3D). [NC]
+ 
+&lt;span class=&quot;c&quot;&gt;# 403 FORBIDDEN !&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; .* - [F,L]
+&lt;span class=&quot;c&quot;&gt;########## END RULE 1 ###################&lt;/span&gt;
+ 
+&lt;span class=&quot;c&quot;&gt;########## START RULE 2 ###################&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# Clean url handling&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# for things which aren&amp;#39;t real files or dir then&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# take the given url and giv it to index.php?q=...&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;###########################################&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# all url that didn&amp;#39;t match ALL previous rewriteCond are still there&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# squeeze real files or directories, if they really exists&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# then Drupal won&amp;#39;t be called&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_FILENAME} !-f
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_FILENAME} !-d
+ 
+&lt;span class=&quot;c&quot;&gt;# do not handle the favicon with Drupal bootstrap&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_URI} !=/favicon.ico
+ 
+&lt;span class=&quot;c&quot;&gt;# put everything still there to Drupal index.php&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# [L]= stop rewriting here for matching rules&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# [QSA]=Appends any query string created in the rewrite target&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# to any query string that was in the original request URL&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; ^(.*)$ index.php?q=$1 [L,QSA]
+&lt;span class=&quot;c&quot;&gt;########## END RULE 2 ###################&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Without the comments, for reference:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RewriteEngine&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt;
+ 
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{ENV:REDIRECT_STATUS} ^$
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{QUERY_STRING} . [NC]
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{QUERY_STRING} (^|&amp;amp;|%26|%20)(q|Q|%71|%51)(=|%3D). [NC]
+&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; .* - [F,L]
+ 
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_FILENAME} !-f
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_FILENAME} !-d
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_URI} !=/favicon.ico
+&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; ^(.*)$ index.php?q=$1 [L,QSA]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;WTF: what is this hackme.php file in this javascript library?&lt;/h3&gt;
+
+&lt;p&gt;So, Drupal needs only direct access to the index.php file, usually.&lt;br/&gt;
+We could see as well some other php files that could be used to bootstrap Drupal:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;cron.php&lt;/li&gt;
+&lt;li&gt;xmlrpc.php&lt;/li&gt;
+&lt;li&gt;install.php&lt;/li&gt;
+&lt;li&gt;update.php&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;Remember the Condition &lt;code&gt;RewriteCond %{REQUEST_FILENAME} !-f&lt;/code&gt;?&lt;br/&gt;
+That means any request done directly on one of these 4 files will be allowed.&lt;br/&gt;
+You should really use some Location directives to restrict access to &lt;code&gt;cron.php&lt;/code&gt; to &lt;code&gt;127.0.0.1&lt;/code&gt;,
+and maybe filter &lt;code&gt;update.php&lt;/code&gt; and &lt;code&gt;install.php&lt;/code&gt; to some IP as well.&lt;br/&gt;
+And do you need &lt;code&gt;xmlrpc.php&lt;/code&gt;? I'm not saying these files have known security issues, but if someone
+someday fond one ... And for the &lt;code&gt;cron.php&lt;/code&gt; file, this is a good script to request to perform a
+nice &lt;code&gt;DOS&lt;/code&gt; with a few requests. This is an example of restrictions for cron.php:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# Limit cron.php access to localhost only&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;Location&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/cron.php&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;Order&lt;/span&gt; deny,allow
+    &lt;span class=&quot;nb&quot;&gt;deny&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;allow&lt;/span&gt; from &lt;span class=&quot;m&quot;&gt;127.0.0.1&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/Location&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;But if you think you'll never need to access the other files (or that you will alter apache configuation when needed),
+you can also add in the VirtualHost (see, no need of mod-rewrite for simple redirects):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt; &lt;span class=&quot;nb&quot;&gt;Redirect&lt;/span&gt; temp &lt;span class=&quot;sx&quot;&gt;/update.php&lt;/span&gt; http://www.example.com/index.php
+ &lt;span class=&quot;nb&quot;&gt;Redirect&lt;/span&gt; temp &lt;span class=&quot;sx&quot;&gt;/install.php&lt;/span&gt; http://www.example.com/index.php
+ &lt;span class=&quot;nb&quot;&gt;Redirect&lt;/span&gt; temp &lt;span class=&quot;sx&quot;&gt;/xmlrpc.php&lt;/span&gt; http://www.example.com/index.php
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;But now, let's perform a little find on your Drupal project to see if some other php files aren't there in the web directory
+root (so allowing direct access):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;find /var/www/mydrupalproject/www -name &lt;span class=&quot;se&quot;&gt;\*&lt;/span&gt;.php
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Ouch, at least &lt;strong&gt;62 files&lt;/strong&gt;, from a basic &lt;strong&gt;nude&lt;/strong&gt; Drupal.&lt;br/&gt;
+We're not in a Zend Framework project here (result would be 1), every library is on the document root, like in the 90's !&lt;br/&gt;
+So... well each of these files can be requested, but the code is clean and they will not hurt you.
+But now you should check very carefully this list, are all these PHP files done by Drupal coders?&lt;br/&gt;
+The bad news is that you can sometime find php file with javascript libraries, containg 10 or 20 lines of PHP to make some demos
+in the &lt;code&gt;/example&lt;/code&gt; subdirectory of the js lib. And things in these files can be very awfull in term of security.&lt;br/&gt;
+On a production server you may also find some new php files, coming from an infected FTP software, that's really bad,
+in a short time google will prevent any browser access to your website!&lt;/p&gt;
+
+&lt;p&gt;So the solution? &lt;strong&gt;prevent any access to a php file which is not one of index.php, cron.php, update.php and install.php (and maybe xmlrpc.php)&lt;/strong&gt;&lt;br/&gt;
+Just add this last rule:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;########## START RULE 3 ###################&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# deny direct access to php files which aren&amp;#39;t&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# index.php or update.php or install.php or xmlrpc.php or cron.php&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# (like an injected phpinfo.php)&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;###########################################&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{ENV:REDIRECT_STATUS} ^$
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_FILENAME} -f
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_FILENAME} .*\.php
+&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_FILENAME} !(update\.php|index\.php|install\.php|xmlrpc\.php|cron\.php)
+&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; .* - [F,L]
+&lt;span class=&quot;c&quot;&gt;########## END RULE 3 ###################&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;Need to debug? Questions?&lt;/h3&gt;
+
+&lt;p&gt;First, notice that you should &lt;strong&gt;not&lt;/strong&gt; use &lt;strong&gt;Rule1&lt;/strong&gt; while clean url is not activated
+(as it forbid direct usage of Drupal without clean url urls).&lt;br/&gt;
+If you want to make some more rules, or debug what mod-rewrite is doing for one request add theses settings in the VirtualHost
+(&lt;strong&gt;not&lt;/strong&gt; on the &lt;code&gt;Directory&lt;/code&gt; section like the rules):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RewriteEngine&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# debug mod_rewrite&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteLogLevel&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;9&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;RewriteLog&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/tmp/rewritelog.log&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Then a &lt;code&gt;&quot;tail -f /tmp/rewritelog.log&quot;&lt;/code&gt; will show you a lot of things.
+Do not do that on a production server.&lt;br/&gt;
+You may get too much informations when using a classical browser, you'll get the gzipped content, extra rules applied,
+and all static file requests.&lt;br/&gt;
+Check &lt;a href=&quot;/Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/&quot;&gt;this previous article&lt;/a&gt; on how to perform a single request for a single page with a one-liner.&lt;/p&gt;
+
+&lt;p&gt;For any other help check theses links (or comment, or send me an email)&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;http://httpd.apache.org/docs/current/rewrite/&quot;&gt;Mod rewrites pages (all languages)&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://serverfault.com/&quot;&gt;Server Fault (en)&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://stackoverflow.com/&quot;&gt;Stack Overflow (en)&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://drupal.stackexchange.com/&quot;&gt;Drupal Answers (en)&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h3&gt;Closely Related articles&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;http://www.makina-corpus.org/blog/tune-your-php-settings-drupal&quot;&gt;Tune your php settings for Drupal&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://www.makina-corpus.org/blog/install-drupal-php-fpm-fastcgi-apache-and-chroot-php-fpm&quot;&gt;Drupal with Apache &amp;amp; chrooted php-fpm&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+				<published>2011-09-01 00:00:00 +0200</published>
+				<link>http://regilero.github.io//Drupal/English/2011/09/01/better_rewrite_rules_for_drupal/</link>
+			</item>
+		
+			<item>
+				<title>Requêtes récursives avec PostgreSQL 8.4 (WITH RECURSIVE)</title>
+				<description>&lt;p&gt;Si vous avez déjà touché à un Oracle vous connaissez peut-être le mot clef &lt;code&gt;CONNECT BY&lt;/code&gt; qui permet d'effectuer des &lt;strong&gt;requêtes arborescentes&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;Les requêtes arborescentes sont très pratiques pour extraire des données sous forme &lt;strong&gt;d'arbre&lt;/strong&gt;, pour, par exemple,
+remplir le jeu de données d'un arbre de type &lt;a href=&quot;http://www.jstree.com/&quot;&gt;jstree&lt;/a&gt; ou autre &lt;a href=&quot;http://plugins.jquery.com/?s=tree&quot;&gt;plugin jquery d'arbre&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Pour faire simple dès que vous avez une table avec une &lt;strong&gt;relation parent qui est une jointure sur elle-même&lt;/strong&gt; vous avez des chances
+ d'avoir besoin de requêtes arborescentes. &lt;br/&gt;
+Sans cela vous risquez de partir sur des algorithmes assez complexe dans votre language de traitement de données (python, PHP, jsqp, etc).
+Et c'est fort dommage quand le SGBD peut vous sauver la vie.&lt;br/&gt;
+Or donc sous postgreSQL il n'y avait pas d'équivalent du &lt;code&gt;connect by&lt;/code&gt;, pas de requête arborescente.
+Il faudra que dans un billet futur je vous montre mes petits triggers qui permettent de pallier à ça, mais il n'y a rien de simple là-dedans.
+Mais depuis la version &lt;code&gt;8.4&lt;/code&gt;, le mot clef &lt;strong&gt;&quot;WITH RECURSIVE&quot;&lt;/strong&gt; nous permet de faire des requêtes récursives.&lt;br/&gt;
+Nous allons donc voir comment cela se manipule avec un exemple concret.&lt;/p&gt;
+
+&lt;h2&gt;L'exemple: des dossiers et fichiers&lt;/h2&gt;
+
+&lt;p&gt;Nous allons partir d'une table qui représente l'ensemble des fichiers et répertoires du disque dur, et essayer de faire des requêtes ordonnées
+dessus.&lt;/p&gt;
+
+&lt;p&gt;Donc on commence par &lt;strong&gt;la structure de la table qui va acceuillir toutes ces données&lt;/strong&gt;, je mets tout ça dans une base &lt;code&gt;test&lt;/code&gt; accessible avec un user
+&lt;code&gt;testuser&lt;/code&gt; et un mot de passe qui va bien:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;CREATE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TYPE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILETYPE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ENUM&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;file&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;directory&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;create&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;table&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+   &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;              &lt;span class=&quot;nb&quot;&gt;SERIAL&lt;/span&gt;              &lt;span class=&quot;k&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+   &lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;            &lt;span class=&quot;nb&quot;&gt;varchar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;256&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;        &lt;span class=&quot;k&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+   &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;        &lt;span class=&quot;nb&quot;&gt;varchar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1024&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;        &lt;span class=&quot;k&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;null&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;unique&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+   &lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;            &lt;span class=&quot;n&quot;&gt;FILETYPE&lt;/span&gt;             &lt;span class=&quot;k&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;null&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;default&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;file&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+   &lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;           &lt;span class=&quot;n&quot;&gt;INT4&lt;/span&gt;                 &lt;span class=&quot;k&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;null&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;default&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;references&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;update&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;restrict&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;delete&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;restrict&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+   &lt;span class=&quot;k&quot;&gt;CONSTRAINT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;PK_FILE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;primary&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;key&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;create&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;index&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME_IDX&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;create&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;index&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_NAME_IDX&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;On remarque la liaison &lt;code&gt;&quot;references&quot;&lt;/code&gt; sur &lt;code&gt;FILE_PARENT&lt;/code&gt; qui pointe sur la table elle-même, c'est tout le principe.&lt;br/&gt;
+Maintenant il va falloir remplir cette table. Ce n'est pas la partie la plus simple.
+Le mieux serait sans doute un script python mais comme je suis un peu dingue j'ai écrit un script en bash
+(vous remarquerez que je limite à 30 caractères dans le nom de directory pour restreindre l'analyse,
+mais vous pouvez mettre plus si vous avez le temps d'attendre):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;#!/bin/bash&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;REP_SOURCE&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;/&amp;quot;&lt;/span&gt;;
+&lt;span class=&quot;nv&quot;&gt;BASE&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;test&amp;quot;&lt;/span&gt;;
+&lt;span class=&quot;nv&quot;&gt;HOST&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;localhost&amp;quot;&lt;/span&gt;;
+&lt;span class=&quot;nv&quot;&gt;USER&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;testuser&amp;quot;&lt;/span&gt;;
+&lt;span class=&quot;nv&quot;&gt;MAXLENGHT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;30;
+
+&lt;span class=&quot;c&quot;&gt;# trap ctrl-c and call ctrl_c()&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;trap &lt;/span&gt;ctrl_c INT
+
+&lt;span class=&quot;k&quot;&gt;function &lt;/span&gt;ctrl_c&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;** Trapped CTRL-C&amp;quot;&lt;/span&gt;;
+    &lt;span class=&quot;nb&quot;&gt;exit &lt;/span&gt;1;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;function &lt;/span&gt;normalize &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;$1&amp;quot;&lt;/span&gt;|sed &lt;span class=&quot;s2&quot;&gt;&amp;quot;s/\&amp;quot;/_/g&amp;quot;&lt;/span&gt;|sed &lt;span class=&quot;s2&quot;&gt;&amp;quot;s/&amp;#39;/_/g&amp;quot;&lt;/span&gt;|sed &lt;span class=&quot;s2&quot;&gt;&amp;quot;s/ /_/g&amp;quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;function &lt;/span&gt;treeanalyse &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;nv&quot;&gt;DIR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$1&lt;/span&gt;;
+    &lt;span class=&quot;c&quot;&gt;# shorten duration of this script with path greater than MAXLENGHT chars&lt;/span&gt;
+    &lt;span class=&quot;nv&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;expr length &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIR&amp;quot;&lt;/span&gt;&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$len&lt;/span&gt; -lt &lt;span class=&quot;nv&quot;&gt;$MAXLENGHT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;; &lt;span class=&quot;k&quot;&gt;then&lt;/span&gt;
+        &lt;span class=&quot;c&quot;&gt;#echo &amp;quot;DIR $DIR&amp;quot;&lt;/span&gt;
+        &lt;span class=&quot;nv&quot;&gt;nDIR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;normalize &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIR&amp;quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;;
+        &lt;span class=&quot;c&quot;&gt;# files detection&lt;/span&gt;
+        find &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIR&amp;quot;&lt;/span&gt; -maxdepth 1 -type f | &lt;span class=&quot;k&quot;&gt;while &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;read &lt;/span&gt;FIL ; &lt;span class=&quot;k&quot;&gt;do&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;            &lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;FILENAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;basename &lt;span class=&quot;s2&quot;&gt;&amp;quot;$FIL&amp;quot;&lt;/span&gt;&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;;
+            &lt;span class=&quot;nv&quot;&gt;nNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;normalize &lt;span class=&quot;s2&quot;&gt;&amp;quot;$FILENAME&amp;quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;;
+            &lt;span class=&quot;nv&quot;&gt;nFIL&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;normalize &lt;span class=&quot;s2&quot;&gt;&amp;quot;$FIL&amp;quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;;
+            &lt;span class=&quot;nv&quot;&gt;SQL&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;INSERT INTO FILE (FILE_NAME,FILE_FULLNAME,FILE_TYPE,FILE_PARENT) SELECT &amp;#39;$nNAME&amp;#39;,&amp;#39;$nFIL&amp;#39;,&amp;#39;file&amp;#39;, FILE_ID FROM FILE WHERE FILE_FULLNAME=&amp;#39;$nDIR&amp;#39;;&amp;quot;&lt;/span&gt;
+            &lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;${SQL}&amp;quot;&lt;/span&gt; &amp;gt;&amp;gt; /tmp/insert.sql
+        &lt;span class=&quot;k&quot;&gt;done&lt;/span&gt;
+        &lt;span class=&quot;c&quot;&gt;# directory detection&lt;/span&gt;
+        find &lt;span class=&quot;s2&quot;&gt;&amp;quot;${DIR}&amp;quot;&lt;/span&gt; -maxdepth 1 -type d | &lt;span class=&quot;k&quot;&gt;while &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;read &lt;/span&gt;SUBDIR ; &lt;span class=&quot;k&quot;&gt;do&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;            &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;$SUBDIR&amp;quot;&lt;/span&gt;;
+            &lt;span class=&quot;nv&quot;&gt;DIRNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;basename &lt;span class=&quot;s2&quot;&gt;&amp;quot;$SUBDIR&amp;quot;&lt;/span&gt;&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;;
+            &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;$SUBDIR&amp;quot;&lt;/span&gt; !&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIR&amp;quot;&lt;/span&gt; -a &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIRNAME&amp;quot;&lt;/span&gt; !&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;proc&amp;quot;&lt;/span&gt; -a &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIRNAME&amp;quot;&lt;/span&gt; !&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;sys&amp;quot;&lt;/span&gt; -a &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIRNAME&amp;quot;&lt;/span&gt; !&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;mnt&amp;quot;&lt;/span&gt; -a &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIRNAME&amp;quot;&lt;/span&gt; !&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;.&amp;quot;&lt;/span&gt; -a &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIRNAME&amp;quot;&lt;/span&gt; !&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;..&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;; &lt;span class=&quot;k&quot;&gt;then&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;                &lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;CLEANDIRNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$DIRNAME&lt;/span&gt;|sed &lt;span class=&quot;s2&quot;&gt;&amp;quot;s/\&amp;quot;/_/g&amp;quot;&lt;/span&gt;|sed &lt;span class=&quot;s2&quot;&gt;&amp;quot;s/&amp;#39;/_/g&amp;quot;&lt;/span&gt;|sed &lt;span class=&quot;s2&quot;&gt;&amp;quot;s/ /_/g&amp;quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;;
+                &lt;span class=&quot;nv&quot;&gt;nDIRNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;normalize &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIRNAME&amp;quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;;
+                &lt;span class=&quot;nv&quot;&gt;nDIR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;normalize &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIR&amp;quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;;
+                &lt;span class=&quot;nv&quot;&gt;nSUBDIR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;normalize &lt;span class=&quot;s2&quot;&gt;&amp;quot;$SUBDIR&amp;quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;;
+                &lt;span class=&quot;nv&quot;&gt;SQL&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;INSERT INTO FILE (FILE_NAME,FILE_FULLNAME,FILE_TYPE,FILE_PARENT) SELECT &amp;#39;$nDIRNAME&amp;#39;,&amp;#39;$nSUBDIR&amp;#39;,&amp;#39;directory&amp;#39;,FILE_ID FROM FILE WHERE FILE_FULLNAME=&amp;#39;$nDIR&amp;#39;;&amp;quot;&lt;/span&gt;
+                &lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;${SQL}&amp;quot;&lt;/span&gt; &amp;gt;&amp;gt; /tmp/insert.sql;
+                &lt;span class=&quot;nv&quot;&gt;DIRBACKUP&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$DIR&lt;/span&gt;; &lt;span class=&quot;c&quot;&gt;# prevent variable overlap in bash&lt;/span&gt;
+                treeanalyse &lt;span class=&quot;nv&quot;&gt;$SUBDIR&lt;/span&gt;;
+                &lt;span class=&quot;nv&quot;&gt;DIR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$DIRBACKUP&lt;/span&gt;; &lt;span class=&quot;c&quot;&gt;# prevent variable overlap in bash&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;fi&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;        done&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;    fi&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;nv&quot;&gt;PARENTDIR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;0&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;SQL&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;TRUNCATE FILE;&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;${SQL}&amp;quot;&lt;/span&gt; &amp;gt; /tmp/insert.sql;
+&lt;span class=&quot;nv&quot;&gt;SQL&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;INSERT INTO FILE (FILE_ID,FILE_NAME,FILE_FULLNAME,FILE_TYPE,FILE_PARENT) VALUES ($PARENTDIR,&amp;#39;$REP_SOURCE&amp;#39;,&amp;#39;$REP_SOURCE&amp;#39;,&amp;#39;directory&amp;#39;,$PARENTDIR);&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;PARENTDIR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$REP_SOURCE&lt;/span&gt;;
+&lt;span class=&quot;nv&quot;&gt;DIR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$REP_SOURCE&lt;/span&gt;;
+&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;${SQL}&amp;quot;&lt;/span&gt; &amp;gt;&amp;gt; /tmp/insert.sql;
+&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;Analysing&amp;quot;&lt;/span&gt;;
+treeanalyse &lt;span class=&quot;nv&quot;&gt;$DIR&lt;/span&gt;;
+
+&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;STARTING SQL INSERTION:&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;#PGCOMMAND=&amp;quot;psql -d $BASE -h $HOST -U $USER --single-transaction -f &amp;quot;&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;PGCOMMAND&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;psql -d $BASE -h $HOST -U $USER -f &amp;quot;&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$PGCOMMAND&lt;/span&gt; /tmp/insert.sql;
+&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;Done&amp;quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;En exécutant ce script (n'oubliez pas le chmod u+x) on obtient un gros fichier &lt;code&gt;/tmp/insert.sql&lt;/code&gt; (109 382 lignes chez moi)
+qui est ensuite importé dans un grosse transaction postgreSQL si tout se passe bien.&lt;br/&gt;
+Bon, il supporte encore assez mal les noms de dossiers avec ' ou des &quot; dedans, mais même si la transaction echoue vous avez
+votre /tmp/insert.sql dans lequel vous pouvez peut-être supprimer les dossiers et fichiers embétants.&lt;/p&gt;
+
+&lt;h2&gt;Tester les requêtes récursives&lt;/h2&gt;
+
+&lt;p&gt;Voyons ensuite la requête récursive, la &lt;a href=&quot;http://www.postgresql.org/docs/8.4/static/queries-with.html&quot;&gt;documentation postgreSQL&lt;/a&gt;  nous donne un modèle:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;RECURSIVE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;VALUES&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;UNION&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;sum&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Qui sur notre table des fichiers va donner:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;RECURSIVE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/usr/local&amp;#39;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;UNION&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;ORDER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Pour par exemple obtenir le sous arbre de &lt;code&gt;/usr/local&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Remarquez la façon dont la table &lt;code&gt;FILE&lt;/code&gt; se voit renommée &lt;strong&gt;3 fois&lt;/strong&gt; pour la requête, &lt;code&gt;rectable&lt;/code&gt; devient la requête récursive,
+une &quot;fausse table&quot; sur laquelle on fait notre requête finale.&lt;br/&gt;
+A l'intérieur nous avons une première partie qui initialise la récursion en sélectionnant une ligne de la table &lt;code&gt;FILE&lt;/code&gt;,
+et après le &lt;code&gt;UNION ALL&lt;/code&gt; nous utilisons &lt;code&gt;rectable&lt;/code&gt; qui contient au départ &lt;strong&gt;l'initialisation&lt;/strong&gt; et plus tard les &lt;strong&gt;résultats&lt;/strong&gt;
+des récursions passées que nous joignons avec la table &lt;code&gt;FILE&lt;/code&gt; renommée pour l'occasion &lt;code&gt;orig&lt;/code&gt;, jointe sur la relation parent.&lt;br/&gt;
+C'est différent de la syntaxe du &lt;code&gt;CONNECT BY&lt;/code&gt; de oracle, mais je ne suis pas loin de penser que c'est plus élégant
+(&lt;strike&gt;peut-être pas encore aussi puissant, pas de détection de cycle, de leaf ou de level
+-- quoique en lisant bien la doc je dois pouvoir le faire&lt;/strike&gt;).&lt;/p&gt;
+
+&lt;p&gt;Alors vous me direz que faire un &lt;code&gt;order by&lt;/code&gt; sur le &lt;code&gt;FILE_FULLNAME&lt;/code&gt; pour avoir la requêtre triée c'est un peu de la triche,
+parce qu'on aurait pu alors tout aussi juste stocker le &lt;code&gt;FULLNAME&lt;/code&gt; et se servir du tri sans la récursion.&lt;br/&gt;
+C'est un peu vrai, mais là j'ai mis le &lt;code&gt;FILE_FULLNAME&lt;/code&gt; pour faire &lt;strong&gt;joli&lt;/strong&gt;, je ne suis pas du tout obligé de stocker cette information.
+Donc voici la même mais ordonnée sur la relation parent:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;RECURSIVE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/usr/local&amp;#39;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;UNION&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;ORDER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Problème on perd notre tri d'arbre.&lt;br/&gt;
+On a d'abord les répertoires et ensuite seulement les fichiers de ces répertoires.
+Si on veut trier proprement sans avoir le &lt;code&gt;FILE_FULLNAME&lt;/code&gt; il faut en fait le récréer dans la récursion:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;RECURSIVE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/usr/local/nagios&amp;#39;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;UNION&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;ORDER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+ &lt;span class=&quot;n&quot;&gt;file_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;              &lt;span class=&quot;n&quot;&gt;file_name&lt;/span&gt;               &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file_type&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file_parent&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;                        &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;                       
+&lt;span class=&quot;c1&quot;&gt;---------+--------------------------------------+-----------+-------------+------------------------------------------------------&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;80764&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;                               &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80760&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;80782&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bin&lt;/span&gt;                                  &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80764&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bin&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;80785&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;                               &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80782&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bin&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;80784&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;nagiostats&lt;/span&gt;                           &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80782&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bin&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagiostats&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;80786&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ndo2db&lt;/span&gt;                               &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80782&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bin&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ndo2db&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;80783&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ndomod&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;o&lt;/span&gt;                             &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80782&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bin&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ndomod&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;o&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;80765&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;etc&lt;/span&gt;                                  &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80764&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;etc&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;80767&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cgi&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cfg&lt;/span&gt;                              &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80765&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;etc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cgi&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cfg&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;80770&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;htpasswd&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;users&lt;/span&gt;                       &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80765&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;etc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;htpasswd&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;users&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;80766&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cfg&lt;/span&gt;                           &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80765&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;etc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cfg&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;80769&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ndo2db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cfg&lt;/span&gt;                           &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80765&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;etc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ndo2db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cfg&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Et là où ce type de requête devient &lt;strong&gt;magique&lt;/strong&gt;, je vais aussi pouvoir filtrer pour avoir uniquement les directory,
+par exemple,
+puis filtrer les résultats pour ne garder que les sous-sous répertoires qui commencent par un &lt;code&gt;&quot;.&quot;&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;RECURSIVE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/usr/local&amp;#39;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;UNION&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;AND&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;directory&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;LIKE&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;.%&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;ORDER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;file_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file_name&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;                      &lt;span class=&quot;n&quot;&gt;file_fullname&lt;/span&gt;                      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file_type&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file_parent&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;---------+-----------+---------------------------------------------------------+-----------+-------------&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;31058&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;31047&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;31059&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;libs&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;libs&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;31047&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;31112&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tap&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;          &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;31105&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;31502&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;gl&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;           &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;31243&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;31627&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;lib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;          &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;31565&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;31616&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;lib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tests&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;    &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;31586&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;31766&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;31645&lt;/span&gt;
+   &lt;span class=&quot;mi&quot;&gt;31812&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;libs&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;libs&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;31645&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;8&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lignes&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Si vous voulez garder les fonctionnalités avancées du &lt;code&gt;CONNECT BY&lt;/code&gt; comme les détection de &lt;strong&gt;levels&lt;/strong&gt; et de &lt;strong&gt;cycles&lt;/strong&gt;
+il y a (en dehors de la méthode expliquée ci-dessous) la solution des &lt;strong&gt;triggers&lt;/strong&gt; à l'insertion, que je rédigerai dès que j'en aurais le temps...&lt;br/&gt;
+Mais déjà nous pouvons ajouter facilement le niveau de profondeur en nous basant sur le premier modèle:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;RECURSIVE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/usr/local/nagios&amp;#39;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;UNION&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;ORDER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h2&gt;Essayons de casser un peu tout ça.&lt;/h2&gt;
+
+&lt;p&gt;Nous allons tester la &lt;strong&gt;détection de cycle&lt;/strong&gt; proposée dans la documentation.&lt;/p&gt;
+
+&lt;pre&gt;
+  80764 | nagios   | directory | 80760 | /usr/local/nagios
+  80782 | bin      | directory | 80764 | /usr/local/nagios/bin
+  80772 | objects  | directory | 80765 | /usr/local/nagios/etc/objects
+&lt;/pre&gt;
+
+
+&lt;p&gt;Créeons un &lt;strong&gt;bug&lt;/strong&gt;, On va chercher à partir de &lt;code&gt;/usr/local/nagios-80764&lt;/code&gt; et donner un répertoire parent (&lt;code&gt;/usr/local-80760&lt;/code&gt;)
+comme fils d'un des sous répertoires (&lt;code&gt;/usr/local/nagios/etc/objects-80765&lt;/code&gt;)&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;UPDATE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;SET&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;80765&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;80760&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Utilisons le chemin recomposé et non le &lt;code&gt;FILE_FULLNAME&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;RECURSIVE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/usr/local/nagios&amp;#39;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;UNION&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;ORDER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;==&gt; oups ça ne réponds plus (boucle infinie) faire un CTRL-C&lt;br/&gt;
+On va donc ajouter la détection de cycle, notre chemin recomposé va se doubler d'un &lt;strong&gt;tableau des identifiants parcourus&lt;/strong&gt;
+et nous ferons une &lt;strong&gt;recherche&lt;/strong&gt; dans cet &lt;code&gt;array&lt;/code&gt; pour détecter le cycle:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;RECURSIVE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;cycle&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;ARRAY&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;false&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/usr/local/nagios&amp;#39;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;UNION&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;ANY&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;AND&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;cycle&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;cycle&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;ORDER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Et ça fonctionne, on a beaucoup trop de résultats (une partie de &lt;code&gt;/usr/local&lt;/code&gt; branché dans &lt;code&gt;/usr/local/nagios/etc/configObjects&lt;/code&gt;) -- à cause du bug introduit --
+mais au moins la requête réponds et ne fais pas une boucle infinie.
+La détection de cycle se base ici sur l'array des Identifiants parcourus, des exemples plus complexes sont données dans la documentation
+posgreSQL citée plus haut. &lt;strong&gt;Attention&lt;/strong&gt; à ne pas oublier le &lt;code&gt;AND NOT cycle&lt;/code&gt; dans la sous-requête.&lt;/p&gt;
+</description>
+				<published>2010-10-14 00:00:00 +0200</published>
+				<link>http://regilero.github.io//PostgreSQL/Francais/2010/10/14/requetes_recursives_avec_postgresql_8_4/</link>
+			</item>
+		
+			<item>
 				<title>Nice Webapps and tools using canvas</title>
 				<description>&lt;p&gt;Doing some research on HTML5/Canvas usage I found theses tools on the web:&lt;/p&gt;
 
@@ -564,6 +1247,13 @@ VirtualHost and check the errorLog to observe what is done After the rewrite.&lt
 
 
 &lt;p&gt;Quite readable isn't it? But &lt;strong&gt;do not forget to remove debug&lt;/strong&gt; for production env.&lt;/p&gt;
+
+&lt;h3&gt;Closely Related articles&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;/Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/&quot;&gt;Use RewriteMap to prevent proxying for some static contents&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
 </description>
 				<published>2009-11-06 00:00:00 +0100</published>
 				<link>http://regilero.github.io//Apache/English/2009/11/06/more_on_static_file_redirector/</link>
@@ -842,6 +1532,13 @@ asking for &lt;code&gt;/&lt;/code&gt; url wont serve your source content as:&lt;
 &lt;p&gt;Do not hesitate to uncomment RewriteLog and RewriteLogLevel directives to see what is done.
 Next time we'll make a static virtual directory and we'll be able to apply
 some more rule from Apache after the rewrite part.&lt;/p&gt;
+
+&lt;h3&gt;Closely Related articles&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;/Apache/English/2009/11/06/more_on_static_file_redirector/&quot;&gt;More on Static file redirector&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
 </description>
 				<published>2009-11-05 00:00:00 +0100</published>
 				<link>http://regilero.github.io//Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/</link>
@@ -1192,161 +1889,6 @@ to get other solutions or info on the way it will be fixed later look &lt;a href
 </description>
 				<published>2008-10-26 00:00:00 +0200</published>
 				<link>http://regilero.github.io//Zend%20Framework/English/2008/10/26/autocomplete_ajax_search_dojo_zend_framework/</link>
-			</item>
-		
-			<item>
-				<title>Force HTTP/1.0 Apache response when PHP is there...</title>
-				<description>&lt;p&gt;Recently I had to force an &lt;code&gt;HTTP/1.0&lt;/code&gt; response with Apache because of a bad Java Parser.&lt;br/&gt;
-This parser/browser was asking for &lt;code&gt;HTTP/1.1&lt;/code&gt; responses but did'nt understood &lt;a href=&quot;http://en.wikipedia.org/wiki/Chunked_transfer_encoding&quot;&gt;chunked content encoding&lt;/a&gt;.&lt;br/&gt;
-And so giving me a nice Sax exception &quot;content not allowed in prolog&quot;.&lt;/p&gt;
-
-&lt;p&gt;So, well, I won't fix this #$*%! code.&lt;br/&gt;
-Better trying to talk to this special User Agent in &lt;code&gt;HTTP/1.0,&lt;/code&gt; he might handle it in a better way.&lt;br/&gt;
-Here's what a &lt;strong&gt;chunked&lt;/strong&gt; content looks like. See the &lt;strong&gt;306c&lt;/strong&gt; hexa lenght code before the body of the response?&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;http&quot;&gt;&lt;span class=&quot;kr&quot;&gt;HTTP&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1.1&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;207&lt;/span&gt; &lt;span class=&quot;ne&quot;&gt;Multi-Status&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;(...&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;lot of headers, but no lenght one ...)&lt;/span&gt;
-&lt;span class=&quot;na&quot;&gt;Content-Type&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;text/xml; charset=&amp;quot;utf-8&amp;quot;&lt;/span&gt;
-
-306c
-&lt;span class=&quot;cp&quot;&gt;&amp;lt;?xml version=&amp;quot;1.0&amp;quot; encoding=&amp;quot;utf-8&amp;quot;?&amp;gt;&lt;/span&gt;
-(... here the content ...)
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;So I have the user agent of this Java HTTP Client, let's call it 'NoobieJavaParser'.&lt;br/&gt;
-I simply wrote in my apache virtualhost config file:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;BrowserMatch&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;^NoobieJavaParser&amp;quot;&lt;/span&gt; nokeepalive force-response-1.0 downgrade-1.0
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;And it &lt;strong&gt;should be sufficient&lt;/strong&gt;.&lt;br/&gt;
-In fact it's not because of a &lt;strong&gt;very old PHP bug&lt;/strong&gt; (saw first bug report in 2004, &lt;a href=&quot;https://bugs.php.net/bug.php?id=16218&quot;&gt;#16218&lt;/a&gt;,&lt;a href=&quot;https://bugs.php.net/bug.php?id=39927&quot;&gt;#39927&lt;/a&gt;,&lt;a href=&quot;https://bugs.php.net/bug.php?id=45947&quot;&gt;#45947&lt;/a&gt;).
-PHP is building is &lt;code&gt;$_SERVER&lt;/code&gt; variable by reading Apache env, and PHP doesn't want any
-dot in this parsed content. The &lt;code&gt;downgrade-1.0&lt;/code&gt; env name seem malicious for PHP.&lt;br/&gt;
-So the env setting looks like that in PHP:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;echo $_SERVER[&amp;#39;downgrade-1_0&amp;#39;];&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;-&amp;gt; 1&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;See the dots is now a &lt;code&gt;_&lt;/code&gt;. It should not hurt anyone, except &lt;strong&gt;PHP changed this env name in Apache as well&lt;/strong&gt;.&lt;br/&gt;
-So when apache is sending the response, he does not care anymore about this &lt;code&gt;downgrade-1_0&lt;/code&gt; settings.
-If you want Apache to have the real behaviour, i.e: sending &lt;code&gt;HTTP/1.0&lt;/code&gt; responses for this 'NoobieJavaParser' User Agent
-you must &lt;strong&gt;re-set the env&lt;/strong&gt; of Apache in PHP, with something like that:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;if ($_SERVER[&amp;#39;downgrade-1_0&amp;#39;]){&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;        apache_setenv(&amp;#39;downgrade-1.0&amp;#39;,&amp;#39;true&amp;#39;);&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;}&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;if ($_SERVER[&amp;#39;force-response-1_0&amp;#39;]){&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;        apache_setenv(&amp;#39;force-response-1.0&amp;#39;,&amp;#39;true&amp;#39;);&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;}&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Ugly, but it's PHP's fault.&lt;br/&gt;
-And no more chunked content after that.
-And the nice thing is that apache_setenv is not changing $_SERVER, so PHP still does not have this &lt;em&gt;malicious&lt;/em&gt; dot.&lt;/p&gt;
-</description>
-				<published>2008-08-29 00:00:00 +0200</published>
-				<link>http://regilero.github.io//Apache/English/2008/08/29/force_http_1.0_response_when_php_is_there/</link>
-			</item>
-		
-			<item>
-				<title>Temps de réponse réél d'une page web avec ... netcat</title>
-				<description>&lt;p&gt;Bon, j'imagine que la plupart des gens (heu.. d'un certain type) savent qu'on peut faire du web &lt;strong&gt;à la main&lt;/strong&gt; avec telnet ou netcat.
-Et bien on peut. Donc.
-Je voulais me servir de cela pour tracer quelques temps de réponse de pages html précises.
-Le tout en une seule ligne histoire de se servir de l'historique et pas de mon cerveau pour la retaper.&lt;/p&gt;
-
-&lt;p&gt;Commencons par un telnet sur &lt;a href=&quot;http://www.google.com&quot;&gt;www.google.com&lt;/a&gt; sur le port 80 (web).
-On tape la requète comme si nous étions un navigateur web (très basique le navigateur). La requète HTTP va donc être:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;http&quot;&gt;&lt;span class=&quot;err&quot;&gt;  &lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;GET&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;/&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;HTTP&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1.0&lt;/span&gt;
- &lt;span class=&quot;l&quot;&gt; &lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Remarquez qu'il y a une ligne vide (donc deux fois entrée).&lt;/p&gt;
-
-&lt;p&gt;Cela donne en résultat une page de redirection vers le site français de google, parfait.&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;  nii:~&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;telnet www.google.com 80
-  Trying 209.85.129.147...
-  Connected to www.l.google.com.
-  Escape character is &lt;span class=&quot;s1&quot;&gt;&amp;#39;^]&amp;#39;&lt;/span&gt;.
-  GET / HTTP/1.0
-  .
-  HTTP/1.0 302 Found
-  Location: http://www.google.fr/
-  &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;.. je vous passe le reste ...&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
-  Connection closed by foreign host.
-  nii:~&lt;span class=&quot;err&quot;&gt;$&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Bon, maintenant je veux mesurer le temps de réponse. Avec tout bètement la commande 'time'.
-Pour faire cela l'idéal est de taper ma commande en une seule fois,
-et là telnet n'est plus très souple pour automatiser la saisie utilisateur On va commencer par tester la même chose avec netcat (nc)&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;http&quot;&gt;&lt;span class=&quot;err&quot;&gt;  nii:~$ printf &amp;#39;GET / HTTP/1.0\n\n&amp;#39; | \&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;  nc -w 10 www.exemple.com 80&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;On avance. Par contre on a de fortes chances de ne pas tomber sur la page web que l'on recherche vraiment.
-On a de très fortes chances de tomber sur le VirtualHost par défaut du serveur HTTP
-à l'autre bout.
-Mais pour servir le bon site il faut taper du &lt;strong&gt;HTTP/1.1&lt;/strong&gt; au lieu de 1.0 et ajouter un header à notre
-requète indiquant au serveur le nom du site que l'on veut (parmi ceux qu'il héberge),
-revoyez le protocole &lt;a href=&quot;http://en.wikipedia.org/wiki/HTTP#Request_Message&quot;&gt;http version 1.1&lt;/a&gt; si vous ne comprenez rien à ce que je dis.&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;http&quot;&gt;&lt;span class=&quot;err&quot;&gt;  nii:~$ printf &amp;#39;GET / HTTP/1.1\nHost:www.exemple.com\n\n&amp;#39; | \&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;  nc -w 10 -q 10 www.exemple.com 80&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Et maintenant pour avoir le temps de la commande je rajoute time au début et je fais sauter le temps d'affichage de la réponse...&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;http&quot;&gt;&lt;span class=&quot;err&quot;&gt;  nii:~$ time printf &amp;#39;GET / HTTP/1.1\nHost:www.exemple.com\n\n&amp;#39; | \&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;  nc -w 10 -q 10 www.exemple.com 80 1&amp;gt;/dev/null&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;  .&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;  real    0m0.627s&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;  user    0m0.000s&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;  sys     0m0.004s&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;  nc -w 10 -q 10 www.exemple.com 80&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;&lt;strong&gt;Mais...&lt;/strong&gt;&lt;br/&gt;
-Il y a une grosse erreur.
-On se prends &lt;strong&gt;le temps d'une requète DNS&lt;/strong&gt; de la machine sur laquelle on est qui cherche l'adresse IP de l'hôte
-que l'on a donné à netcat (après le nc -w 10) pour aller ouvrir une connexion tcp sur le port 80 de cet hôte.
-Ce temps DNS ne sert à rien, il fausse notre résultat (et c'est souvent très long le DNS).
-Il faut utiliser l'adresse IP du serveur web directement.
-De toutes façons c'est à l'intérieur du protocole HTTP, avec notre entête &lt;strong&gt;Host:&lt;/strong&gt; que l'on indique le site web
-demandé au serveur, et pas du tout avec le nom DNS utilisé pour résoudre l'adresse IP du serveur web.&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;http&quot;&gt;&lt;span class=&quot;err&quot;&gt;  nii:~$ nslookup ww.exemple.com&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;  66.116.125.121&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;  nii:~$ time printf &amp;#39;GET / HTTP/1.1\nHost:www.exemple.com\n\n&amp;#39; | \&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;  nc -w 10 -q 10 66.116.125.121 80 1&amp;gt;/dev/null&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;  .&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;  real    0m0.408s&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;  user    0m0.004s&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;  sys     0m0.000s&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;&lt;strong&gt;0.408s&lt;/strong&gt; est déjà plus proche du temps de réponse réèl du site (depuis le point du réseau où on se trouve,
- il y a des pertes dues au réseau, forcément).&lt;/p&gt;
-
-&lt;p&gt;PS: vive les sites &lt;a href=&quot;http://www.dgate.org/~brg/bvtelnet80/&quot;&gt;Best Viewed with telnet to port 80&lt;/a&gt;&lt;/p&gt;
-</description>
-				<published>2008-05-25 00:00:00 +0200</published>
-				<link>http://regilero.github.io//Monitoring/Francais/2008/05/25/temps_de_reponse_reel_d_une_page_web_avec_netcat/</link>
 			</item>
 		
 	</channel>

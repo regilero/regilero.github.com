@@ -1,0 +1,496 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title> Requêtes récursives avec PostgreSQL 8.4 (WITH RECURSIVE) |  RBleug</title>
+    <meta name="description" content="Regilero's blog; Mostly tech things about web stuff."/>
+    <meta name="author" content="regilero"/>
+    <link rel="author" href="/contact/" title="who am I?" type="text/html" />
+    <link rel="icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/feed.xml" />
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.5.2/jquery.min.js"></script>
+    <script src="/theme/js/effects.js" ></script>
+    <!-- <script src="/theme/js/jquery.jparallax.js"></script> -->
+    <link rel="stylesheet" href="/theme/blueprint/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/blueprint/print.css" type="text/css" media="print">
+    <link rel="stylesheet" href="/theme/syntax.css" type="text/css" />
+    <!--[if lt IE 8]>
+      <link rel="stylesheet" href="/theme/blueprint/ie.css" type="text/css" media="screen, projection">
+    <![endif]-->
+    <link rel="stylesheet" href="/theme/blueprint/plugins/link-icons/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/fontello/css/fontello.css">
+    <!--[if IE 7]><link rel="stylesheet" href="/theme/fontello/css/fontello-ie7.css"><![endif]-->
+    <link href="/theme/style.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-40859893-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+  </head>
+  <body>
+    <div class="container">
+       <div id="branding" class="column span-24 last">
+         <h1 class="logo"><a href="/">RBleug</a></h1>
+         <hr/>
+         <h2 class="alt">Regilero's blog; Mostly tech things about web stuff.</h2>
+       </div>
+       
+       <div id="menu" class="column span-24 last">
+         <ul class="topNav">
+            <li><a href="/" class="topNavAct" ><i class="icon-home"></i>Tech notes</a></li>
+            <li><a href="/archive/"   ><i class="icon-th"></i>Archives</a></li>
+            <li><a href="/contact/"  ><i class="icon-phone"></i>Contact</a></li>
+            <li><a href="/feed.xml"><i class="icon-rss"></i>RSS Feed</a></li>
+         </ul>
+         <div class="clear"></div>
+       </div>
+       
+       <div id="content" class="">
+           <div id="left-content" class="column span-15 prepend-1">
+             
+            <article>
+        <header>
+            <h2>Requêtes récursives avec PostgreSQL 8.4 (WITH RECURSIVE)
+            <span><i class="icon-clock"></i><time datetime="2010-10-14">Oct 14, 2010</time></span><br/>
+            <span class="category"><i class="icon-list"></i> <a href="/Francais/">Francais</a> and <a href="/PostgreSQL/">PostgreSQL</a></span>
+            </h2>
+        </header>
+
+        <div class="entry">
+          <img class="right" src="/theme/img/pic/spider2.png" width="260" alt="Obtenir directement un résultat arborescent avec du SQL est un graal qui est désormais accessible sur PostgreSQL, et un exemple détaillé vaut mieux qu'un long discours." title="Obtenir directement un résultat arborescent avec du SQL est un graal qui est désormais accessible sur PostgreSQL, et un exemple détaillé vaut mieux qu'un long discours." />
+          <p>Si vous avez déjà touché à un Oracle vous connaissez peut-être le mot clef <code>CONNECT BY</code> qui permet d'effectuer des <strong>requêtes arborescentes</strong>.</p>
+
+<p>Les requêtes arborescentes sont très pratiques pour extraire des données sous forme <strong>d'arbre</strong>, pour, par exemple,
+remplir le jeu de données d'un arbre de type <a href="http://www.jstree.com/">jstree</a> ou autre <a href="http://plugins.jquery.com/?s=tree">plugin jquery d'arbre</a>.</p>
+
+<p>Pour faire simple dès que vous avez une table avec une <strong>relation parent qui est une jointure sur elle-même</strong> vous avez des chances
+ d'avoir besoin de requêtes arborescentes. <br/>
+Sans cela vous risquez de partir sur des algorithmes assez complexe dans votre language de traitement de données (python, PHP, jsqp, etc).
+Et c'est fort dommage quand le SGBD peut vous sauver la vie.<br/>
+Or donc sous postgreSQL il n'y avait pas d'équivalent du <code>connect by</code>, pas de requête arborescente.
+Il faudra que dans un billet futur je vous montre mes petits triggers qui permettent de pallier à ça, mais il n'y a rien de simple là-dedans.
+Mais depuis la version <code>8.4</code>, le mot clef <strong>"WITH RECURSIVE"</strong> nous permet de faire des requêtes récursives.<br/>
+Nous allons donc voir comment cela se manipule avec un exemple concret.</p>
+
+<h2>L'exemple: des dossiers et fichiers</h2>
+
+<p>Nous allons partir d'une table qui représente l'ensemble des fichiers et répertoires du disque dur, et essayer de faire des requêtes ordonnées
+dessus.</p>
+
+<p>Donc on commence par <strong>la structure de la table qui va acceuillir toutes ces données</strong>, je mets tout ça dans une base <code>test</code> accessible avec un user
+<code>testuser</code> et un mot de passe qui va bien:</p>
+
+<div class="highlight"><pre><code class="sql"><span class="k">CREATE</span> <span class="k">TYPE</span> <span class="n">FILETYPE</span> <span class="k">AS</span> <span class="n">ENUM</span> <span class="p">(</span><span class="s1">&#39;file&#39;</span><span class="p">,</span> <span class="s1">&#39;directory&#39;</span><span class="p">);</span>
+<span class="k">create</span> <span class="k">table</span> <span class="n">FILE</span> <span class="p">(</span>
+   <span class="n">FILE_ID</span>              <span class="nb">SERIAL</span>              <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
+   <span class="n">FILE_NAME</span>            <span class="nb">varchar</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span>        <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
+   <span class="n">FILE_FULLNAME</span>        <span class="nb">varchar</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>        <span class="k">not</span> <span class="k">null</span> <span class="k">unique</span><span class="p">,</span>
+   <span class="n">FILE_TYPE</span>            <span class="n">FILETYPE</span>             <span class="k">not</span> <span class="k">null</span> <span class="k">default</span> <span class="s1">&#39;file&#39;</span><span class="p">,</span>
+   <span class="n">FILE_PARENT</span>           <span class="n">INT4</span>                 <span class="k">not</span> <span class="k">null</span> <span class="k">default</span> <span class="mi">0</span> <span class="k">references</span> <span class="n">FILE</span> <span class="p">(</span><span class="n">FILE_ID</span><span class="p">)</span> <span class="k">on</span> <span class="k">update</span> <span class="k">restrict</span> <span class="k">on</span> <span class="k">delete</span> <span class="k">restrict</span><span class="p">,</span>
+   <span class="k">CONSTRAINT</span> <span class="n">PK_FILE</span> <span class="k">primary</span> <span class="k">key</span> <span class="p">(</span><span class="n">FILE_ID</span><span class="p">)</span>
+<span class="p">);</span>
+<span class="k">create</span> <span class="k">index</span> <span class="n">FILE_FULLNAME_IDX</span> <span class="k">on</span> <span class="n">FILE</span> <span class="p">(</span>
+<span class="n">FILE_FULLNAME</span>
+<span class="p">);</span>
+<span class="k">create</span> <span class="k">index</span> <span class="n">FILE_NAME_IDX</span> <span class="k">on</span> <span class="n">FILE</span> <span class="p">(</span>
+<span class="n">FILE_NAME</span>
+<span class="p">);</span>
+</code></pre></div>
+
+
+<p>On remarque la liaison <code>"references"</code> sur <code>FILE_PARENT</code> qui pointe sur la table elle-même, c'est tout le principe.<br/>
+Maintenant il va falloir remplir cette table. Ce n'est pas la partie la plus simple.
+Le mieux serait sans doute un script python mais comme je suis un peu dingue j'ai écrit un script en bash
+(vous remarquerez que je limite à 30 caractères dans le nom de directory pour restreindre l'analyse,
+mais vous pouvez mettre plus si vous avez le temps d'attendre):</p>
+
+<div class="highlight"><pre><code class="bash"><span class="c">#!/bin/bash</span>
+<span class="nv">REP_SOURCE</span><span class="o">=</span><span class="s2">&quot;/&quot;</span>;
+<span class="nv">BASE</span><span class="o">=</span><span class="s2">&quot;test&quot;</span>;
+<span class="nv">HOST</span><span class="o">=</span><span class="s2">&quot;localhost&quot;</span>;
+<span class="nv">USER</span><span class="o">=</span><span class="s2">&quot;testuser&quot;</span>;
+<span class="nv">MAXLENGHT</span><span class="o">=</span>30;
+
+<span class="c"># trap ctrl-c and call ctrl_c()</span>
+<span class="nb">trap </span>ctrl_c INT
+
+<span class="k">function </span>ctrl_c<span class="o">()</span> <span class="o">{</span>
+    <span class="nb">echo</span> <span class="s2">&quot;** Trapped CTRL-C&quot;</span>;
+    <span class="nb">exit </span>1;
+<span class="o">}</span>
+
+<span class="k">function </span>normalize <span class="o">{</span>
+    <span class="nb">echo</span> <span class="k">$(</span><span class="nb">echo</span> <span class="s2">&quot;$1&quot;</span>|sed <span class="s2">&quot;s/\&quot;/_/g&quot;</span>|sed <span class="s2">&quot;s/&#39;/_/g&quot;</span>|sed <span class="s2">&quot;s/ /_/g&quot;</span><span class="k">)</span>;
+<span class="o">}</span>
+<span class="k">function </span>treeanalyse <span class="o">{</span>
+    <span class="nv">DIR</span><span class="o">=</span><span class="nv">$1</span>;
+    <span class="c"># shorten duration of this script with path greater than MAXLENGHT chars</span>
+    <span class="nv">len</span><span class="o">=</span><span class="sb">`</span>expr length <span class="s2">&quot;$DIR&quot;</span><span class="sb">`</span>;
+    <span class="k">if</span> <span class="o">[</span> <span class="nv">$len</span> -lt <span class="nv">$MAXLENGHT</span> <span class="o">]</span>; <span class="k">then</span>
+        <span class="c">#echo &quot;DIR $DIR&quot;</span>
+        <span class="nv">nDIR</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;$DIR&quot;</span><span class="k">)</span>;
+        <span class="c"># files detection</span>
+        find <span class="s2">&quot;$DIR&quot;</span> -maxdepth 1 -type f | <span class="k">while </span><span class="nb">read </span>FIL ; <span class="k">do</span>
+<span class="k">            </span><span class="nv">FILENAME</span><span class="o">=</span><span class="sb">`</span>basename <span class="s2">&quot;$FIL&quot;</span><span class="sb">`</span>;
+            <span class="nv">nNAME</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;$FILENAME&quot;</span><span class="k">)</span>;
+            <span class="nv">nFIL</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;$FIL&quot;</span><span class="k">)</span>;
+            <span class="nv">SQL</span><span class="o">=</span><span class="s2">&quot;INSERT INTO FILE (FILE_NAME,FILE_FULLNAME,FILE_TYPE,FILE_PARENT) SELECT &#39;$nNAME&#39;,&#39;$nFIL&#39;,&#39;file&#39;, FILE_ID FROM FILE WHERE FILE_FULLNAME=&#39;$nDIR&#39;;&quot;</span>
+            <span class="nb">echo</span> <span class="s2">&quot;${SQL}&quot;</span> &gt;&gt; /tmp/insert.sql
+        <span class="k">done</span>
+        <span class="c"># directory detection</span>
+        find <span class="s2">&quot;${DIR}&quot;</span> -maxdepth 1 -type d | <span class="k">while </span><span class="nb">read </span>SUBDIR ; <span class="k">do</span>
+<span class="k">            </span><span class="nb">echo</span> <span class="s2">&quot;$SUBDIR&quot;</span>;
+            <span class="nv">DIRNAME</span><span class="o">=</span><span class="sb">`</span>basename <span class="s2">&quot;$SUBDIR&quot;</span><span class="sb">`</span>;
+            <span class="k">if</span> <span class="o">[</span> <span class="s2">&quot;$SUBDIR&quot;</span> !<span class="o">=</span> <span class="s2">&quot;$DIR&quot;</span> -a <span class="s2">&quot;$DIRNAME&quot;</span> !<span class="o">=</span> <span class="s2">&quot;proc&quot;</span> -a <span class="s2">&quot;$DIRNAME&quot;</span> !<span class="o">=</span> <span class="s2">&quot;sys&quot;</span> -a <span class="s2">&quot;$DIRNAME&quot;</span> !<span class="o">=</span> <span class="s2">&quot;mnt&quot;</span> -a <span class="s2">&quot;$DIRNAME&quot;</span> !<span class="o">=</span> <span class="s2">&quot;.&quot;</span> -a <span class="s2">&quot;$DIRNAME&quot;</span> !<span class="o">=</span> <span class="s2">&quot;..&quot;</span> <span class="o">]</span>; <span class="k">then</span>
+<span class="k">                </span><span class="nv">CLEANDIRNAME</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span> <span class="nv">$DIRNAME</span>|sed <span class="s2">&quot;s/\&quot;/_/g&quot;</span>|sed <span class="s2">&quot;s/&#39;/_/g&quot;</span>|sed <span class="s2">&quot;s/ /_/g&quot;</span><span class="k">)</span>;
+                <span class="nv">nDIRNAME</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;$DIRNAME&quot;</span><span class="k">)</span>;
+                <span class="nv">nDIR</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;$DIR&quot;</span><span class="k">)</span>;
+                <span class="nv">nSUBDIR</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;$SUBDIR&quot;</span><span class="k">)</span>;
+                <span class="nv">SQL</span><span class="o">=</span><span class="s2">&quot;INSERT INTO FILE (FILE_NAME,FILE_FULLNAME,FILE_TYPE,FILE_PARENT) SELECT &#39;$nDIRNAME&#39;,&#39;$nSUBDIR&#39;,&#39;directory&#39;,FILE_ID FROM FILE WHERE FILE_FULLNAME=&#39;$nDIR&#39;;&quot;</span>
+                <span class="nb">echo</span> <span class="s2">&quot;${SQL}&quot;</span> &gt;&gt; /tmp/insert.sql;
+                <span class="nv">DIRBACKUP</span><span class="o">=</span><span class="nv">$DIR</span>; <span class="c"># prevent variable overlap in bash</span>
+                treeanalyse <span class="nv">$SUBDIR</span>;
+                <span class="nv">DIR</span><span class="o">=</span><span class="nv">$DIRBACKUP</span>; <span class="c"># prevent variable overlap in bash</span>
+            <span class="k">fi</span>
+<span class="k">        done</span>
+<span class="k">    fi</span>
+<span class="o">}</span>
+
+<span class="nv">PARENTDIR</span><span class="o">=</span><span class="s2">&quot;0&quot;</span>
+<span class="nv">SQL</span><span class="o">=</span><span class="s2">&quot;TRUNCATE FILE;&quot;</span>
+<span class="nb">echo</span> <span class="s2">&quot;${SQL}&quot;</span> &gt; /tmp/insert.sql;
+<span class="nv">SQL</span><span class="o">=</span><span class="s2">&quot;INSERT INTO FILE (FILE_ID,FILE_NAME,FILE_FULLNAME,FILE_TYPE,FILE_PARENT) VALUES ($PARENTDIR,&#39;$REP_SOURCE&#39;,&#39;$REP_SOURCE&#39;,&#39;directory&#39;,$PARENTDIR);&quot;</span>
+<span class="nv">PARENTDIR</span><span class="o">=</span><span class="nv">$REP_SOURCE</span>;
+<span class="nv">DIR</span><span class="o">=</span><span class="nv">$REP_SOURCE</span>;
+<span class="nb">echo</span> <span class="s2">&quot;${SQL}&quot;</span> &gt;&gt; /tmp/insert.sql;
+<span class="nb">echo</span> <span class="s2">&quot;Analysing&quot;</span>;
+treeanalyse <span class="nv">$DIR</span>;
+
+<span class="nb">echo</span> <span class="s2">&quot;STARTING SQL INSERTION:&quot;</span>
+<span class="c">#PGCOMMAND=&quot;psql -d $BASE -h $HOST -U $USER --single-transaction -f &quot;</span>
+<span class="nv">PGCOMMAND</span><span class="o">=</span><span class="s2">&quot;psql -d $BASE -h $HOST -U $USER -f &quot;</span>
+<span class="nv">$PGCOMMAND</span> /tmp/insert.sql;
+<span class="nb">echo</span> <span class="s2">&quot;Done&quot;</span>
+</code></pre></div>
+
+
+<p>En exécutant ce script (n'oubliez pas le chmod u+x) on obtient un gros fichier <code>/tmp/insert.sql</code> (109 382 lignes chez moi)
+qui est ensuite importé dans un grosse transaction postgreSQL si tout se passe bien.<br/>
+Bon, il supporte encore assez mal les noms de dossiers avec ' ou des " dedans, mais même si la transaction echoue vous avez
+votre /tmp/insert.sql dans lequel vous pouvez peut-être supprimer les dossiers et fichiers embétants.</p>
+
+<h2>Tester les requêtes récursives</h2>
+
+<p>Voyons ensuite la requête récursive, la <a href="http://www.postgresql.org/docs/8.4/static/queries-with.html">documentation postgreSQL</a>  nous donne un modèle:</p>
+
+<div class="highlight"><pre><code class="sql"><span class="k">WITH</span> <span class="k">RECURSIVE</span> <span class="n">t</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">AS</span> <span class="p">(</span>
+    <span class="k">VALUES</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+  <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> <span class="n">n</span><span class="o">+</span><span class="mi">1</span> <span class="k">FROM</span> <span class="n">t</span> <span class="k">WHERE</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">100</span>
+<span class="p">)</span>
+<span class="k">SELECT</span> <span class="k">sum</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">FROM</span> <span class="n">t</span><span class="p">;</span>
+</code></pre></div>
+
+
+<p>Qui sur notre table des fichiers va donner:</p>
+
+<div class="highlight"><pre><code class="sql"><span class="k">WITH</span> <span class="k">RECURSIVE</span> <span class="n">rectable</span><span class="p">(</span><span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">FILE_FULLNAME</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">)</span> <span class="k">AS</span> <span class="p">(</span>
+    <span class="k">SELECT</span> <span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">FILE_FULLNAME</span><span class="p">,</span><span class="n">FILE_TYPE</span>
+    <span class="k">FROM</span> <span class="n">FILE</span>
+    <span class="k">WHERE</span> <span class="n">FILE_FULLNAME</span><span class="o">=</span><span class="s1">&#39;/usr/local&#39;</span>
+  <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> <span class="n">orig</span><span class="p">.</span><span class="n">FILE_ID</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_FULLNAME</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_TYPE</span>
+    <span class="k">FROM</span> <span class="n">rectable</span> <span class="n">rec</span><span class="p">,</span><span class="n">FILE</span> <span class="n">orig</span>
+    <span class="k">WHERE</span> <span class="n">orig</span><span class="p">.</span><span class="n">FILE_PARENT</span><span class="o">=</span><span class="n">rec</span><span class="p">.</span><span class="n">FILE_ID</span>
+<span class="p">)</span>
+<span class="k">SELECT</span> <span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">FILE_FULLNAME</span><span class="p">,</span><span class="n">FILE_TYPE</span>
+<span class="k">FROM</span> <span class="n">rectable</span>
+<span class="k">ORDER</span> <span class="k">BY</span> <span class="n">FILE_FULLNAME</span><span class="p">;</span>
+</code></pre></div>
+
+
+<p>Pour par exemple obtenir le sous arbre de <code>/usr/local</code>.</p>
+
+<p>Remarquez la façon dont la table <code>FILE</code> se voit renommée <strong>3 fois</strong> pour la requête, <code>rectable</code> devient la requête récursive,
+une "fausse table" sur laquelle on fait notre requête finale.<br/>
+A l'intérieur nous avons une première partie qui initialise la récursion en sélectionnant une ligne de la table <code>FILE</code>,
+et après le <code>UNION ALL</code> nous utilisons <code>rectable</code> qui contient au départ <strong>l'initialisation</strong> et plus tard les <strong>résultats</strong>
+des récursions passées que nous joignons avec la table <code>FILE</code> renommée pour l'occasion <code>orig</code>, jointe sur la relation parent.<br/>
+C'est différent de la syntaxe du <code>CONNECT BY</code> de oracle, mais je ne suis pas loin de penser que c'est plus élégant
+(<strike>peut-être pas encore aussi puissant, pas de détection de cycle, de leaf ou de level
+-- quoique en lisant bien la doc je dois pouvoir le faire</strike>).</p>
+
+<p>Alors vous me direz que faire un <code>order by</code> sur le <code>FILE_FULLNAME</code> pour avoir la requêtre triée c'est un peu de la triche,
+parce qu'on aurait pu alors tout aussi juste stocker le <code>FULLNAME</code> et se servir du tri sans la récursion.<br/>
+C'est un peu vrai, mais là j'ai mis le <code>FILE_FULLNAME</code> pour faire <strong>joli</strong>, je ne suis pas du tout obligé de stocker cette information.
+Donc voici la même mais ordonnée sur la relation parent:</p>
+
+<div class="highlight"><pre><code class="sql"><span class="k">WITH</span> <span class="k">RECURSIVE</span> <span class="n">rectable</span><span class="p">(</span><span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">FILE_FULLNAME</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span><span class="p">)</span> <span class="k">AS</span> <span class="p">(</span>
+    <span class="k">SELECT</span> <span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">FILE_FULLNAME</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span>
+    <span class="k">FROM</span> <span class="n">FILE</span>
+    <span class="k">WHERE</span> <span class="n">FILE_FULLNAME</span><span class="o">=</span><span class="s1">&#39;/usr/local&#39;</span>
+  <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> <span class="n">orig</span><span class="p">.</span><span class="n">FILE_ID</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_FULLNAME</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_PARENT</span>
+    <span class="k">FROM</span> <span class="n">rectable</span> <span class="n">rec</span><span class="p">,</span><span class="n">FILE</span> <span class="n">orig</span>
+    <span class="k">WHERE</span> <span class="n">orig</span><span class="p">.</span><span class="n">FILE_PARENT</span><span class="o">=</span><span class="n">rec</span><span class="p">.</span><span class="n">FILE_ID</span>
+<span class="p">)</span>
+<span class="k">SELECT</span> <span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">FILE_FULLNAME</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span>
+<span class="k">FROM</span> <span class="n">rectable</span>
+<span class="k">ORDER</span> <span class="k">BY</span> <span class="n">FILE_PARENT</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">;</span>
+</code></pre></div>
+
+
+<p>Problème on perd notre tri d'arbre.<br/>
+On a d'abord les répertoires et ensuite seulement les fichiers de ces répertoires.
+Si on veut trier proprement sans avoir le <code>FILE_FULLNAME</code> il faut en fait le récréer dans la récursion:</p>
+
+<div class="highlight"><pre><code class="sql"><span class="k">WITH</span> <span class="k">RECURSIVE</span> <span class="n">rectable</span><span class="p">(</span><span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span><span class="p">,</span><span class="n">rorder</span><span class="p">)</span> <span class="k">AS</span> <span class="p">(</span>
+    <span class="k">SELECT</span> <span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span><span class="p">,</span><span class="s1">&#39;/&#39;</span><span class="o">||</span><span class="n">FILE_NAME</span> <span class="k">as</span> <span class="n">rorder</span>
+    <span class="k">FROM</span> <span class="n">FILE</span>
+    <span class="k">WHERE</span> <span class="n">FILE_FULLNAME</span><span class="o">=</span><span class="s1">&#39;/usr/local/nagios&#39;</span>
+  <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> <span class="n">orig</span><span class="p">.</span><span class="n">FILE_ID</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_PARENT</span><span class="p">,</span><span class="n">rec</span><span class="p">.</span><span class="n">rorder</span><span class="o">||</span><span class="s1">&#39;/&#39;</span><span class="o">||</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_NAME</span> <span class="k">as</span> <span class="n">rorder</span>
+    <span class="k">FROM</span> <span class="n">rectable</span> <span class="n">rec</span><span class="p">,</span><span class="n">FILE</span> <span class="n">orig</span>
+    <span class="k">WHERE</span> <span class="n">orig</span><span class="p">.</span><span class="n">FILE_PARENT</span><span class="o">=</span><span class="n">rec</span><span class="p">.</span><span class="n">FILE_ID</span>
+<span class="p">)</span>
+<span class="k">SELECT</span> <span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span><span class="p">,</span><span class="n">rorder</span>
+<span class="k">FROM</span> <span class="n">rectable</span>
+<span class="k">ORDER</span> <span class="k">BY</span> <span class="n">rorder</span><span class="p">;</span>
+ <span class="n">file_id</span> <span class="o">|</span>              <span class="n">file_name</span>               <span class="o">|</span> <span class="n">file_type</span> <span class="o">|</span> <span class="n">file_parent</span> <span class="o">|</span>                        <span class="n">rorder</span>                       
+<span class="c1">---------+--------------------------------------+-----------+-------------+------------------------------------------------------</span>
+   <span class="mi">80764</span> <span class="o">|</span> <span class="n">nagios</span>                               <span class="o">|</span> <span class="n">directory</span> <span class="o">|</span>       <span class="mi">80760</span> <span class="o">|</span> <span class="o">/</span><span class="n">nagios</span>
+   <span class="mi">80782</span> <span class="o">|</span> <span class="n">bin</span>                                  <span class="o">|</span> <span class="n">directory</span> <span class="o">|</span>       <span class="mi">80764</span> <span class="o">|</span> <span class="o">/</span><span class="n">nagios</span><span class="o">/</span><span class="n">bin</span>
+   <span class="mi">80785</span> <span class="o">|</span> <span class="n">nagios</span>                               <span class="o">|</span> <span class="n">file</span>      <span class="o">|</span>       <span class="mi">80782</span> <span class="o">|</span> <span class="o">/</span><span class="n">nagios</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">nagios</span>
+   <span class="mi">80784</span> <span class="o">|</span> <span class="n">nagiostats</span>                           <span class="o">|</span> <span class="n">file</span>      <span class="o">|</span>       <span class="mi">80782</span> <span class="o">|</span> <span class="o">/</span><span class="n">nagios</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">nagiostats</span>
+   <span class="mi">80786</span> <span class="o">|</span> <span class="n">ndo2db</span>                               <span class="o">|</span> <span class="n">file</span>      <span class="o">|</span>       <span class="mi">80782</span> <span class="o">|</span> <span class="o">/</span><span class="n">nagios</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">ndo2db</span>
+   <span class="mi">80783</span> <span class="o">|</span> <span class="n">ndomod</span><span class="p">.</span><span class="n">o</span>                             <span class="o">|</span> <span class="n">file</span>      <span class="o">|</span>       <span class="mi">80782</span> <span class="o">|</span> <span class="o">/</span><span class="n">nagios</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">ndomod</span><span class="p">.</span><span class="n">o</span>
+   <span class="mi">80765</span> <span class="o">|</span> <span class="n">etc</span>                                  <span class="o">|</span> <span class="n">directory</span> <span class="o">|</span>       <span class="mi">80764</span> <span class="o">|</span> <span class="o">/</span><span class="n">nagios</span><span class="o">/</span><span class="n">etc</span>
+   <span class="mi">80767</span> <span class="o">|</span> <span class="n">cgi</span><span class="p">.</span><span class="n">cfg</span>                              <span class="o">|</span> <span class="n">file</span>      <span class="o">|</span>       <span class="mi">80765</span> <span class="o">|</span> <span class="o">/</span><span class="n">nagios</span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">cgi</span><span class="p">.</span><span class="n">cfg</span>
+   <span class="mi">80770</span> <span class="o">|</span> <span class="n">htpasswd</span><span class="p">.</span><span class="n">users</span>                       <span class="o">|</span> <span class="n">file</span>      <span class="o">|</span>       <span class="mi">80765</span> <span class="o">|</span> <span class="o">/</span><span class="n">nagios</span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">htpasswd</span><span class="p">.</span><span class="n">users</span>
+   <span class="mi">80766</span> <span class="o">|</span> <span class="n">nagios</span><span class="p">.</span><span class="n">cfg</span>                           <span class="o">|</span> <span class="n">file</span>      <span class="o">|</span>       <span class="mi">80765</span> <span class="o">|</span> <span class="o">/</span><span class="n">nagios</span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">nagios</span><span class="p">.</span><span class="n">cfg</span>
+   <span class="mi">80769</span> <span class="o">|</span> <span class="n">ndo2db</span><span class="p">.</span><span class="n">cfg</span>                           <span class="o">|</span> <span class="n">file</span>      <span class="o">|</span>       <span class="mi">80765</span> <span class="o">|</span> <span class="o">/</span><span class="n">nagios</span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ndo2db</span><span class="p">.</span><span class="n">cfg</span>
+</code></pre></div>
+
+
+<p>Et là où ce type de requête devient <strong>magique</strong>, je vais aussi pouvoir filtrer pour avoir uniquement les directory,
+par exemple,
+puis filtrer les résultats pour ne garder que les sous-sous répertoires qui commencent par un <code>"."</code>:</p>
+
+<div class="highlight"><pre><code class="sql"><span class="k">WITH</span> <span class="k">RECURSIVE</span> <span class="n">rectable</span><span class="p">(</span><span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">FILE_FULLNAME</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span><span class="p">)</span> <span class="k">AS</span> <span class="p">(</span>
+    <span class="k">SELECT</span> <span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">FILE_FULLNAME</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span>
+    <span class="k">FROM</span> <span class="n">FILE</span>
+    <span class="k">WHERE</span> <span class="n">FILE_FULLNAME</span><span class="o">=</span><span class="s1">&#39;/usr/local&#39;</span>
+  <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> <span class="n">orig</span><span class="p">.</span><span class="n">FILE_ID</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_FULLNAME</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_PARENT</span>
+    <span class="k">FROM</span> <span class="n">rectable</span> <span class="n">rec</span><span class="p">,</span><span class="n">FILE</span> <span class="n">orig</span>
+    <span class="k">WHERE</span> <span class="n">orig</span><span class="p">.</span><span class="n">FILE_PARENT</span><span class="o">=</span><span class="n">rec</span><span class="p">.</span><span class="n">FILE_ID</span>
+    <span class="k">AND</span> <span class="n">orig</span><span class="p">.</span><span class="n">FILE_TYPE</span><span class="o">=</span><span class="s1">&#39;directory&#39;</span>
+<span class="p">)</span>
+<span class="k">SELECT</span> <span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">FILE_FULLNAME</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span>
+<span class="k">FROM</span> <span class="n">rectable</span>
+<span class="k">WHERE</span> <span class="n">rectable</span><span class="p">.</span><span class="n">FILE_NAME</span> <span class="k">LIKE</span> <span class="s1">&#39;.%&#39;</span>
+<span class="k">ORDER</span> <span class="k">BY</span> <span class="n">FILE_FULLNAME</span><span class="p">;</span>
+<span class="n">file_id</span> <span class="o">|</span> <span class="n">file_name</span> <span class="o">|</span>                      <span class="n">file_fullname</span>                      <span class="o">|</span> <span class="n">file_type</span> <span class="o">|</span> <span class="n">file_parent</span>
+<span class="c1">---------+-----------+---------------------------------------------------------+-----------+-------------</span>
+   <span class="mi">31058</span> <span class="o">|</span> <span class="p">.</span><span class="n">deps</span>     <span class="o">|</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="k">local</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">nagios</span><span class="o">-</span><span class="n">plugins</span><span class="o">-</span><span class="mi">1</span><span class="p">.</span><span class="mi">4</span><span class="p">.</span><span class="mi">14</span><span class="o">/</span><span class="n">plugins</span><span class="o">-</span><span class="n">root</span><span class="o">/</span><span class="p">.</span><span class="n">deps</span> <span class="o">|</span> <span class="n">directory</span> <span class="o">|</span>       <span class="mi">31047</span>
+   <span class="mi">31059</span> <span class="o">|</span> <span class="p">.</span><span class="n">libs</span>     <span class="o">|</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="k">local</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">nagios</span><span class="o">-</span><span class="n">plugins</span><span class="o">-</span><span class="mi">1</span><span class="p">.</span><span class="mi">4</span><span class="p">.</span><span class="mi">14</span><span class="o">/</span><span class="n">plugins</span><span class="o">-</span><span class="n">root</span><span class="o">/</span><span class="p">.</span><span class="n">libs</span> <span class="o">|</span> <span class="n">directory</span> <span class="o">|</span>       <span class="mi">31047</span>
+   <span class="mi">31112</span> <span class="o">|</span> <span class="p">.</span><span class="n">deps</span>     <span class="o">|</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="k">local</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">nagios</span><span class="o">-</span><span class="n">plugins</span><span class="o">-</span><span class="mi">1</span><span class="p">.</span><span class="mi">4</span><span class="p">.</span><span class="mi">14</span><span class="o">/</span><span class="n">tap</span><span class="o">/</span><span class="p">.</span><span class="n">deps</span>          <span class="o">|</span> <span class="n">directory</span> <span class="o">|</span>       <span class="mi">31105</span>
+   <span class="mi">31502</span> <span class="o">|</span> <span class="p">.</span><span class="n">deps</span>     <span class="o">|</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="k">local</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">nagios</span><span class="o">-</span><span class="n">plugins</span><span class="o">-</span><span class="mi">1</span><span class="p">.</span><span class="mi">4</span><span class="p">.</span><span class="mi">14</span><span class="o">/</span><span class="n">gl</span><span class="o">/</span><span class="p">.</span><span class="n">deps</span>           <span class="o">|</span> <span class="n">directory</span> <span class="o">|</span>       <span class="mi">31243</span>
+   <span class="mi">31627</span> <span class="o">|</span> <span class="p">.</span><span class="n">deps</span>     <span class="o">|</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="k">local</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">nagios</span><span class="o">-</span><span class="n">plugins</span><span class="o">-</span><span class="mi">1</span><span class="p">.</span><span class="mi">4</span><span class="p">.</span><span class="mi">14</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="p">.</span><span class="n">deps</span>          <span class="o">|</span> <span class="n">directory</span> <span class="o">|</span>       <span class="mi">31565</span>
+   <span class="mi">31616</span> <span class="o">|</span> <span class="p">.</span><span class="n">deps</span>     <span class="o">|</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="k">local</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">nagios</span><span class="o">-</span><span class="n">plugins</span><span class="o">-</span><span class="mi">1</span><span class="p">.</span><span class="mi">4</span><span class="p">.</span><span class="mi">14</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="p">.</span><span class="n">deps</span>    <span class="o">|</span> <span class="n">directory</span> <span class="o">|</span>       <span class="mi">31586</span>
+   <span class="mi">31766</span> <span class="o">|</span> <span class="p">.</span><span class="n">deps</span>     <span class="o">|</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="k">local</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">nagios</span><span class="o">-</span><span class="n">plugins</span><span class="o">-</span><span class="mi">1</span><span class="p">.</span><span class="mi">4</span><span class="p">.</span><span class="mi">14</span><span class="o">/</span><span class="n">plugins</span><span class="o">/</span><span class="p">.</span><span class="n">deps</span>      <span class="o">|</span> <span class="n">directory</span> <span class="o">|</span>       <span class="mi">31645</span>
+   <span class="mi">31812</span> <span class="o">|</span> <span class="p">.</span><span class="n">libs</span>     <span class="o">|</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="k">local</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">nagios</span><span class="o">-</span><span class="n">plugins</span><span class="o">-</span><span class="mi">1</span><span class="p">.</span><span class="mi">4</span><span class="p">.</span><span class="mi">14</span><span class="o">/</span><span class="n">plugins</span><span class="o">/</span><span class="p">.</span><span class="n">libs</span>      <span class="o">|</span> <span class="n">directory</span> <span class="o">|</span>       <span class="mi">31645</span>
+<span class="p">(</span><span class="mi">8</span> <span class="n">lignes</span><span class="p">)</span>
+</code></pre></div>
+
+
+<p>Si vous voulez garder les fonctionnalités avancées du <code>CONNECT BY</code> comme les détection de <strong>levels</strong> et de <strong>cycles</strong>
+il y a (en dehors de la méthode expliquée ci-dessous) la solution des <strong>triggers</strong> à l'insertion, que je rédigerai dès que j'en aurais le temps...<br/>
+Mais déjà nous pouvons ajouter facilement le niveau de profondeur en nous basant sur le premier modèle:</p>
+
+<div class="highlight"><pre><code class="sql"><span class="k">WITH</span> <span class="k">RECURSIVE</span> <span class="n">rectable</span><span class="p">(</span><span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">FILE_FULLNAME</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span><span class="p">,</span><span class="k">level</span><span class="p">)</span> <span class="k">AS</span> <span class="p">(</span>
+    <span class="k">SELECT</span> <span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">FILE_FULLNAME</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span><span class="p">,</span><span class="mi">1</span> <span class="k">as</span> <span class="k">level</span>
+    <span class="k">FROM</span> <span class="n">FILE</span>
+    <span class="k">WHERE</span> <span class="n">FILE_FULLNAME</span><span class="o">=</span><span class="s1">&#39;/usr/local/nagios&#39;</span>
+  <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> <span class="n">orig</span><span class="p">.</span><span class="n">FILE_ID</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_FULLNAME</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_PARENT</span><span class="p">,</span><span class="n">rec</span><span class="p">.</span><span class="k">level</span><span class="o">+</span><span class="mi">1</span> <span class="k">as</span> <span class="k">level</span>
+    <span class="k">FROM</span> <span class="n">rectable</span> <span class="n">rec</span><span class="p">,</span><span class="n">FILE</span> <span class="n">orig</span>
+    <span class="k">WHERE</span> <span class="n">orig</span><span class="p">.</span><span class="n">FILE_PARENT</span><span class="o">=</span><span class="n">rec</span><span class="p">.</span><span class="n">FILE_ID</span>
+<span class="p">)</span>
+<span class="k">SELECT</span> <span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">FILE_FULLNAME</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span><span class="p">,</span><span class="k">level</span>
+<span class="k">FROM</span> <span class="n">rectable</span>
+<span class="k">ORDER</span> <span class="k">BY</span> <span class="n">FILE_FULLNAME</span><span class="p">;</span>
+</code></pre></div>
+
+
+<h2>Essayons de casser un peu tout ça.</h2>
+
+<p>Nous allons tester la <strong>détection de cycle</strong> proposée dans la documentation.</p>
+
+<pre>
+  80764 | nagios   | directory | 80760 | /usr/local/nagios
+  80782 | bin      | directory | 80764 | /usr/local/nagios/bin
+  80772 | objects  | directory | 80765 | /usr/local/nagios/etc/objects
+</pre>
+
+
+<p>Créeons un <strong>bug</strong>, On va chercher à partir de <code>/usr/local/nagios-80764</code> et donner un répertoire parent (<code>/usr/local-80760</code>)
+comme fils d'un des sous répertoires (<code>/usr/local/nagios/etc/objects-80765</code>)</p>
+
+<div class="highlight"><pre><code class="sql"><span class="k">UPDATE</span> <span class="n">FILE</span> <span class="k">SET</span> <span class="n">FILE_PARENT</span><span class="o">=</span><span class="mi">80765</span> <span class="k">WHERE</span> <span class="n">FILE_ID</span><span class="o">=</span><span class="mi">80760</span><span class="p">;</span>
+</code></pre></div>
+
+
+<p>Utilisons le chemin recomposé et non le <code>FILE_FULLNAME</code>:</p>
+
+<div class="highlight"><pre><code class="sql"><span class="k">WITH</span> <span class="k">RECURSIVE</span> <span class="n">rectable</span><span class="p">(</span><span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">rorder</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span><span class="p">,</span><span class="k">level</span><span class="p">)</span> <span class="k">AS</span> <span class="p">(</span>
+    <span class="k">SELECT</span> <span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="s1">&#39;/&#39;</span><span class="o">||</span><span class="n">FILE_NAME</span> <span class="k">as</span> <span class="n">rorder</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span><span class="p">,</span><span class="mi">1</span> <span class="k">as</span> <span class="k">level</span>
+    <span class="k">FROM</span> <span class="n">FILE</span>
+    <span class="k">WHERE</span> <span class="n">FILE_FULLNAME</span><span class="o">=</span><span class="s1">&#39;/usr/local/nagios&#39;</span>
+  <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> <span class="n">orig</span><span class="p">.</span><span class="n">FILE_ID</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">rec</span><span class="p">.</span><span class="n">rorder</span><span class="o">||</span><span class="s1">&#39;/&#39;</span> <span class="o">||</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_NAME</span> <span class="k">as</span> <span class="n">rorder</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_PARENT</span><span class="p">,</span><span class="n">rec</span><span class="p">.</span><span class="k">level</span><span class="o">+</span><span class="mi">1</span> <span class="k">as</span> <span class="k">level</span>
+    <span class="k">FROM</span> <span class="n">rectable</span> <span class="n">rec</span><span class="p">,</span><span class="n">FILE</span> <span class="n">orig</span>
+    <span class="k">WHERE</span> <span class="n">orig</span><span class="p">.</span><span class="n">FILE_PARENT</span><span class="o">=</span><span class="n">rec</span><span class="p">.</span><span class="n">FILE_ID</span>
+<span class="p">)</span>
+<span class="k">SELECT</span> <span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">rorder</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span><span class="p">,</span><span class="k">level</span>
+<span class="k">FROM</span> <span class="n">rectable</span>
+<span class="k">ORDER</span> <span class="k">BY</span> <span class="n">rorder</span><span class="p">;</span>
+</code></pre></div>
+
+
+<p>==> oups ça ne réponds plus (boucle infinie) faire un CTRL-C<br/>
+On va donc ajouter la détection de cycle, notre chemin recomposé va se doubler d'un <strong>tableau des identifiants parcourus</strong>
+et nous ferons une <strong>recherche</strong> dans cet <code>array</code> pour détecter le cycle:</p>
+
+<div class="highlight"><pre><code class="sql"><span class="k">WITH</span> <span class="k">RECURSIVE</span> <span class="n">rectable</span><span class="p">(</span><span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">rorder</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span><span class="p">,</span><span class="k">level</span><span class="p">,</span><span class="n">path</span><span class="p">,</span><span class="k">cycle</span><span class="p">)</span> <span class="k">AS</span> <span class="p">(</span>
+    <span class="k">SELECT</span> <span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="s1">&#39;/&#39;</span><span class="o">||</span><span class="n">FILE_NAME</span> <span class="k">as</span> <span class="n">rorder</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span><span class="p">,</span><span class="mi">1</span> <span class="k">as</span> <span class="k">level</span><span class="p">,</span><span class="nb">ARRAY</span><span class="p">[</span><span class="n">FILE_ID</span><span class="p">],</span><span class="k">false</span>
+    <span class="k">FROM</span> <span class="n">FILE</span>
+    <span class="k">WHERE</span> <span class="n">FILE_FULLNAME</span><span class="o">=</span><span class="s1">&#39;/usr/local/nagios&#39;</span>
+  <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> <span class="n">orig</span><span class="p">.</span><span class="n">FILE_ID</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">rec</span><span class="p">.</span><span class="n">rorder</span><span class="o">||</span><span class="s1">&#39;/&#39;</span> <span class="o">||</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_NAME</span> <span class="k">as</span> <span class="n">rorder</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_PARENT</span><span class="p">,</span>
+        <span class="n">rec</span><span class="p">.</span><span class="k">level</span><span class="o">+</span><span class="mi">1</span> <span class="k">as</span> <span class="k">level</span><span class="p">,</span><span class="n">rec</span><span class="p">.</span><span class="n">path</span><span class="o">||</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_ID</span><span class="p">,</span><span class="n">orig</span><span class="p">.</span><span class="n">FILE_ID</span><span class="o">=</span><span class="k">ANY</span><span class="p">(</span><span class="n">rec</span><span class="p">.</span><span class="n">path</span><span class="p">)</span>
+    <span class="k">FROM</span> <span class="n">rectable</span> <span class="n">rec</span><span class="p">,</span><span class="n">FILE</span> <span class="n">orig</span>
+    <span class="k">WHERE</span> <span class="n">orig</span><span class="p">.</span><span class="n">FILE_PARENT</span><span class="o">=</span><span class="n">rec</span><span class="p">.</span><span class="n">FILE_ID</span>
+    <span class="k">AND</span> <span class="k">NOT</span> <span class="k">cycle</span>
+<span class="p">)</span>
+<span class="k">SELECT</span> <span class="n">FILE_ID</span><span class="p">,</span><span class="n">FILE_NAME</span><span class="p">,</span><span class="n">rorder</span><span class="p">,</span><span class="n">FILE_TYPE</span><span class="p">,</span><span class="n">FILE_PARENT</span><span class="p">,</span><span class="k">level</span><span class="p">,</span><span class="k">cycle</span>
+<span class="k">FROM</span> <span class="n">rectable</span>
+<span class="k">ORDER</span> <span class="k">BY</span> <span class="n">rorder</span><span class="p">;</span>
+</code></pre></div>
+
+
+<p>Et ça fonctionne, on a beaucoup trop de résultats (une partie de <code>/usr/local</code> branché dans <code>/usr/local/nagios/etc/configObjects</code>) -- à cause du bug introduit --
+mais au moins la requête réponds et ne fais pas une boucle infinie.
+La détection de cycle se base ici sur l'array des Identifiants parcourus, des exemples plus complexes sont données dans la documentation
+posgreSQL citée plus haut. <strong>Attention</strong> à ne pas oublier le <code>AND NOT cycle</code> dans la sous-requête.</p>
+
+        </div>
+        <div class="tag"><i class="icon-tag"></i><a href="/tag/Bash/">Bash</a>, <i class="icon-tag"></i><a href="/tag/PostgreSQL/">PostgreSQL</a></div>
+</article>
+
+    
+    
+           </div>
+           <div id="sideBar" class="column span-8 last">
+            
+            <div class="sideBarListBox">
+              <h3>Related posts</h3>
+              <ul>
+                
+                   <li><a href="/PostgreSQL/English/2008/10/30/6_nice_things_not_known_enough_about_postgresql/">6 nice things not know enough about PostgreSQL</a></li>
+                
+              </ul>
+            </div>
+            
+    
+        <div class="sideBarListBox">
+          <h3>Latest posts</h3>
+          <ul>
+              
+                 <li><a href="/Drupal/English/2011/10/18/drupal_mongodb_statistics_module_published/">Drupal - Mongodb statistics module published</a></li>
+              
+                 <li><a href="/Drupal/English/2011/10/03/separate_cache_backends_d6_and_d7/">Separate cache Backends with Drupal6 and Drupal7.</a></li>
+              
+                 <li><a href="/Drupal/English/2011/09/01/better_rewrite_rules_for_drupal/">Better rewriteRules for Drupal</a></li>
+              
+                 <li><a href="/PostgreSQL/Francais/2010/10/14/requetes_recursives_avec_postgresql_8_4/">Requêtes récursives avec PostgreSQL 8.4 (WITH RECURSIVE)</a></li>
+              
+                 <li><a href="/Js/English/2010/08/16/nice_webapps_and_tools_using_canvas/">Nice Webapps and tools using canvas</a></li>
+              
+          </ul>
+        </div>
+        
+        <div class="sideBarMore">
+          <h3>More</h3>
+            <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
+            <a href="https://github.com/regilero" target="_blank"><img src="/theme/img/github_thumb.png" width="48" height="48" alt="Github regilero" title="Github regilero"></a>
+            <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
+            <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
+            <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+            <p>Follow me also on <a rel="me" href="http://makina-corpus.org/blogs/regilero">makina-corpus.org</a>.</p>
+        </div>
+        
+        <div class="sideBarListBox">
+          <h3>Tags</h3>
+          <a style='font-size: 70%' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 70%' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 70%' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 138%' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 70%' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 113%' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 138%' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 156%' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 70%' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 113%' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 70%' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 70%' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 113%' href='/tag/Web/'>Web</a>
+<a style='font-size: 70%' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 70%' href='/tag/js/'>js</a>
+<a style='font-size: 170%' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 113%' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 70%' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 70%' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 113%' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 170%' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 70%' href='/tag/Security/'>Security</a>
+<a style='font-size: 70%' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 70%' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 70%' href='/tag/Js/'>Js</a>
+<a style='font-size: 138%' href='/tag/Drupal/'>Drupal</a>
+
+        </div>
+        
+        <div class="sideBarItem">
+          <h3>Friends</h3>
+            <ul>
+              <li><a class="effect" target="_blank" href="http://www.makina-corpus.org">Blogs Makina Corpus<div class="cover-right"><img src="/theme/img/makinaorg.png" height="30" width="30"><img src="/theme/img/makinaorg_banner.png" height="30" width="117"></div></a></li>
+              <li><a class="effect" target="_blank" href="http://www.makina-corpus.com">Makina Corpus<div class="cover-right"><img src="/theme/img/makinacom.png" height="30" width="30"><img src="/theme/img/makinacom_banner.png" height="30" width="117"></div></a></li>
+              <li><a class="effect" target="_blank" href="http://www.processus.org/">Pounard, processus.org<div class="cover-right"><img src="/theme/img/pounard.png" height="30" width="30"><img src="/theme/img/pounard_banner.png" height="30" width="117"></div></a></li>
+              <li><a class="effect" target="_blank" href="http://toutpt.makina-corpus.org/" >Toupt<div class="cover-right"><img src="/theme/img/toupt.png" height="30" width="30"><img src="/theme/img/toupt_banner.png" height="30" width="117"></div></a></li>
+              <li><a class="effect" target="_blank" href="http://francoisgaudin.com/">François Gaudin<div class="cover-right"><img src="/theme/img/gaudin.png" height="30" width="30"><img src="/theme/img/gaudin_banner.png" height="30" width="117"></div></a></li>
+            </ul>
+            <div class="clear"></div>
+        </div>
+        
+      </div> <!-- end sidebar -->
+        
+         </div><!-- end content -->
+         
+         <div id="footer" class="column span-24 last">
+            <hr />
+            <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/"><img alt="Licence Creative Commons" style="border-width:0" src="http://i.creativecommons.org/l/by-sa/3.0/fr/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/Text" property="dct:title" rel="dct:type">regilero's blog</span> est mis à disposition selon les termes de la <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/">licence Creative Commons Attribution -  Partage dans les Mêmes Conditions 3.0 France</a>.<br />Fondé(e) sur une œuvre à <a xmlns:dct="http://purl.org/dc/terms/" href="http://regilero.github.io" rel="dct:source">http://regilero.github.io</a>.
+         </div>
+
+      </div><!-- end container -->
+    </body>
+</html>

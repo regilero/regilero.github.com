@@ -267,7 +267,7 @@ ul.topNav  {
 #left-content  h2.home-header a,
 #left-content  h2.home-header a:visited,
 #left-content  h2.home-header a:hover {
-  color: #555;
+  color: #111;
   font-size: 15px;
   line-height: 18px;
 }
@@ -395,6 +395,11 @@ a.effect img {
 
 img.left {
   margin-right: 5px;
+  margin-top: 8px;
+  margin-bottom: 5px;
+}
+img.right {
+  margin-left: 5px;
   margin-top: 8px;
   margin-bottom: 5px;
 }
