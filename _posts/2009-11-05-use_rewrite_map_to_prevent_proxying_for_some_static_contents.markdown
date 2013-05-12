@@ -275,3 +275,7 @@ asking for `/` url wont serve your source content as:
 Do not hesitate to uncomment RewriteLog and RewriteLogLevel directives to see what is done.
 Next time we'll make a static virtual directory and we'll be able to apply
 some more rule from Apache after the rewrite part.
+
+###Closely Related articles###
+
+ * [More on Static file redirector]({% post_url 2009-11-06-more_on_static_file_redirector %})

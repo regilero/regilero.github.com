@@ -217,3 +217,6 @@ As an example of debug here are some debug outputs for:
 
 Quite readable isn't it? But **do not forget to remove debug** for production env.
 
+###Closely Related articles###
+
+ * [Use RewriteMap to prevent proxying for some static contents]({% post_url 2009-11-05-use_rewrite_map_to_prevent_proxying_for_some_static_contents %})
