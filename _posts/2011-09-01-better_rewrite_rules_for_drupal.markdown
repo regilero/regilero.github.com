@@ -2,7 +2,7 @@
 layout: post
 title: Better rewriteRules for Drupal
 categories: [Drupal, English]
-tags: [Drupal, Performance, Apache, mod_rewrite, Security]
+tags: [Drupal, Performance, Apache, PHP, mod_rewrite, Security]
 pic: redflower2.png
 excerpt: A big re-think of rewrite rules for Drupal, preventing acess from index.php?q=foo default url, no .htaccess, and some other security stuff 
 
@@ -331,5 +331,5 @@ For any other help check theses links (or comment, or send me an email)
  
 ###Closely Related articles###
 
- * [Tune your php settings for Drupal](http://www.makina-corpus.org/blog/tune-your-php-settings-drupal)
+ * [Tune your php settings for Drupal]({% post_url 2011-09-02-Tune_your_php_settings_for_drupal %})
  * [Drupal with Apache & chrooted php-fpm](http://www.makina-corpus.org/blog/install-drupal-php-fpm-fastcgi-apache-and-chroot-php-fpm)

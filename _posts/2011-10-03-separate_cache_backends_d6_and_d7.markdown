@@ -2,7 +2,7 @@
 layout: post
 title: Separate cache Backends with Drupal6 and Drupal7.
 categories: [Drupal, English]
-tags: [Drupal, Performance, Cache]
+tags: [Drupal, Performance, Cache, PHP]
 pic: bee2.png
 excerpt: Detailled explanation on how to split Drupal's cache tables on several devices, as each cache does not need the same speed and/or capacity. 
 
