@@ -321,6 +321,1325 @@ Some modules provides lock alternatives which are faster (like the Redis module)
 			</item>
 		
 			<item>
+				<title>Install Drupal in php-fpm (fastcgi) with Apache and a chroot php-fpm</title>
+				<description>&lt;p&gt;Using PHP-fpm is a way to push PHP execution outside of Apache,
+one of the main reasons to use it is freeing memory usage of PHP in the apache processes
+and allowing usage of a threaded Apache server.&lt;/p&gt;
+
+&lt;p&gt;In this article we'll explain what this sentence means :-) and will detail installation
+and configuration of php-fpm for a Drupal project.&lt;br/&gt;
+We'll try to keep all the good php settings for project separation we used &lt;a href=&quot;/Drupal/English/2011/09/02/Tune_your_php_settings_for_drupal/&quot;&gt;before&lt;/a&gt;,
+and we'll try to provide a solution to the chrooted php-fpm problems.&lt;/p&gt;
+
+&lt;h2&gt;Why do we need php-fpm to solve Apache memory problems with Drupal?&lt;/h2&gt;
+
+&lt;p&gt;Well, first you are maybe not needing it.&lt;br/&gt;
+But if you experience problems with the memory usage of Drupal
+(usually big functionnal websites ask for more than 64M in PHP memory_limit)
+and the number of parallel requests handled by apache, then you'll may find
+a good solution with php-fpm.&lt;/p&gt;
+
+&lt;h3&gt;Apache processes, PHP Memory, Prefork and Worker MPM&lt;/h3&gt;
+
+&lt;p&gt;On a basic apache/PHP installation you're quite certainly using PHP as &lt;code&gt;mod_php&lt;/code&gt;,
+it means it's an &lt;strong&gt;Apache module&lt;/strong&gt;. And when &lt;code&gt;memory_limit&lt;/code&gt; is set to &lt;code&gt;64M&lt;/code&gt;
+it means &lt;strong&gt;each&lt;/strong&gt; Apache child process can grow up to 64M.
+With &lt;code&gt;mod_php&lt;/code&gt; Apache is enforced in the &lt;strong&gt;prefork&lt;/strong&gt; model,
+so &lt;strong&gt;each HTTP request use one Apache fork&lt;/strong&gt;, with &lt;code&gt;MaxClient&lt;/code&gt; limit (usually &lt;strong&gt;150&lt;/strong&gt; by default).
+By default you handle 150 parallel HTTP request.&lt;br/&gt;
+But there's also the &lt;code&gt;KeepAlive&lt;/code&gt; settings, by default &lt;strong&gt;15s&lt;/strong&gt; (but please set that to &lt;strong&gt;3s&lt;/strong&gt;),
+so a forked Apache process stay online with the client browser for that amount of time,
+and cannot handle a new request. &lt;br/&gt;
+If you use long keepalives, and even with shorts ones, chances are you'll soon need more than
+150 in MaxClients to handle parallel incoming HTTP requests.
+And here comes the &lt;strong&gt;64M&lt;/strong&gt; of RAM per apache process.
+If you want to push the MaxClients to 250 : &lt;code&gt;250 * 64M = 15,6 Go&lt;/code&gt; of RAM!&lt;/p&gt;
+
+&lt;p&gt;The &lt;strong&gt;prefork mpm&lt;/strong&gt; is the very &lt;strong&gt;old&lt;/strong&gt; way to handle incoming requests for Apache.
+One of the cool things coming with Apache 2 was the &lt;strong&gt;worker mpm&lt;/strong&gt;.
+In this mode Apache forks a &lt;em&gt;few&lt;/em&gt; process (let's say 10 for example) and use threads inside
+(from 25 to 75 by default), handling here &lt;code&gt;10*75 = 750&lt;/code&gt; HTTP requests in parallel.&lt;br/&gt;
+It would be quite cool to use that on big websites,
+for example all static files (js, css, images, ...) could be handled by parallel Apache threads,
+maybe disabling KeepAlive completly, one request, one thread, simple and fast
+(well, tests different combinations, it depends).&lt;br/&gt;
+But &lt;strong&gt;mod_php cannot be used in the worker mpm&lt;/strong&gt;.&lt;br/&gt;
+PHP 5 is multithread-enabled, but this is not the case for all PHP libraries.
+Check documentation warnings on &lt;code&gt;setlocale()&lt;/code&gt;, here if you have several languages in your websites,
+you may have mixed languages in the output if parallel threads in Apache are calling different &lt;code&gt;selocale()&lt;/code&gt;, quite bad.
+And you could encounter this with a lot of PHP extension, hard to find, hard to debug,
+this is why mod_php is always used with the old prefork model.&lt;/p&gt;
+
+&lt;h2&gt;PHP as fastcgi&lt;/h2&gt;
+
+&lt;p&gt;So we're not using all capabilities of Apache because of PHP? That's sad.&lt;br/&gt;
+But if you extract PHP from Apache and run it in his own daemon then Apache is simply acting as a proxy of your PHP content generation.&lt;br/&gt;
+This is one of the main ideas in &lt;code&gt;%cgi%&lt;/code&gt; things.
+PHP is not only available as mod_php (apache module), it can be used in cli (command line interface), so it can be used as cgi.&lt;/p&gt;
+
+&lt;p&gt;Strictly speaking cgi is a slow thing, this is why &lt;strong&gt;fastcgi&lt;/strong&gt; exists, and in the fastcgi familly there's quite a lot of possibilities
+(fastcgi fcgid, etc). I'm too lazy to explain them all.&lt;/p&gt;
+
+&lt;p&gt;The important thing is that &lt;strong&gt;php-fpm&lt;/strong&gt; is a way to &lt;strong&gt;run php as a fastcgi&lt;/strong&gt;.&lt;br/&gt;
+When Apache 2.2.4 will be there (or if you are brave enough to use Apache unstable 2.2.3),
+the right way to connect Apache and php-fpm will be the Apache module &lt;a href=&quot;http://httpd.apache.org/docs/2.4/fr/mod/mod_proxy_fcgi.html&quot;&gt;mod_proxy_fcgi&lt;/a&gt;.
+The name says all, Apache is simply proxying a fastcgi thing outside, which produces results for each given HTTP request.&lt;br/&gt;
+Waiting for that we'll instead use the apache module mod_fcgi.&lt;br/&gt;
+It works quite well, but the behaviour is not as simple and clear as the proxy behavior.
+Some Apache environment variables are still transfered to this module,
+and we'll see that using php-fpm in a chrooted environment for each project will be a little more complex
+than what it would be with the future &lt;strong&gt;mod_proxy_fastcgi&lt;/strong&gt;, anyway I'll explain a solution so we can now start the install.&lt;/p&gt;
+
+&lt;h2&gt;Installing php-fpm on Debian step by step&lt;/h2&gt;
+
+&lt;p&gt;This step by step was tested on a Debian squeeze (6.0).&lt;br/&gt;
+You'd better start it on a fresh install.
+Installing php-fpm on a server where mod_php with Apache in mpm_prefork is still needed is not possible.&lt;/p&gt;
+
+&lt;h3&gt;Adding dotdeb &amp;amp; non-free repositories&lt;/h3&gt;
+
+&lt;p&gt;We'll need the dotdeb repository&lt;/p&gt;
+
+&lt;p&gt;Add this line in /etc/apt/sources.list&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;    deb http://packages.dotdeb.org stable all
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;then add the GnuPG key&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;    wget http://www.dotdeb.org/dotdeb.gpg
+    cat dotdeb.gpg | sudo apt-key add -
+    rm dotdeb.gpg
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Apache mod_fcgi is needed to link php-fpm (and not apache-fcgid) so add the non-free repository&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;  &lt;span class=&quot;c&quot;&gt;# need non-free packages for FCGI (not FCGID)&lt;/span&gt;
+  deb http://ftp.fr.debian.org/debian/ squeeze contrib non-free
+  deb-src http://ftp.fr.debian.org/debian/ squeeze contrib non-free
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Then add contrib and non-free tags to the squeeze-update line to get:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;  &lt;span class=&quot;c&quot;&gt;# squeeze-updates, previously known as &amp;#39;volatile&amp;#39;&lt;/span&gt;
+  deb http://ftp.fr.debian.org/debian/ squeeze-updates main contrib non-free
+  deb-src http://ftp.fr.debian.org/debian/ squeeze-updates main contrib non-free
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And now that we set all the sources reload the sources informations&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;  apt-get update
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;Adding packages&lt;/h3&gt;
+
+&lt;p&gt;For PHP we'll need some packages, do that before installing apache packages, simplier&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;  apt-get install php5 php5-fpm php-pear php5-common php5-mcrypt &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+    php5-mysql php5-cli php5-gd php5-curl php5-apc
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And now enforce Apache with the worker mode (using php-fpm with apache in prefork is useless)&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;  apt-get install apache2-mpm-worker libapache2-mod-fastcgi
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;Apache modules configuration&lt;/h3&gt;
+
+&lt;p&gt;We activate the apache modules fascgi and actions&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;    a2enmod fastcgi actions
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;We add some more useful modules, headers, expires, status and rewrite&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;   a2enmod expires headers status rewrite
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And while we are working with apache modules let's removed some useles ones (this will reduce the memory footprint of Apache).
+But check that in your own installation you do not need them.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;autoindex&lt;/strong&gt; is this awfull thing listing your directory contents when you forget to protect a directory,&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;cgid&lt;/strong&gt; is a pure cgi module (still running à perl cgi app from 1995?)&lt;/li&gt;
+&lt;li&gt;and &lt;strong&gt;negotiation&lt;/strong&gt; allows some languages negociation in the HTTP protocol between the browser and the server -- you may need it, I don't--
+it could also choose to use a file with same name as the request but not the right extension, strange behavoirs incoming!&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;    a2dismod autoindex cgid negotiation
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;We add cronolog to avoid apache slowing because of log tasks. But this is not something required for php-fpm :-)&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;apt-get install cronolog
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Usage of cronolog in your apache configuration is quite simple, instead of writing this:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;ErrorLog&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/myproject/var/log/error-myproject.log&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;CustomLog&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/myproject/var/log/access-myproject.log&lt;/span&gt; combined
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;You will use that:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;ErrorLog&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;|nice -n 10 /usr/bin/cronolog /var/www/myproject/var/log/%Y/%W/%d-myproject-error.log&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;CustomLog &amp;quot;&lt;/span&gt;|nice -n &lt;span class=&quot;m&quot;&gt;10&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/usr/bin/cronolog&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/myproject/var/log/&lt;/span&gt;%Y/%W/%d-myproject-access.log&lt;span class=&quot;err&quot;&gt;&amp;quot;&lt;/span&gt; combined
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;Project Tree&lt;/h3&gt;
+
+&lt;p&gt;We'll use the project tree defined in a &lt;a href=&quot;/Drupal/English/2011/09/02/Tune_your_php_settings_for_drupal/&quot;&gt;previous article&lt;/a&gt;.
+This article was about tunning the PHP configuration, but is also managing project trees,
+so that having several Drupal projects running on the same host you encapsulate nicely each project in his own environment.&lt;br/&gt;
+We will still try to encapsultate each php-fpm Drupal project &lt;strong&gt;in a separate environment&lt;/strong&gt; so everything stated there should
+still apply in our new way of working.&lt;/p&gt;
+
+&lt;p&gt;In this tree everything was in &lt;code&gt;/var/www/nameoftheproject&lt;/code&gt;, I'll add a company prefix, so the base of the tree for my projects
+are &lt;code&gt;/var/www/makina/nameoftheproject&lt;/code&gt;. Inside I have a &lt;code&gt;www/&lt;/code&gt; directory (&lt;code&gt;documentRoot&lt;/code&gt;),
+an &lt;code&gt;etc/&lt;/code&gt; directory for configuration files, a &lt;code&gt;var/&lt;/code&gt; directory for logs and temporary files, etc.&lt;/p&gt;
+
+&lt;h3&gt;Minimal fastcgi.conf&lt;/h3&gt;
+
+&lt;p&gt;The first thing to edit is the &lt;code&gt;fastcgi.conf&lt;/code&gt; file in &lt;code&gt;/etc/apache2/mods-available/fastcgi.conf&lt;/code&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;ifmodule&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;mod_fastcgi.c=&amp;quot;&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+         &lt;span class=&quot;nb&quot;&gt;FastCgiIpcDir&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/makina/mydrupal/var/fcgi/&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/ifmodule&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Which may be smaller than thee default one you may have. Most of these things will be set in the VirtualHost configuration instead.&lt;/p&gt;
+
+&lt;p&gt;As you can see we need a &lt;code&gt;var/fcgi&lt;/code&gt; directory in our project tree.&lt;br/&gt;
+It will be used to store the &lt;strong&gt;socket&lt;/strong&gt; making the connection between apache and php-fpm.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;    mkdir -p /var/www/makina/mydrupal/var/fcgi/
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;We will leave the Apache configuration for a while and start the configuration of &lt;strong&gt;php-fpm&lt;/strong&gt;,
+we'll get back on Apache with the VirtualHost, later.&lt;/p&gt;
+
+&lt;h2&gt;FPM configuration&lt;/h2&gt;
+
+&lt;h3&gt;Main php-fpm configuration&lt;/h3&gt;
+
+&lt;p&gt;Backup conf example&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;    mv /etc/php5/fpm/pool.d/www.conf /etc/php5/fpm/pool.d/www.conf.orig
+    cp /etc/php5/fpm/php-fpm.conf /etc/php5/fpm/php-fpm.conf.bak
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Now edit the main php-fpm configuration file &lt;code&gt;/etc/php5/fpm/php-fpm.conf&lt;/code&gt; and alter it to get this content
+(the most important thing is to really get the include of the &lt;strong&gt;pool.d directory&lt;/strong&gt; at the end, and only files ending in &lt;code&gt;.conf&lt;/code&gt;):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;;;;;;;;;;;;;;;;;;;;;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; FPM Configuration ;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;;;;;;;;;;;;;;;;;;;;;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; All relative paths in this configuration file are relative to PHP&amp;#39;s install&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; prefix (/usr). This prefix can be dynamicaly changed by using the&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; &amp;#39;-p&amp;#39; argument from the command line.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Include one or more files. If glob(3) exists, it is used to include a bunch of&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; files from a glob(3) pattern. This directive can be used everywhere in the&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; file.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Relative path can also be used. They will be prefixed by:&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;;  - the global prefix if it&amp;#39;s been set (-p arguement)&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;;  - /usr otherwise&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;;include=/etc/php5/fpm/*.conf&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;;;;;;;;;;;;;;;;;;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Global Options ;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;;;;;;;;;;;;;;;;;;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;[global]&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Pid file&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Note: the default prefix is /var&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Default Value: none&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;pid = /var/run/php5-fpm.pid&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Error log file&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Note: the default prefix is /var&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Default Value: log/php-fpm.log&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;error_log = /var/log/php5-fpm.log&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Log level&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Possible Values: alert, error, warning, notice, debug&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Default Value: notice&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;log_level = notice&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; If this number of child processes exit with SIGSEGV or SIGBUS within the time&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; interval set by emergency_restart_interval then FPM will restart. A value&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; of &amp;#39;0&amp;#39; means &amp;#39;Off&amp;#39;.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Default Value: 0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;;emergency_restart_threshold = 0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Interval of time used by emergency_restart_interval to determine when&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; a graceful restart will be initiated.  This can be useful to work around&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; accidental corruptions in an accelerator&amp;#39;s shared memory.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Available Units: s(econds), m(inutes), h(ours), or d(ays)&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Default Unit: seconds&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Default Value: 0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;;emergency_restart_interval = 0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Time limit for child processes to wait for a reaction on signals from master.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Available units: s(econds), m(inutes), h(ours), or d(ays)&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Default Unit: seconds&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Default Value: 0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;;process_control_timeout = 0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Send FPM to background. Set to &amp;#39;no&amp;#39; to keep FPM in foreground for debugging.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Default Value: yes&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;;daemonize = yes&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;;;;;;;;;;;;;;;;;;;;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Pool Definitions ;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;;;;;;;;;;;;;;;;;;;;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; Multiple pools of child processes may be started with different listening&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; ports and different management options.  The name of the pool will be&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; used in logs and stats. There is no limitation on the number of pools which&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; FPM can handle. Your system will tell you anyway :)&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; To configure the pools it is recommended to have one .conf file per&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;; pool in the following directory:&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;include=/etc/php5/fpm/pool.d/*.conf&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;php-fpm Pool configuration&lt;/h3&gt;
+
+&lt;p&gt;The &lt;strong&gt;pool&lt;/strong&gt; is your project.&lt;br/&gt;
+php-fpm can run several pools, we'll use one for each separate project.&lt;br/&gt;
+So for a project named &lt;em&gt;mydrupal&lt;/em&gt; we'll use a file &lt;code&gt;/etc/php5/fpm/pool.d/mydrupal.conf&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;you can read the &lt;code&gt;/etc/php5/fpm/pool.d/www.conf.orig&lt;/code&gt; file to see what a default pool can contain.
+The most important parameters are &lt;strong&gt;prefix&lt;/strong&gt; and &lt;strong&gt;chroot&lt;/strong&gt;.&lt;br/&gt;
+A complete pool configuration is given a few lines below. But before reading it we'll need to understand the &lt;strong&gt;chroot problem&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;h3&gt;Chrooted php-fpm&lt;/h3&gt;
+
+&lt;p&gt;As said before &lt;strong&gt;mod_proxy_fcgi&lt;/strong&gt; will soon be the right way to connect Apache and php-fpm, especially if you want chrooted php-fpm instances.&lt;/p&gt;
+
+&lt;p&gt;In &lt;strong&gt;mod_fastcgi&lt;/strong&gt; we cannot alter &lt;code&gt;DOCUMENT_ROOT&lt;/code&gt; and &lt;code&gt;SCRIPT_FILENAME&lt;/code&gt; environment variables,
+and these variables contain the &lt;strong&gt;non-chrooted informations&lt;/strong&gt;.&lt;br/&gt;
+I made a lot of tests with &lt;strong&gt;mod_rewrite&lt;/strong&gt;, php &lt;strong&gt;auto_prepend_file&lt;/strong&gt;, etc, no way to fix that.&lt;br/&gt;
+While waiting for that solution the only &lt;em&gt;'solution'&lt;/em&gt; is to &lt;strong&gt;rebuild the real path&lt;/strong&gt; in the php-fpm's pool chroot
+and &lt;strong&gt;link the www directory to the real one&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;Without the chroot things are quite simple, you can try it before if you want.&lt;br/&gt;
+With the chroot options in php-fpm we enforce the php-fpm execution in &lt;code&gt;/var/www/makina/mydrupal&lt;/code&gt; (the pool prefix).&lt;br/&gt;
+No way to get to a parent directory. Fine for parallel projects security.&lt;br/&gt;
+But php-fpm receive a &lt;code&gt;DocumentRoot&lt;/code&gt; from apache, telling it should move (cd) into &lt;code&gt;var/www/makina/mydrupal/www&lt;/code&gt;.&lt;br/&gt;
+Well we're already quite there, we would like just a move to &lt;code&gt;www/&lt;/code&gt;, but for php-fpm this means it needs to go to
+&lt;code&gt;/var/www/makina/mydrupal/var/www/makina/mydrupal/www&lt;/code&gt;... And no way to alter this document root and script filename received instructions.&lt;/p&gt;
+
+&lt;p&gt;So in our working project &lt;code&gt;/var/www/makina/mydrupal&lt;/code&gt; where php files are in &lt;code&gt;www/&lt;/code&gt; we do &lt;strong&gt;a symbolic link&lt;/strong&gt; of this too long path
+to the short one we would like to have:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;    &lt;span class=&quot;nb&quot;&gt;export&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$pool&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;mydrupal
+    &lt;span class=&quot;nb&quot;&gt;cd&lt;/span&gt; /var/www/makina/&lt;span class=&quot;nv&quot;&gt;$pool&lt;/span&gt;
+    mkdir -p var/www/makina/&lt;span class=&quot;nv&quot;&gt;$pool&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;# warn, not absolute /var... but relative var/....&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;cd &lt;/span&gt;var/www/makina/&lt;span class=&quot;nv&quot;&gt;$pool&lt;/span&gt;
+    ln -s ../../../../www/ www
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Yes, &lt;strong&gt;that's ugly&lt;/strong&gt;, but at least we can now have a working php-fpm pool which is chrooted in &lt;code&gt;/var/www/makina/mydrupal&lt;/code&gt;.&lt;br/&gt;
+Wait for &lt;strong&gt;mod_proxy_fcgi&lt;/strong&gt; or avoid using chroot in php-fpm if you do not want that.&lt;/p&gt;
+
+&lt;p&gt;The final tree is:&lt;/p&gt;
+
+&lt;pre&gt;
+/ ==&gt; [/ for everyone except the chrooted php-fpm]
+  \-/var/
+    \-www/
+      \-makina/
+        \-mydrupal/ [base of the chroot for php-fpm (/ for him)
+          \-etc/
+          \-doc/
+          \-www/ ===&gt; [A], DocumentRoot, here is Drupal
+          \-var/
+            \-tmp/
+            \-log
+            \-www/ ==&gt; empty
+              \-makina/ ==&gt; empty
+                \-mydrupal/ ==&gt; empty
+                  \-www/ ===&gt; symbolic link to [A]
+&lt;/pre&gt;
+
+
+&lt;p&gt;&lt;strong&gt;Warning&lt;/strong&gt;: see update at the end of article, there is maybe one way of not doing that&lt;/p&gt;
+
+&lt;p&gt;Let's have a look at this pool configuration file (&lt;code&gt;/etc/php5/fpm/pool.d/mydrupal.conf&lt;/code&gt;):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;    ; Start a new pool named &amp;#39;mydrupal&amp;#39;.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; the variable $pool can we used in any directive and will be replaced by the&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; pool name (&amp;#39;mydrupal&amp;#39; here)&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    [mydrupal]&lt;/span&gt;
+
+&lt;span class=&quot;x&quot;&gt;    ; Per pool prefix&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; It only applies on the following directives:&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; - &amp;#39;slowlog&amp;#39;, &amp;#39;listen&amp;#39;,&amp;#39;chroot&amp;#39;,&amp;#39;chdir&amp;#39;,&amp;#39;php_values&amp;#39;,&amp;#39;php_admin_values&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    prefix = /var/www/makina/$pool&lt;/span&gt;
+
+&lt;span class=&quot;x&quot;&gt;    ; The address on which to accept FastCGI requests.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ;without prefix: listen = /var/www/makina/$pool/var/fcgi/$pool.sock&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    listen = var/fcgi/$pool.sock&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    listen.allowed_clients = 127.0.0.1&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    listen.owner = www-data&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    listen.group = www-data&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    listen.mode = 0660&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    user = www-data&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    group = www-data&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    pm = dynamic&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    pm.max_children = 50&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    pm.start_servers = 20&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    pm.min_spare_servers = 5&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    pm.max_spare_servers = 35&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ;pm.max_requests = 500&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    pm.status_path = /myfpmstatus&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    request_terminate_timeout = 30s&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    request_slowlog_timeout = 10s&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; WARNING: chroot does not apply on this setting (??)&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    slowlog = /var/www/makina/$pool/var/log/$pool.log.slow&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; Chroot to this directory at the start. This value must be defined as an&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; absolute path. When this value is not set, chroot is not used.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    chroot = $prefix&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    chdir = /&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    catch_workers_output = yes&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    env[HOSTNAME] = $HOSTNAME&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    env[TMP] = /var/tmp&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    env[TMPDIR] = /var/tmp&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    env[TEMP] = /var/tmp&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    env[DOCUMENT_ROOT] = /www&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; Additional php.ini defines, specific to this pool of workers. These settings&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;   &lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[open_basedir] = &amp;quot;.:/www:/var/tmp&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_value[include_path]=&amp;quot;.:/www:/www/include&amp;quot;&lt;/span&gt;
+
+&lt;span class=&quot;x&quot;&gt;    ; UPLOAD&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_flag[file_uploads]=1&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[upload_tmp_dir]=&amp;quot;/var/tmp&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ;Maximum allowed size for uploaded files.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[upload_max_filesize]=&amp;quot;50M&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[max_input_time]=120&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[post_max_size]=&amp;quot;50M&amp;quot;&lt;/span&gt;
+
+&lt;span class=&quot;x&quot;&gt;    ;#### LOGS&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_flag[log_errors] = on&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[log_errors]=1&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ;php_flag[display_errors] = on&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[display_errors]=0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[display_startup_errors]=0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[html_errors]=0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[define_syslog_variables]=0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_value[error_reporting]=6143&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; Maximum execution time of each script, in seconds (30)&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_value[max_input_time]=&amp;quot;120&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; Maximum amount of time each script may spend parsing request data&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_value[max_execution_time]=&amp;quot;300&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; Maximum amount of memory a script may consume (8MB)&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_value[memory_limit]=&amp;quot;100M&amp;quot;&lt;/span&gt;
+
+&lt;span class=&quot;x&quot;&gt;    ; Sessions: IMPORTANT reactivate garbage collector on Debian!!!&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_value[session.gc_maxlifetime]=3600&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[session.gc_probability]=1&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[session.gc_divisor]=100&lt;/span&gt;
+
+&lt;span class=&quot;x&quot;&gt;    ; SECURITY&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[magic_quotes_gpc]=0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[register_globals]=0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[session.auto_start]=0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[mbstring.http_input]=&amp;quot;pass&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[mbstring.http_output]=&amp;quot;pass&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[mbstring.encoding_translation]=0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[expose_php]=0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[allow_url_fopen]=1&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[safe_mode]=0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[expose_php]=0&lt;/span&gt;
+
+&lt;span class=&quot;x&quot;&gt;    ; enforce filling PATH_INFO &amp;amp; PATH_TRANSLATED&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; and not only SCRIPT_FILENAME&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[cgi.fix_pathinfo]=1&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; 1: will use PATH_TRANSLATED instead of SCRIPT_FILENAME&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[cgi.discard_path]=0&lt;/span&gt;
+
+&lt;span class=&quot;x&quot;&gt;    ; FASTCGI chrooted - HACKING SCRIPT_FILENAME&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; if any script in the project try to access some $_SERVER&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; keys that are not ok in php-fpm mode, then use this&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; script to alter/move the $_SERVER array&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; the script should be at the root of the project (before the www)&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; in the chrooted project&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ;php_admin_value[auto_prepend_file]=&amp;quot;/fix_phpfpm_env.php&amp;quot;&lt;/span&gt;
+
+&lt;span class=&quot;x&quot;&gt;    ; APC settings ###################&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; package given from dotdeb is recent&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; if you don&amp;#39;t like it:&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; apt-get install php-dev php-pear make libpcre3-dev; pecl install apc;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; then : echo &amp;quot;extension=apc.so&amp;quot; &amp;gt;&amp;gt; /etc/php5/conf.d/apc.ini&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; and : echo &amp;quot;extension=apc.so&amp;quot; &amp;gt;&amp;gt; /etc/php5/fpm/conf.d/apc.ini&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    ; enabling apc&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[apc.enabled]=1&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    # allow progress upload bars&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[apc.rfc1867]=1&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    # better require_once engine&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[apc.include_once_override]=1&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    # make all path absolutes&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[apc.canonicalize]=1&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    # only on PRODUCTION SERVER: do not check for file updates (0)&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    # set it to 1 in DEVELOPMENT servers&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[apc.stat]=1&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    # Shared memory size&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    # check for max SHM in sysctl: sysctl -a|grep shmmax| awk -F&amp;#39;=&amp;#39; &amp;#39;{print $2/1024/1024 &amp;quot; Mo&amp;quot;}&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    # usually 32M. to get greater (like here 64Mo), do:&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    # sysctl -w kernel.shmmax=67108864;sysctl -p /etc/sysctl.conf&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[apc.shm_size]=64M&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    # thanks facebook for these 2 ones, lazy usage of function from opcode&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    # load only required functions &amp;amp; classes on-demand. Effects should be tested&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    # for each app&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[apc.lazy_functions]=1&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    # last time I&amp;#39;ve checked this made a WOD on Drupal...&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[apc.lazy_classes]=0&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    # better use cli optimizations in fpm mode, no?&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;    php_admin_value[apc.enable_cli]=1&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;Application VirtualHost&lt;/h3&gt;
+
+&lt;p&gt;Now we are going to create our Apache Virtualhost and our php-fpm project.&lt;br/&gt;
+You may need to tests things while creating all theses things. So I'll give you a few commands that could help you&lt;/p&gt;
+
+&lt;h4&gt;testing apache configuration:&lt;/h4&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;  &lt;span class=&quot;c&quot;&gt;#loading apache env variables (see the dot-space)&lt;/span&gt;
+  . /etc/apache2/envvars
+  &lt;span class=&quot;c&quot;&gt;# test apache configuration&lt;/span&gt;
+  apache2 -t
+  &lt;span class=&quot;c&quot;&gt;# list apache virtualhosts&lt;/span&gt;
+  apache2 -S
+  &lt;span class=&quot;c&quot;&gt;# list apache modules&lt;/span&gt;
+  apache2 -M
+  &lt;span class=&quot;c&quot;&gt;# restarting php-fpm (yes, not done via apache restart)&lt;/span&gt;
+  /etc/init.php5-fpm restart
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;We need to creat the Apache VirtualHost for our current project.&lt;br/&gt;
+We'll put the source in our project directory &lt;code&gt;etc/&lt;/code&gt; and link it to the main apache virtualhosts repository.&lt;br/&gt;
+But you could edit it directly in &lt;code&gt;/etc/apache2/sites-available&lt;/code&gt; if you want
+(I'm in fact even storing the pool configuration here and linking it to &lt;code&gt;/etc/php5/fpm/pool.d&lt;/code&gt;).&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;    touch /var/www/makina/mydrupal/etc/apache.conf
+    ln -s /var/www/makina/mydrupal/etc/apache.conf /etc/apache2/site-available/101-mydrupal
+    a2ensite 101-mydrupal
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And now we need to write some content inside this &lt;code&gt;/var/www/makina/mydrupal/etc/apache.conf&lt;/code&gt;.&lt;br/&gt;
+And in this Virtualhost we'll need to connect the PHP scripts to the php-fpm.
+So I'll first gives you a complete VirtualHost and then we will detail how the php-fpm is managed inside.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;virtualHost&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;*:80&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;ServerName&lt;/span&gt; mydrupal.example.com
+    &lt;span class=&quot;nb&quot;&gt;DocumentRoot&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/makina/mydrupal/www&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;LogLevel&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;debug&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;#LogLevel warn&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;#LogLevel notice&lt;/span&gt;
+ 
+    &lt;span class=&quot;c&quot;&gt;# Debug mod_rewrite&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;#RewriteEngine On&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;#RewriteLogLevel 9&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;#RewriteLog /tmp/rewritelog.log&lt;/span&gt;
+ 
+    &lt;span class=&quot;c&quot;&gt;# classic&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;#ErrorLog /var/www/makina/mydrupal/var/log/error.log&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;#CustomLog /var/www/makina/mydrupal/var/log/access.log combined&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;# or via cronolog&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;ErrorLog&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;|nice -n 10 /usr/bin/cronolog /var/www/makina/mydrupal/var/log/%Y/%W/%d-mydrupal-error.log&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;    CustomLog &amp;quot;&lt;/span&gt;|nice -n &lt;span class=&quot;m&quot;&gt;10&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/usr/bin/cronolog&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/makina/mydrupal/var/log/&lt;/span&gt;%Y/%W/%d-mydrupal-access.log&lt;span class=&quot;s2&quot;&gt;&amp;quot; combined&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;    &amp;lt;Directory / &amp;gt;&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;            Order deny,allow&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;            deny from all&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;            Options FollowSymLinks&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;            # PREVENT .htaccess reading&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;            AllowOverride None&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;            #.svn &amp;amp; .git directories must be avoided!!&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;            RedirectMatch 404 /\.svn(/|$)&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;            RedirectMatch 404 /\.git(/|$)&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;    &amp;lt;/Directory&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;    # phpfpm/fastcgi&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;    # Here we catch the &amp;#39;false&amp;#39; Location used to inexistent php5.external&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;    # and push it to the external FastCgi process via a socket&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;    # note: socket path is relative to FastCgiIpcDir&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;    # which is set in Main configuration /etc/apache2/mods-available/fastcgi.conf&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;    &amp;lt;IfModule mod_fastcgi.c&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        # all .php files will be pushed to a php5-fcgi handler&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        AddHandler php5-fcgi .php&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        #action module will let us run a cgi script based on handler php5-fcgi&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        Action php5-fcgi /fcgi-bin/php5.external&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        # and we add an Alias to the fcgi location&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        Alias /fcgi-bin/php5.external /php5.external&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        # now we catch this cgi script which in fact does not exists on filesystem&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        # we catch it on the url (Location)&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        &amp;lt;Location /fcgi-bin/php5.external&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;            # here we prevent direct access to this Location url,&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;            # env=REDIRECT_STATUS will let us use this fcgi-bin url&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;            # only after an internal redirect (by Action upper)&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;            Order Deny,Allow&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;            Deny from All&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;            Allow from env=REDIRECT_STATUS&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        &amp;lt;/Location&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;    &amp;lt;/IfModule&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;     &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;    FastCgiExternalServer /php5.external -socket mydrupal.sock -appConnTimeout 30 -idle-timeout 60&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;    # Project directory&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;    &amp;lt;Directory /var/www/makina/mydrupal/www&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        Order allow,deny&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        Allow from all&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        # Follow symbolic links in this directory.&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        Options +FollowSymLinks -Indexes -Multiviews&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        # Set the default handler.&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        DirectoryIndex index.php&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        # Customized error messages.&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        ErrorDocument 404 /index.php&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;       # Various rewrite rules.&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        &amp;lt;IfModule mod_rewrite.c&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;            RewriteEngine on&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                ######### START RULE 1##################################&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # cleanurl is activated so ALL urls&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # MUSt be accessed on /too/titi and MUSN&amp;#39;T be accessed on index.php?q=/toto/titi&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # main reason is that applying url rules (like restricting /admin access is far easier&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # in the cleanurl form than in parameter form (check commented rule on QUERY_STRING&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # below as QUERY_STRING as no url decode done in Apache, see that it&amp;#39;s harder)&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # WARNING: need to alter any &amp;#39;q&amp;#39; parameter that could be present&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # on original QUERY_STRING (part after the ?), or something&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # like /toto?q=admin could become a q=toto&amp;amp;q=admin&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # which is finally a q=admin, so we do not restrict&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # this rule to index.php&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                #########################################################&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # WARNING: must prevent real internal redirect of :&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # /toto/titi to q=/toto/titi (done in rule 2)&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # to be forbidden, so the rule apply only&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # if the rewriting process is starting&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                RewriteCond %{ENV:REDIRECT_STATUS} ^$&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                #detect non-blank QUERY_STRING (some parameters are present after the ?&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                RewriteCond %{QUERY_STRING} . [NC]&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # simplier one: we prevent any query with a q= parameter&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                RewriteCond %{QUERY_STRING} (^|&amp;amp;|%26|%20)(q|Q|%71|%51)(=|%3D). [NC]&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # 403 FORBIDDEN !&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                RewriteRule .* - [F,L]&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                ########## END RULE 1 ###################&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                ########## START RULE 2 ###################&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # cleanurl handling&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # for things which aren&amp;#39;t real files or dir then&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # take the given url and giv it to index.php?q=...&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                ###########################################&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # all url that didn&amp;#39;t match ALL previous rewriteCond are still there&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # squeeze real files or directories, if they really exists&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # then Drupal won&amp;#39;t be called  &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                RewriteCond %{REQUEST_FILENAME} !-f&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                RewriteCond %{REQUEST_FILENAME} !-d&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # do not handle the favicon with Drupal bootstrap&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                RewriteCond %{REQUEST_URI} !=/favicon.ico&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # This one is needed in php-fpm mode to avoid infinite redirects&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                RewriteCond %{REQUEST_FILENAME} !=/var/www/makina/mydrupal/www/fcgi-bin/php5.external&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # put everything still there to Drupal index.php&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # [L]= stop rewriting here for matching rules&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # [QSA]=Appends any query string created in the rewrite target&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                # to any query string that was in the original request URL&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                RewriteRule ^(.*)$ index.php?q=$1 [L,QSA]&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;                ########## END RULE 2 ###################&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        &amp;lt;/IfModule&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt; &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        ### DRUPAL ###&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        # Protect files and directories from prying eyes.&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        &amp;lt;FilesMatch &amp;quot;&lt;/span&gt;\.(engine|inc|info|install|make|module|profile|test|po|sh|.*sql|theme|tpl(\.php)?|xtmpl)$|^(\..*|Entries.*|Repository|Root|Tag|Template)$&lt;span class=&quot;s2&quot;&gt;&amp;quot;&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;          Order allow,deny&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        &amp;lt;/FilesMatch&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;         &lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        # Make Drupal handle any 404 errors.&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        ErrorDocument 404 /index.php&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        # Force simple error message for requests for non-existent favicon.ico.&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;        &amp;lt;Files favicon.ico&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;          # There is no end quote below, for compatibility with Apache 1.3.&lt;/span&gt;
+&lt;span class=&quot;s2&quot;&gt;          ErrorDocument 404 &amp;quot;&lt;/span&gt;The requested file favicon.ico was not found.
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Files&amp;gt;&lt;/span&gt;
+         
+        &lt;span class=&quot;c&quot;&gt;# Requires mod_expires to be enabled.&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;IfModule&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;mod_expires.c&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+            &lt;span class=&quot;c&quot;&gt;# Enable expirations.&lt;/span&gt;
+            &lt;span class=&quot;nb&quot;&gt;ExpiresActive&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;On&lt;/span&gt;
+            &lt;span class=&quot;c&quot;&gt;# Cache all files for 2 weeks after access (A).&lt;/span&gt;
+            &lt;span class=&quot;nb&quot;&gt;ExpiresDefault&lt;/span&gt; A1209600
+            &lt;span class=&quot;nt&quot;&gt;&amp;lt;FilesMatch&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;\.php$&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+                &lt;span class=&quot;c&quot;&gt;# Do not allow PHP scripts to be cached unless they explicitly send cache&lt;/span&gt;
+                &lt;span class=&quot;c&quot;&gt;# headers themselves. Otherwise all scripts would have to overwrite the&lt;/span&gt;
+                &lt;span class=&quot;c&quot;&gt;# headers set by mod_expires if they want another caching behavior. This may&lt;/span&gt;
+                &lt;span class=&quot;c&quot;&gt;# fail if an error occurs early in the bootstrap process, and it may cause&lt;/span&gt;
+                &lt;span class=&quot;c&quot;&gt;# problems if a non-Drupal PHP file is installed in a subdirectory.&lt;/span&gt;
+                &lt;span class=&quot;nb&quot;&gt;ExpiresActive&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;Off&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;lt;/FilesMatch&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;/IfModule&amp;gt;&lt;/span&gt;
+
+        &lt;span class=&quot;c&quot;&gt;# Rules to correctly serve gzip compressed CSS and JS files.&lt;/span&gt;
+          &lt;span class=&quot;c&quot;&gt;# Requires both mod_rewrite and mod_headers to be enabled.&lt;/span&gt;
+          &lt;span class=&quot;nt&quot;&gt;&amp;lt;IfModule&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;mod_headers.c&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+            &lt;span class=&quot;c&quot;&gt;# Serve gzip compressed CSS files if they exist and the client accepts gzip.&lt;/span&gt;
+            &lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{HTTP:Accept-encoding} gzip
+            &lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_FILENAME}\.gz -s
+            &lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; ^(.*)\.css $1\.css\.gz [QSA]
+ 
+            &lt;span class=&quot;c&quot;&gt;# Serve gzip compressed JS files if they exist and the client accepts gzip.&lt;/span&gt;
+            &lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{HTTP:Accept-encoding} gzip
+            &lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_FILENAME}\.gz -s
+            &lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; ^(.*)\.js $1\.js\.gz [QSA]
+         
+            &lt;span class=&quot;c&quot;&gt;# Serve correct content types, and prevent mod_deflate double gzip.&lt;/span&gt;
+            &lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; \.css\.gz$ - [T=text/css,E=no-gzip:1]
+            &lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; \.js\.gz$ - [T=text/javascript,E=no-gzip:1]
+         
+            &lt;span class=&quot;nt&quot;&gt;&amp;lt;FilesMatch&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;(\.js\.gz|\.css\.gz)$&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+              &lt;span class=&quot;c&quot;&gt;# Serve correct encoding type.&lt;/span&gt;
+              &lt;span class=&quot;nb&quot;&gt;Header&lt;/span&gt; append Content-Encoding gzip
+              &lt;span class=&quot;c&quot;&gt;# Force proxies to cache gzipped &amp;amp; non-gzipped css/js files separately.&lt;/span&gt;
+              &lt;span class=&quot;nb&quot;&gt;Header&lt;/span&gt; append Vary Accept-Encoding
+            &lt;span class=&quot;nt&quot;&gt;&amp;lt;/FilesMatch&amp;gt;&lt;/span&gt;
+          &lt;span class=&quot;nt&quot;&gt;&amp;lt;/IfModule&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
+ 
+   &lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/var/www/makina/mydrupal/var/tmp&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;AllowOverride&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;None&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;Order&lt;/span&gt; allow,deny
+        &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
+        &lt;span class=&quot;c&quot;&gt;# avoid execution of PHP scripts in upload directory&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;AddType&lt;/span&gt; text/plain .php
+        &lt;span class=&quot;nb&quot;&gt;AddType&lt;/span&gt; text/plain .phps
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
+ 
+
+   &lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/var/www/makina/mydrupal/www/sites/default/files&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;AllowOverride&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;None&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;Order&lt;/span&gt; allow,deny
+        &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
+        &lt;span class=&quot;c&quot;&gt;# avoid execution of PHP scripts in uploaded files&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;AddType&lt;/span&gt; text/plain .php
+        &lt;span class=&quot;nb&quot;&gt;AddType&lt;/span&gt; text/plain .phps
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
+ 
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;Location&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/cron.php&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;Order&lt;/span&gt; deny,allow
+        &lt;span class=&quot;nb&quot;&gt;deny&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;allow&lt;/span&gt; from &lt;span class=&quot;m&quot;&gt;127.0.0.1&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Location&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/VirtualHost&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;This VirtualHost contains some parts of the &lt;a href=&quot;/Drupal/English/2011/09/01/better_rewrite_rules_for_drupal/&quot;&gt;previous article&lt;/a&gt;
+(like extended rewrite rules) but the main php-fpm things are:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;an &lt;strong&gt;handler php5-fcgi&lt;/strong&gt; for all &lt;code&gt;.php&lt;/code&gt; files&lt;/li&gt;
+&lt;li&gt;an &lt;strong&gt;action&lt;/strong&gt; catching this php5-fcgi telling apache to push that to a file &lt;strong&gt;/fcgi-bin/php5.external&lt;/strong&gt; (keep cool, all theses things are virtual)&lt;/li&gt;
+&lt;li&gt;an &lt;strong&gt;alias&lt;/strong&gt; catching this &lt;strong&gt;/fcgi-bin/php5.external&lt;/strong&gt; and pushing it to the url &lt;strong&gt;/php5.external&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;a &lt;strong&gt;Location&lt;/strong&gt; directive, handling only the &lt;strong&gt;/php5.external&lt;/strong&gt; url, where we enforce the fact this url cannot be accessed directly, only via internal redirects (so from all the previous points here)&lt;/li&gt;
+&lt;li&gt;The connection of a &lt;strong&gt;virtual file name php.external&lt;/strong&gt; to a &lt;strong&gt;fastcgi service&lt;/strong&gt;, via a given socket. It's the line containing &lt;code&gt;FastCgiExternalServer&lt;/code&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;So that's all. Any HTTP request for something not static or rejected ends to Drupal's index.php,
+which is then redirected internally to the virtual external file (php.external),
+where it's connected to a socket mydrupal.sock which is relative to the &lt;code&gt;FastCgiIpcDir&lt;/code&gt; we defined previously,
+so it's &lt;code&gt;/var/www/makina/mydrupal/var/fcgi/mydrupal.sock&lt;/code&gt;. &lt;br/&gt;
+This is the socket used for the communication channel between php-fpm and Apache.&lt;br/&gt;
+In the php-fpm pool configuration we defined this same socket with the listen command
+(without prefix: &lt;code&gt;/var/www/makina/mydrupal/var/fcgi/mydrupal.sock&lt;/code&gt; and with the chroot and prefix: &lt;code&gt;listen = var/fcgi/mydrupal.sock&lt;/code&gt;).&lt;/p&gt;
+
+&lt;h3&gt;File access rights&lt;/h3&gt;
+
+&lt;p&gt;We need to apply some rights for the apache user.&lt;br/&gt;
+Basically the www-user needs &lt;strong&gt;read access&lt;/strong&gt; to the Web Document Root and some &lt;strong&gt;write&lt;/strong&gt; rights on the &lt;code&gt;sites/default/files&lt;/code&gt; directory.&lt;/p&gt;
+
+&lt;p&gt;Here is a list of commands that should do the trick, could certainly be done in other ways (like more restrictive, I'll update it one day).&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt; &lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;apply ownership&amp;quot;&lt;/span&gt;
+ chown -R root:www-data /var/www/makina/mydrupal/*
+ &lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;default directories read rights&amp;quot;&lt;/span&gt;
+ find /var/www/makina/mydrupal/www &lt;span class=&quot;se&quot;&gt;\(&lt;/span&gt; -type d -wholename &lt;span class=&quot;s2&quot;&gt;&amp;quot;/var/www/makina/mydrupal/www/sites/default/files&amp;quot;&lt;/span&gt; -prune &lt;span class=&quot;se&quot;&gt;\)&lt;/span&gt; -o -type d -exec chmod 2750 &lt;span class=&quot;o&quot;&gt;{}&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\;&lt;/span&gt;
+ &lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;default files read rights&amp;quot;&lt;/span&gt;
+ find /var/www/makina/mydrupal/www  &lt;span class=&quot;se&quot;&gt;\(&lt;/span&gt; -type f -wholename &lt;span class=&quot;s2&quot;&gt;&amp;quot;/var/www/makina/mydrupal/www/sites/default/files&amp;quot;&lt;/span&gt; -prune &lt;span class=&quot;se&quot;&gt;\)&lt;/span&gt; -o -type f -exec chmod 0640 &lt;span class=&quot;o&quot;&gt;{}&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\;&lt;/span&gt;
+ &lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;directories write rights&amp;quot;&lt;/span&gt;
+ find /var/www/makina/mydrupal/www/sites/default/files -type d -exec chmod 2770 &lt;span class=&quot;o&quot;&gt;{}&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\;&lt;/span&gt;
+ &lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;files write rights&amp;quot;&lt;/span&gt;
+ find /var/www/makina/mydrupal/www/sites/default/files -type f -exec chmod 0660 &lt;span class=&quot;o&quot;&gt;{}&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\;&lt;/span&gt;
+ chown root:www-data /var/www/makina/mydrupal/
+ chown root:www-data /var/www/makina/mydrupal/var/fcgi
+ chmod 2770 /var/www/makina/mydrupal/var/fcgi
+ chown -R root:www-data /var/www/makina/mydrupal/var/tmp
+ chmod 2770 /var/www/makina/mydrupal/var/tmp
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;Starting &amp;amp; Stoping Apache &amp;amp; PHP&lt;/h3&gt;
+
+&lt;p&gt;Remember that php-fpm is not anymore linked to apache, so you'have an init script for php as well.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;    /etc/init.d/php5-fpm &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;start|stop&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Exactly like mysql or apache2. You may check that the /etc/rc*/ files are there for the startup scripts&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;    ls -alh /etc/rc*.d/???php5-fpm
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h2&gt;Final steps, Database &amp;amp; Settings&lt;/h2&gt;
+
+&lt;p&gt;No surprises here, I'm quite sure you know how to perform all theses steps. But that's a step by step, so here are the last ones&lt;/p&gt;
+
+&lt;p&gt;Well, in fact you may have one surprise in the settings.php&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;    apt-get install mysql-server-5.1
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Create database and user for application (alter the default passwords and users of course):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;    &lt;span class=&quot;n&quot;&gt;mysql&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;u&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;root&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;CREATE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;DATABASE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mydrupal&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;CHARACTER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;SET&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;utf8&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;COLLATE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;utf8_bin&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;GRANT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;PRIVILEGES&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ON&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mydrupal&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TO&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mydrupaluser&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;localhost&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;IDENTIFIED&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;mydrupaluserpassord&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FLUSH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;PRIVILEGES&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Alter application conf to use real database user and paths. For drupal it's usually in &lt;code&gt;[project root]/www/sites/default/settings.php&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Import the project dump if it's already available, or get to the &lt;code&gt;http://mydrupal.example.com/install.php&lt;/code&gt; url (or use &lt;code&gt;drush install&lt;/code&gt;).&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;   mysql -u mydrupaluser --password&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;mydrupaluserpassord&amp;quot;&lt;/span&gt; --character-set&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;utf8 mydrupal &amp;lt; /var/www/makina/mydrupal/sql/dump.sql
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;Where's my surprise in the settings.php?&lt;/h3&gt;
+
+&lt;p&gt;Yes, if you defined previously the temporary directory in the settings file, which is a very good place to define it
+(I'm not a very good fan of configuration stored in database), you may have something like:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;    $conf[&amp;#39;file_directory_temp&amp;#39;] = &amp;#39;/var/www/makina/mydrupal/var/tmp&amp;#39;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Or even&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;    $conf[&amp;#39;file_directory_temp&amp;#39;] = &amp;#39;/tmp&amp;#39;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;But now we're in a chroot, the new path is:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;    $conf[&amp;#39;file_directory_temp&amp;#39;] = &amp;#39;/var/tmp&amp;#39;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And the same thing apply for any filesystem related setting in drupal (but you should not have a lot of them).&lt;/p&gt;
+
+&lt;h2&gt;Update. Avoid chroot symlink hack with doc_root php setting?&lt;/h2&gt;
+
+&lt;p&gt;A very nice backtrack.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;http://auntitled.blogspot.com/2011/10/chroot-php-fpm-and-apache.html&quot;&gt;http://auntitled.blogspot.com/2011/10/chroot-php-fpm-and-apache.html&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;The autor finally found a useful usage of php &lt;a href=&quot;http://www.php.net/manual/en/ini.core.php#ini.doc-root&quot;&gt;doc_root&lt;/a&gt; setting and explain it could help avoiding the fake document root symnlink inside the chroot.&lt;/p&gt;
+
+&lt;h3&gt;Closely Related articles&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;/Drupal/English/2011/09/01/better_rewrite_rules_for_drupal/&quot;&gt;Better Rewrite Rules for Drupal&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;/Drupal/English/2011/09/02/Tune_your_php_settings_for_drupal/&quot;&gt;Tune your php settings for Drupal&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+				<published>2011-09-03 00:00:00 +0200</published>
+				<link>http://regilero.github.io//Drupal/English/2011/09/03/Install_drupal_in_php_fpm_fastcgi_and_apache_chroot/</link>
+			</item>
+		
+			<item>
+				<title>Tune your php settings for Drupal</title>
+				<description>&lt;p&gt;In this article we'll study how to tune the &lt;code&gt;php.ini&lt;/code&gt; settings for a Drupal host,
+how to manage variations of theses settings &lt;strong&gt;per Virtalhosts&lt;/strong&gt;,
+and of course how to do it without the ugly &lt;code&gt;.htaccess&lt;/code&gt; file.&lt;/p&gt;
+
+&lt;h2&gt;Get a Drupal VirtualHost&lt;/h2&gt;
+
+&lt;p&gt;Why am I saying &lt;code&gt;.htaccess&lt;/code&gt; files are ugly and you should have a VirtualHost for your Drupal?&lt;br/&gt;
+Because &lt;code&gt;.htaccess&lt;/code&gt; files are slowing down your Apache, and everything set by Drupal in
+the .htaccess can be safely put in the VirtualHost. &lt;br/&gt;
+Check &lt;a href=&quot;/Drupal/English/2011/09/01/better_rewrite_rules_for_drupal/&quot;&gt;this previous article&lt;/a&gt; for details
+(first part is about removing the .htaccess).&lt;/p&gt;
+
+&lt;p&gt;Now having a VirtualHost you can handle several parallel Drupal installations on the same host
+and you will be able to securize this by adding restrictions on the available directories
+for each separate VirtualHost.&lt;br/&gt;
+We will see that we will also be able to handle &lt;strong&gt;different PHP configurations&lt;/strong&gt; for each VirtualHost.&lt;/p&gt;
+
+&lt;h2&gt;Several configurations? But I only have one php.ini!&lt;/h2&gt;
+
+&lt;p&gt;Yes.&lt;/p&gt;
+
+&lt;p&gt;Only one php.ini is loaded by PHP, but you can alter the PHP settings in apache configuration
+by using &lt;code&gt;php_value&lt;/code&gt;, &lt;code&gt;php_admin_value&lt;/code&gt;, &lt;code&gt;php_flag&lt;/code&gt; and &lt;code&gt;php_admin_flag&lt;/code&gt; directives.&lt;br/&gt;
+You could also alter the PHP settings in PHP code with &lt;code&gt;ini_set()&lt;/code&gt; instructions.
+But the &lt;code&gt;php_admin_value&lt;/code&gt; and php_admin&lt;em&gt;&lt;em&gt;flag differs from the simpliest one by the fact any
+setting set with the **&quot;&lt;/em&gt;admin&lt;/em&gt;&quot;&lt;strong&gt; commands &lt;/strong&gt;cannot be overriden** by any &lt;code&gt;ini_set()&lt;/code&gt; call in the code.&lt;/p&gt;
+
+&lt;p&gt;So this means you will be able to set the PHP settings to the value you need for each VirtualHost,
+just think about the &lt;code&gt;open_basedir&lt;/code&gt; restriction, each Drupal installation can have an &lt;code&gt;open_basedir&lt;/code&gt;
+that forbids any access to another parallel Drupal website on the same host.&lt;/p&gt;
+
+&lt;h2&gt;What are the PHP settings enforced by default Drupal .htaccess?&lt;/h2&gt;
+
+&lt;p&gt;First let's see what is the default php settings that Drupal is asking for in Drupal6:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;ifmodule&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;mod_php5.c=&amp;quot;&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+   &lt;span class=&quot;nb&quot;&gt;php_value&lt;/span&gt; magic_quotes_gpc                &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+   &lt;span class=&quot;nb&quot;&gt;php_value&lt;/span&gt; register_globals                &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+   &lt;span class=&quot;nb&quot;&gt;php_value&lt;/span&gt; session.auto_start              &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+   &lt;span class=&quot;nb&quot;&gt;php_value&lt;/span&gt; mbstring.http_input             pass
+   &lt;span class=&quot;nb&quot;&gt;php_value&lt;/span&gt; mbstring.http_output            pass
+   &lt;span class=&quot;nb&quot;&gt;php_value&lt;/span&gt; mbstring.encoding_translation   &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/ifmodule&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And in Drupal7:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;ifmodule&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;mod_php5.c=&amp;quot;&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+   &lt;span class=&quot;nb&quot;&gt;php_flag&lt;/span&gt; magic_quotes_gpc                 &lt;span class=&quot;k&quot;&gt;off&lt;/span&gt;
+   &lt;span class=&quot;nb&quot;&gt;php_flag&lt;/span&gt; magic_quotes_sybase              &lt;span class=&quot;k&quot;&gt;off&lt;/span&gt;
+   &lt;span class=&quot;nb&quot;&gt;php_flag&lt;/span&gt; register_globals                 &lt;span class=&quot;k&quot;&gt;off&lt;/span&gt;
+   &lt;span class=&quot;nb&quot;&gt;php_flag&lt;/span&gt; session.auto_start               &lt;span class=&quot;k&quot;&gt;off&lt;/span&gt;
+   &lt;span class=&quot;nb&quot;&gt;php_value&lt;/span&gt; mbstring.http_input             pass
+   &lt;span class=&quot;nb&quot;&gt;php_value&lt;/span&gt; mbstring.http_output            pass
+   &lt;span class=&quot;nb&quot;&gt;php_flag&lt;/span&gt; mbstring.encoding_translation    &lt;span class=&quot;k&quot;&gt;off&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/ifmodule&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Not much differences. &lt;br/&gt;
+The &lt;code&gt;0&lt;/code&gt; becames &lt;code&gt;off&lt;/code&gt;, that mean the same, except if you use php &lt;code&gt;ini_get()&lt;/code&gt; functions in your scripts
+(&lt;a href=&quot;http://www.makina-corpus.org/blog/how-retrieve-boolean-values-php-s-configuration&quot;&gt;see here how bad is ini_get()&lt;/a&gt;).&lt;/p&gt;
+
+&lt;p&gt;Drupal7 adds the &lt;code&gt;magic_quotes_sybase&lt;/code&gt; de-activation, which is a good rule that you can backport to Drupal6,
+as if this setting is on, then magic quoting will happen.&lt;br/&gt;
+Magic quotes are bad, http input stream is not the right place to escape strings for &lt;code&gt;SQL&lt;/code&gt;,
+you need to do it before any SQL input, but this is the only right place
+(so quite dep in the code, and magic quoting does not protect you as much as database provided escape functions),
+else you will even be magic-quoting the uploaded files...&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;register_globals&lt;/code&gt; is &lt;code&gt;off&lt;/code&gt;, very dangerous setting when it's On.&lt;br/&gt;
+For mbstrings settings I'll trust Drupal when they say they want it this way.&lt;/p&gt;
+
+&lt;p&gt;But that's a quite short php tuning.&lt;/p&gt;
+
+&lt;h2&gt;Where to put the files?&lt;/h2&gt;
+
+&lt;p&gt;So we said we wanted several Drupal, running in parallel projects
+(We're not talking about Drupal multi-site handling, which is another problem,
+we're talking about Drupal projects). And we wanted to protect each one from the others.&lt;br/&gt;
+The things to secure are:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;temporary files&lt;/strong&gt; (by default everyone share the same path in &lt;code&gt;/tmp&lt;/code&gt;, not very clean, the less secure application you run with this apache will give you the security level of this &lt;code&gt;/tmp&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;uploaded files&lt;/strong&gt; while they're uploaded&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;filesystem&lt;/strong&gt; access, by default any PHP application as the power to read any file the web user can see&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;But in term of projects we would certainly also like to have configuration files,
+administrative scripts, and documentations, maybe logs as well.&lt;/p&gt;
+
+&lt;p&gt;The project tree can be a quite long debate, so I'll give you one as an example,
+then the settings in this article will use this tree, but you can alter it I wont cry.
+So for a project named &lt;strong&gt;mydrupal&lt;/strong&gt; accessed via &lt;strong&gt;http://mydrupal.example.com&lt;/strong&gt;
+(use your &lt;code&gt;/etc/hosts&lt;/code&gt; to map it to &lt;code&gt;127.0.0.1&lt;/code&gt; in dev):&lt;/p&gt;
+
+&lt;pre&gt;
+ -/
+  \-var/
+    \-www/
+      \-mydrupal/
+         # project root
+        \-etc/
+          # here goes the configuration files, like for example you Apache Virtualhost
+          # linked in /etc/apache2/sites-available/42-mydrupal.example.com (debian)
+        \-www/
+          # here goes Drupal sources, this is the Web Directory Root (DocumentRoot)
+           \-sites
+             \-default
+               # here is Drupal settings.php
+                \-files
+             \-all
+                \-files
+        \-bin/
+          # here goes your managment scripts
+        \-doc/
+          # project documentation
+        \-var/
+          \-log/
+            # apache logs for this project.
+            # Directory may be linked to /var/log/apache2/mydrupal.example.com
+            # for log rotation, or use cronolog
+          \-tmp/
+            # this is the temporary directory for that project
+&lt;/pre&gt;
+
+
+&lt;p&gt;You may need to write some scripts to maintain ownership and rights on this tree. Hee are some hints:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;the web user (www-data) needs read access on all files on the &lt;code&gt;/var/www/mydrupal/www&lt;/code&gt; subtree&lt;/li&gt;
+&lt;li&gt;the web user needs the &quot;x&quot; right on each parent directory (&lt;code&gt;/var/www/mydrupal&lt;/code&gt;, &lt;code&gt;/var/www/&lt;/code&gt;, &lt;code&gt;/var&lt;/code&gt;)&lt;/li&gt;
+&lt;li&gt;default rights for directories should be &quot;2775&quot; with ownserhip or group to the web user&lt;/li&gt;
+&lt;li&gt;default rights for files should be &quot;0664&quot; with ownserhip or group to the web user&lt;/li&gt;
+&lt;li&gt;on some directories the web user needs &lt;strong&gt;write access&lt;/strong&gt;, the files subdirectories under &lt;code&gt;&quot;/var/www/mydrupal/www/sites/[all|default|foo]&quot;&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;for a &lt;em&gt;tmp&lt;/em&gt; directory you can use &lt;code&gt;&quot;chmod 1777&quot;&lt;/code&gt;, the &lt;strong&gt;1&lt;/strong&gt; is important, else use &lt;code&gt;&quot;chmod 2775&quot;&lt;/code&gt; with &lt;code&gt;&quot;www-data:www-data&quot;&lt;/code&gt; ownership.&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;Usually chmod command use 3 digits, when using 4 the first one as some meanings,
+the &quot;2&quot; for directories means that new files and directories created there will inherit the user and group
+of the directory, this is really important for the &lt;code&gt;&quot;files/&quot;&lt;/code&gt; subdirectory where Drupal is sometimes
+creating new subdirectories.&lt;/p&gt;
+
+&lt;p&gt;To use a different temporary directory than &lt;code&gt;/tmp&lt;/code&gt; we'll have to alter the Drupal configuration and some of
+the PHP settings. For Drupal settings you simply need to add this line in the settings.php file:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;# Drupal 6&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;$conf[&amp;#39;file_directory_temp&amp;#39;] = &amp;#39;/var/www/mydrupal/var/tmp&amp;#39;;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;# Drupal 7&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;$conf[&amp;#39;file_temporary_path&amp;#39;] = &amp;#39;/var/www/mydrupal/var/tmp&amp;#39;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h2&gt;Let's add some PHP settings&lt;/h2&gt;
+
+&lt;p&gt;So we keep the existing settings (take the Drupal7 version). And now we add some more.&lt;/p&gt;
+
+&lt;h4&gt;Upload&lt;/h4&gt;
+
+&lt;p&gt;First we'll put some default settings for File upload management:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;php_admin_flag&lt;/span&gt;  file_uploads            &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; upload_tmp_dir          &lt;span class=&quot;s2&quot;&gt;&amp;quot;/var/www/mydrupal/var/tmp&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;#Maximum allowed size for uploaded files.&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; upload_max_filesize     &lt;span class=&quot;s2&quot;&gt;&amp;quot;50M&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; max_input_time          &lt;span class=&quot;m&quot;&gt;120&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; post_max_size           &lt;span class=&quot;s2&quot;&gt;&amp;quot;50M&amp;quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;We are using our new temporary directory,
+limit the size of any POST request to 50M,
+same for the uploaded files,
+and allow 2 minutes for the client to push these 50M before disconnecting.&lt;/p&gt;
+
+&lt;h4&gt;Logs&lt;/h4&gt;
+
+&lt;p&gt;Now let's handle PHP logs, first if we are not in development mode,
+we'll prevent Drupal from allowing messages to be outputed.
+If you grep &lt;code&gt;display_errors&lt;/code&gt; in Drupal source code you'll see that the administrator
+can allow error output on the page, very dangerous in production, with an &lt;code&gt;&quot;admin_value&quot;&lt;/code&gt;
+here it won't be allowed.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; display_errors          &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; display_startup_errors  &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; html_errors             &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; log_errors              &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; define_syslog_variables &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;#E_ALL &amp;amp; ~E_NOTICE -&amp;gt; 6135&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;#E_ALL -&amp;gt; 6143&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;#E_ALL^E_STRICT -&amp;gt; 8191&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# really all -&amp;gt; -1&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_value&lt;/span&gt; error_reporting               &lt;span class=&quot;m&quot;&gt;6135&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;You cannot use &lt;code&gt;E_ALL&lt;/code&gt; notation, we're not in PHP execution environment and the PHP defines
+are not defined, so we need to use the numerical value of theses options&lt;/p&gt;
+
+&lt;h4&gt;Security&lt;/h4&gt;
+
+&lt;p&gt;Here are the most important settings, first I'll list them:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; open_basedir    &lt;span class=&quot;s2&quot;&gt;&amp;quot;.:/var/www/mydrupal/www:/var/www/mydrupal/var/tmp:/usr/share/php/:/usr/share/php5/&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_value&lt;/span&gt;       include_path    &lt;span class=&quot;s2&quot;&gt;&amp;quot;.:/usr/lib/php5/20090626+lfs:/var/www/mydrupal/www:/var/www/mydrupal/www/include:/usr/share/php/:/usr/share/php5/&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; expose_php      &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# you may need to allow url_fopen, but by default we dissallow it&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; allow_url_fopen &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# Do not show detailled headers with apache, apache modules, and php version&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; expose_php      &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# safe_mode is more buggy than no safe mode&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; safe_mode       &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Now, let's explain them from the end to the top.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;&quot;safe_mode&quot;&lt;/strong&gt; is not activated, using the PHP safe_mode is in fact not a &quot;safe&quot; thing and as proven more security problems
+than not using it, it will soon be a deprecated option (well, it is deprecated in PHP 5.3).&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;&quot;expose_php&quot;&lt;/strong&gt; is a not-known-enough PHP setting that set a default header in the HTTP answer if you
+do not disable it. In my Apache Virtualhost I've been reading the security file,
+and I've set the &lt;code&gt;&quot;ServerToken Prod&quot;&lt;/code&gt; setting to avoid disclaiming Apache version in the HTTP headers,
+cool, it's only saying &quot;Apache&quot; and not &quot;Apache.2.2 (debian ...).&lt;br/&gt;
+Now if I do not set this expose_php php settings PHP will add this awfull header:&lt;/p&gt;
+
+&lt;pre&gt;
+    X-Powered-By: PHP/5.2.10-2ubuntu6.10
+&lt;/pre&gt;
+
+
+&lt;p&gt;Funny thing the official documentation say you can only alter it in php.ini, well it works in a VirtualHost&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;&quot;allow_url_fopen&quot;&lt;/strong&gt;, you may need to allow this if you need to perform includes to some other websites.&lt;br/&gt;
+By default I prefer disallowing this setting, as it's the starting point of a lot of security attacks
+(bad filtered includes for example).&lt;br/&gt;
+When developpers really needs it, they need to buy some beers if they want this setting altered.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;`&quot;include_path&quot;&lt;/strong&gt; this is not complelty related to security (but ùaitain it close to open_basedir, easier to maintain).
+It's the path where PHP will search when you gives it a filename to include which is not &lt;strong&gt;absolute&lt;/strong&gt;.&lt;br/&gt;
+You should keep this list quite short. So having your project path here, and not the others,
+is quite important, do not forget the dot, it means the &lt;strong&gt;&quot;current directory&quot;&lt;/strong&gt;.&lt;br/&gt;
+And if you use PHP extensions (like, maybe, apc) you may need to help includes in the places
+where these common extensions are shared.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;&quot;open_basedir&quot;&lt;/strong&gt; this is &lt;strong&gt;the most important setting&lt;/strong&gt;. And maybe the one giving you some errors after activation.
+PHP will not be able to work in a directory which is not listed there.&lt;br/&gt;
+So you'll need your project web directory (the &lt;code&gt;www&lt;/code&gt; inside the project) but also the temporary directory
+(not &lt;code&gt;/tmp&lt;/code&gt; for us) and the shared libraries directories. &lt;br/&gt;
+The important thing is to prevent inclusion of your OS's &lt;code&gt;/etc&lt;/code&gt; and of other projects files (like with &lt;code&gt;/tmp&lt;/code&gt;)&lt;/p&gt;
+
+&lt;h4&gt;Some other useful things&lt;/h4&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# Maximum amount of time each script may spend parsing request data&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_value&lt;/span&gt; max_execution_time            &lt;span class=&quot;s2&quot;&gt;&amp;quot;300&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# Maximum amount of memory a script may consume&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_value&lt;/span&gt; memory_limit                  &lt;span class=&quot;s2&quot;&gt;&amp;quot;32M&amp;quot;&lt;/span&gt;
+ 
+&lt;span class=&quot;c&quot;&gt;# Sessions: IMPORTANT reactivate garbage collector on Debian!!!&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_value&lt;/span&gt; session.gc_maxlifetime        &lt;span class=&quot;m&quot;&gt;3600&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; session.gc_probability  &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; session.gc_divisor      &lt;span class=&quot;m&quot;&gt;100&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;So here after 300s (4minutes) a PHP script will be killed.&lt;br/&gt;
+Then we limit the memory usage of any Apache process running this website to 32M.&lt;br/&gt;
+Some bad Drupal developpers will cry and ask for 128M, but, hey, who can buy 13Go of RAM just to handle
+100 parallel HTTP requests?.&lt;br/&gt;
+You may need to alter that for Drupal, which is an heavy RAM-eater. But you may also read my next article
+about php-fpm (and ask Makina-Coprus for an audit, why the hell your Drupal needs 128M?)&lt;/p&gt;
+
+&lt;p&gt;Notice that we've used &lt;strong&gt;&quot;php_value&quot;&lt;/strong&gt; and not &lt;strong&gt;&quot;php_admin_value&quot;&lt;/strong&gt; for some of these settings,
+it means that for a given Drupal method, for a given HTTP request, deep in the code, you may use &lt;strong&gt;ini_set()&lt;/strong&gt;
+functions to alter theses settings (like asking for 128M of RAM for one request or allowing for more time).&lt;/p&gt;
+
+&lt;p&gt;Last point as a comment which says all, on Debian the PHP garbage collector is inactivated
+(to use a debian script cleaning the &lt;code&gt;/var/lib/php5&lt;/code&gt; session directory).&lt;br/&gt;
+Problem, Drupal is not using PHP default session management, and needs the garbage collector
+call to perform session cleanups. If you forgot that, you may get a session table in Drupal
+growing until your &lt;code&gt;/var/lib/mysql&lt;/code&gt; partition gets full (and this may let you in a quite bad
+situation -- hopefully the drupal server will maybe start to be quite slow when requesting
+the millions of rows session table and you will see it before)&lt;/p&gt;
+
+&lt;h3&gt;Apc and Memcache settings?&lt;/h3&gt;
+
+&lt;p&gt;Want some more? Here are some settings for classical APC or memchache usage (via php-memcache, not php-memcached).&lt;/p&gt;
+
+&lt;p&gt;For APC some settings musn't be altered on each VirtualHost,
+they're shared, so they should be global to the Apache server. &lt;br/&gt;
+Alter theses settings in the real php.ini or /etc/php5/conf.d/apc.ini file:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# Shared Memory&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# These settings MUS&amp;#39;NT be ALTERED ON A PER-VIRTUALHOST basis&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# BUT THEY&amp;#39;RE IMPORTANT, by default you&amp;#39;ll get only 30M for the whole&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# opcode+user cache, very short, very dangerous (apc emptying cache when full)&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# SO YOU MUST ALTER DEFAULT APC CONFIGURATION on SHARED MEMORY&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;apc&lt;/span&gt;.&lt;span class=&quot;err&quot;&gt;shm_segments=1&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;apc&lt;/span&gt;.&lt;span class=&quot;err&quot;&gt;shm_size=128&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;apc&lt;/span&gt;.&lt;span class=&quot;err&quot;&gt;mmap_file_mask=/apc&lt;/span&gt;.&lt;span class=&quot;err&quot;&gt;shm&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;XXXXXX&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Here we ask for 128M of shared memory.&lt;br/&gt;
+The default is 30M because most OS will not allow you to ask for 128M or 256M.&lt;br/&gt;
+To allow 128M Put in &lt;code&gt;/etc/sysctl.conf&lt;/code&gt; at least theses numbers (and load them in sysctl):&lt;/p&gt;
+
+&lt;pre&gt;
+kernel.shmmax=134217728
+kernel.shmall=2097152
+&lt;/pre&gt;
+
+
+&lt;p&gt;Now for the Virtualhost here are some settings:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;php_admin_flag&lt;/span&gt;  apc.enabled                     &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt; 
+&lt;span class=&quot;c&quot;&gt;# file upload progress bar available&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; apc.rfc1867                     &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt;
+ 
+&lt;span class=&quot;c&quot;&gt;# ON a VirtualHost basis we can tune theses APC settings&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# want to gain speed? ------------------&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# Optimisation of include/require_once calls&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; apc.include_once_override       &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# transform paths in absolute ones (no effect if apc.stat is not 0), files from stream wrappers (extended includes)&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# won&amp;#39;t be cached if this is activated as they cannot be used with php&amp;#39;s realpath()&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_flag&lt;/span&gt;  apc.canonicalize                &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# In production set it to 0, then file changes won&amp;#39;t be observed before apache is restarted,&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# significant boost, else file time is stated at each access (needed at 1 in dev)&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_flag&lt;/span&gt; apc.stat                         &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# avoid problems with rsync or svn not modifying mtime but only ctime&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# so if you&amp;#39;re in production set this to 1, like for the previous one&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_flag&lt;/span&gt; apc.stat_ctime                   &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+ 
+&lt;span class=&quot;c&quot;&gt;# deprecated option: apc.optimization not available anymore&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;#php_admin_flag apc.optimization               0&lt;/span&gt;
+ 
+&lt;span class=&quot;c&quot;&gt;# indication on number of files (ZF=1300, nude Drupal 7=1000)&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; apc.num_files_hint              &lt;span class=&quot;s2&quot;&gt;&amp;quot;2000&amp;quot;&lt;/span&gt;
+ 
+&lt;span class=&quot;c&quot;&gt;# indication on the number of cache variables&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; apc.user_entries_hint           &lt;span class=&quot;s2&quot;&gt;&amp;quot;0&amp;quot;&lt;/span&gt;
+ 
+&lt;span class=&quot;c&quot;&gt;# cache lifetime managmenent ----------------&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# time (s) we can stay on the cache even when the cache is full -- Cache full count --&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# that means Garbage Collector is never inactivating theses datas before this time is over&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# &amp;gt;0 -&amp;gt; old data could stay in the cache while new data want&amp;#39;s to come, if no data is deprecated&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# 7200 -&amp;gt; entries older than 2 hours will be thrown to make some place&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# 0 -&amp;gt; emptying full cache when full&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; apc.ttl                         &lt;span class=&quot;s2&quot;&gt;&amp;quot;3600&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; apc.user_ttl                    &lt;span class=&quot;s2&quot;&gt;&amp;quot;3600&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# this one is the same but you should note this this prevent Garbage collecting after each source change.&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; apc.gc_ttl                      &lt;span class=&quot;s2&quot;&gt;&amp;quot;3600&amp;quot;&lt;/span&gt;
+ 
+&lt;span class=&quot;c&quot;&gt;# What to cache ? ----------------------------&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# could be used to prevent some caching on specific files&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# but it&amp;#39;s better to cache often used files, isn&amp;#39;t it? at least in production&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# php_admin_value apc.filters                     &amp;quot;-config.php-.ini&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;#default to 1M, files bigger than that won&amp;#39;t be cached&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; apc.max_file_size               &lt;span class=&quot;s2&quot;&gt;&amp;quot;5M&amp;quot;&lt;/span&gt;
+ 
+&lt;span class=&quot;c&quot;&gt;# various things -------------------------------&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# only one process caching a same file (beter than apc.slam_defense)&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_flag&lt;/span&gt; apc.write_lock                   &lt;span class=&quot;k&quot;&gt;On&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# prevents caching half written files (by cp for example) by waiting x seconds for new files caching. set it to 0 if using only rsync or mv&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; apc.apc.file_update_protection  &lt;span class=&quot;s2&quot;&gt;&amp;quot;2&amp;quot;&lt;/span&gt;
+ 
+&lt;span class=&quot;c&quot;&gt;# newest versions of APC only&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# optimisations from Facebook, adding a lazy loding capabilities, so you can parse a lot of files&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# and only used things are cached&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# need to be tested&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# php_admin_value apc.lazy_functions               1&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# php_admin_value apc.lazy_classes                 1&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;As stated in the comments, in production you should set the apc.stat &amp;amp; apc.stat_ctime flags to 1.
+It will be a lot faster, but APC will not even try to see if the file has been updated on disk.&lt;/p&gt;
+
+&lt;p&gt;And for memcache here are some default settings that you could use:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# Memcache settings (php-memcache, not php-memcached)&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# should we try other servers?&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; memcache.allow_failover        &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; memcache.max_failover_attempts &lt;span class=&quot;m&quot;&gt;3&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# how many copies of the session on different servers (to avoid loosing session on server crash) ?&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; memcache.session_redundancy    &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# may be the same behavior but for all data&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; memcache.redundancy            &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# protocol, undocumented, don&amp;#39;t kwown what is available instead of ascii&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; memcache.protocol              ascii
+&lt;span class=&quot;c&quot;&gt;# Data will be transferred in chunks of this size(8192 by default, or 32768 since v3.0.0)&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; memcache.chunk_size            &lt;span class=&quot;m&quot;&gt;32768&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# default port to connect memcached&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; memcache.default_port          &lt;span class=&quot;m&quot;&gt;11211&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# consistent is better than default, avoid hash keys being remaped when a new server join&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; memcache.hash_strategy         consistent
+&lt;span class=&quot;c&quot;&gt;# hash can be crc32 or fnv&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; memcache.hash_function         crc32
+&lt;span class=&quot;c&quot;&gt;# undocumented&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; memcache.compress_threshold    &lt;span class=&quot;m&quot;&gt;2000&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# undocumented ...&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; memcache.maxreclevel           &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; memcache.maxfiles              &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; memcache.archivememlim         &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; memcache.maxfilesize           &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; memcache.maxratio              &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt;
+ 
+&lt;span class=&quot;c&quot;&gt;# session management by memcache.&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# needs memcache &amp;gt; 3.0.4 to get session locking, else you may have&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# some race conditions with ajax or any parallel query execution in&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# the same requests&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# Here we use the not-yet-official session proxy drupal module to handle this&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# you may check also with memcached module&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; session.save_handler            memcache
+&lt;span class=&quot;nb&quot;&gt;php_admin_value&lt;/span&gt; session.save_path               &lt;span class=&quot;s2&quot;&gt;&amp;quot;tcp://127.0.0.1:11211&amp;quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;Closely Related articles&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;/Drupal/English/2011/09/01/better_rewrite_rules_for_drupal/&quot;&gt;Better Rewrite Rules for Drupal&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;/Drupal/English/2011/09/03/Install_drupal_in_php_fpm_fastcgi_and_apache_chroot/&quot;&gt;Drupal with Apache &amp;amp; chrooted php-fpm&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+				<published>2011-09-02 00:00:00 +0200</published>
+				<link>http://regilero.github.io//Drupal/English/2011/09/02/Tune_your_php_settings_for_drupal/</link>
+			</item>
+		
+			<item>
 				<title>Better rewriteRules for Drupal</title>
 				<description>&lt;p&gt;Drupal comes with a default set of &lt;code&gt;Rewrite Rules&lt;/code&gt; in the &lt;code&gt;.htaccess&lt;/code&gt; file given by the project.&lt;/p&gt;
 
@@ -662,8 +1981,8 @@ Check &lt;a href=&quot;/Apache/English/2009/11/05/use_rewrite_map_to_prevent_pro
 &lt;h3&gt;Closely Related articles&lt;/h3&gt;
 
 &lt;ul&gt;
-&lt;li&gt;&lt;a href=&quot;http://www.makina-corpus.org/blog/tune-your-php-settings-drupal&quot;&gt;Tune your php settings for Drupal&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;http://www.makina-corpus.org/blog/install-drupal-php-fpm-fastcgi-apache-and-chroot-php-fpm&quot;&gt;Drupal with Apache &amp;amp; chrooted php-fpm&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;/Drupal/English/2011/09/02/Tune_your_php_settings_for_drupal/&quot;&gt;Tune your php settings for Drupal&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;/Drupal/English/2011/09/03/Install_drupal_in_php_fpm_fastcgi_and_apache_chroot/&quot;&gt;Drupal with Apache &amp;amp; chrooted php-fpm&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
 </description>
@@ -1620,275 +2939,6 @@ You'll maybe wont have them, and your application will rely on proxy configurati
 </description>
 				<published>2009-06-03 00:00:00 +0200</published>
 				<link>http://regilero.github.io//Apache/English/2009/06/03/relative_absolute_urls_and_proxies/</link>
-			</item>
-		
-			<item>
-				<title>6 nice things not know enough about PostgreSQL</title>
-				<description>&lt;p&gt;With the new PostgreSQL server versions in place (8.2 and 8.3) and in a more general way with the 8.x series
-some nice fonctionnalities have benn added.&lt;/p&gt;
-
-&lt;p&gt;Let's have a short look at som interesting ones:&lt;br/&gt;
-&lt;code&gt;FILLFACTOR=50&lt;/code&gt;, Id on &lt;code&gt;INSERT&lt;/code&gt;, &lt;code&gt;TOAST&lt;/code&gt; fields, &lt;code&gt;TABLE INHERITANCE&lt;/code&gt;, &lt;code&gt;TABLE PARTITIONNING&lt;/code&gt;, &lt;code&gt;NOTIFY&lt;/code&gt; and &lt;code&gt;LISTEN&lt;/code&gt;.&lt;/p&gt;
-
-&lt;h3&gt;WITH FILLFACTOR=50 in CREATE TABLE instructions (since 8.2):&lt;/h3&gt;
-
-&lt;p&gt;FILLFACTOR is 100% by default and is a good default setting for tables
-where the basic usage is &lt;code&gt;INSERT&lt;/code&gt;s (and select).&lt;br/&gt;
-But when you know that you'll make a lot of &lt;code&gt;UPDATE&lt;/code&gt;s on your rows you should decrease this factor.&lt;/p&gt;
-
-&lt;p&gt;This way &lt;strong&gt;some space on the table will be reserved near your inserted rows&lt;/strong&gt;.
-This space will then be used as a work zone when you'll make an &lt;code&gt;UPDATE&lt;/code&gt; on the row.&lt;br/&gt;
-And the magic effect is that this work zone won't be at the end of the table but near your row,
-in the same page in memory.&lt;/p&gt;
-
-&lt;p&gt;see &lt;a href=&quot;http://www.postgresql.org/docs/8.3/interactive/sql-createtable.html#SQL-CREATETABLE-STORAGE-PARAMETERS&quot;&gt;postgreSQL documentation page&lt;/a&gt; for details.&lt;/p&gt;
-
-&lt;h3&gt;2) RETURNING on INSERT INTO to get your INSERTED Id (since 8.2):&lt;/h3&gt;
-
-&lt;p&gt;The classical way to get your &lt;strong&gt;'last insert Id'&lt;/strong&gt; in PostgreSQl as always been using &lt;code&gt;currval(SEQUENCE)&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;This is right and secure as &lt;code&gt;PRIMARY KEYS&lt;/code&gt; are usually defined as &lt;code&gt;SEQUENCE&lt;/code&gt;s with &lt;code&gt;DEFAULT nextval(SEQUENCE)&lt;/code&gt;.&lt;br/&gt;
-And &lt;code&gt;currvall&lt;/code&gt; renders the last value set by &lt;code&gt;nextval&lt;/code&gt; in the current session (others concurrent sessions cannot interfere with it).&lt;/p&gt;
-
-&lt;p&gt;But that's not something easy to understand for newbies and very bad examples with &lt;code&gt;max(id)&lt;/code&gt; can always be found googling around.&lt;/p&gt;
-
-&lt;p&gt;Now you can add a &lt;strong&gt;RETURNING MyId&lt;/strong&gt; code on your &lt;code&gt;INSERT&lt;/code&gt; query and the result of your insert won't be the row &lt;code&gt;OID&lt;/code&gt; anymore
-but your &lt;code&gt;Id&lt;/code&gt; (or anything else if you want).&lt;/p&gt;
-
-&lt;p&gt;Consult &lt;a href=&quot;http://www.postgresql.org/docs/8.3/interactive/sql-insert.html&quot;&gt;postgreSQL documentation page&lt;/a&gt; for details.&lt;/p&gt;
-
-&lt;h3&gt;3) TOAST FIELDS:&lt;/h3&gt;
-
-&lt;p&gt;&lt;code&gt;TOAST&lt;/code&gt; means &lt;strong&gt;'The Oversized-Attribute Storage Technique'.&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;You can set up to &lt;strong&gt;1Gb&lt;/strong&gt; in &lt;strong&gt;one field&lt;/strong&gt; of your &lt;strong&gt;row&lt;/strong&gt;.&lt;br/&gt;
-This column won't be saved in the same physical file as the others. Another file will be created to store
-such big fields.&lt;/p&gt;
-
-&lt;p&gt;&lt;a href=&quot;http://www.postgresql.org/docs/8.3/interactive/storage-toast.html&quot;&gt;PostgreSQL documentation page&lt;/a&gt; is still the best reference.&lt;/p&gt;
-
-&lt;p&gt;If you wonder about the size of your tables and the physical files on your filesystem you should not.
-Your tables are always split in files of &lt;strong&gt;2Gb&lt;/strong&gt;. And Toast values are stored on their own files.&lt;/p&gt;
-
-&lt;h3&gt;4) TABLE INHERITANCE:&lt;/h3&gt;
-
-&lt;p&gt;You can define a &lt;strong&gt;table B as child of table A&lt;/strong&gt;.&lt;/p&gt;
-
-&lt;p&gt;Request on table &lt;code&gt;A&lt;/code&gt; will then render rows from &lt;code&gt;A&lt;/code&gt; and &lt;code&gt;B&lt;/code&gt; tables.&lt;br/&gt;
-With &lt;code&gt;ONLY&lt;/code&gt; keyword you can limit requests on &lt;code&gt;A&lt;/code&gt; with &lt;code&gt;A&lt;/code&gt; rows.&lt;br/&gt;
-&lt;code&gt;A&lt;/code&gt; could have several tables (B, C, D, etc). Indexes are done tables by table, and are by this way shorter.&lt;/p&gt;
-
-&lt;p&gt;This is quite powerfull but you'll have some problems with &lt;strong&gt;contraints&lt;/strong&gt;. &lt;code&gt;UNIQUE&lt;/code&gt; constraints for example
-are done for each table. You cannot ensure &lt;code&gt;A+B+C+D&lt;/code&gt; rows will not share the same value for this &lt;strong&gt;'UNIQUE'&lt;/strong&gt; constraint.&lt;/p&gt;
-
-&lt;p&gt;Setting Referential integrity from one of this table to a &lt;code&gt;Z&lt;/code&gt; table is easy (but should be done for each table).&lt;br/&gt;
-But setting the reverse relation from &lt;code&gt;Z&lt;/code&gt; to &lt;code&gt;A+B+C+D&lt;/code&gt; isn't possible.&lt;/p&gt;
-
-&lt;p&gt;You should really look &lt;a href=&quot;http://www.postgresql.org/docs/8.3/interactive/ddl-inherit.html&quot;&gt;postgreSQL documentation page&lt;/a&gt;, as always.&lt;/p&gt;
-
-&lt;h3&gt;5) TABLE PARTITIONNING:&lt;/h3&gt;
-
-&lt;p&gt;One of the most powerfull thing you can do with &lt;code&gt;INHERITANCE&lt;/code&gt; is table &lt;code&gt;PARTITIONNING&lt;/code&gt;.&lt;/p&gt;
-
-&lt;p&gt;Using &lt;code&gt;TABLESPACE&lt;/code&gt;s you can define several different physical storage locations for your databases.&lt;/p&gt;
-
-&lt;p&gt;&lt;code&gt;TABLESPACES&lt;/code&gt; can easily be used for a database, a table, or even for an index (or the WAL sync log).&lt;br/&gt;
-This is fine. You can use several storage devices with different characteristics, each one fitting
-your differents needs (capacity, speed, sync/async, etc).&lt;br/&gt;
-But this combined with &lt;code&gt;INHERITANCE&lt;/code&gt; becomes even more powerfull:&lt;br/&gt;
-Define table &lt;code&gt;A&lt;/code&gt; as an empty table.&lt;br/&gt;
-Define table &lt;code&gt;B&lt;/code&gt; and &lt;code&gt;C&lt;/code&gt; as child tables of &lt;code&gt;A&lt;/code&gt;, and use different tablespaces for &lt;code&gt;B&lt;/code&gt; and &lt;code&gt;C&lt;/code&gt;.&lt;br/&gt;
-You then have a &lt;strong&gt;virtual A table&lt;/strong&gt; with his content spread on diferent storage devices
-(or not, you could use the TABLESPACE on the same storage but you'll lose most of the power of the 'thing').&lt;/p&gt;
-
-&lt;p&gt;Your benefits? &lt;strong&gt;smaller indexes&lt;/strong&gt;, on different devices, which can run in &lt;strong&gt;parallel&lt;/strong&gt;,
-some problems with constraints as with previous part,
-but this is not a problem for all tables, and for a huge table this &lt;code&gt;TABLESPACE&lt;/code&gt; splitting could be
-a cool thing to study.&lt;/p&gt;
-
-&lt;p&gt;Have a look at &lt;a href=&quot;http://www.postgresql.org/docs/8.3/interactive/ddl-partitioning.html&quot;&gt;postgreSQL documentation page&lt;/a&gt;.&lt;/p&gt;
-
-&lt;p&gt;One last point, you'll have to defined how the rows are splitted with the different tables
-(ranges, or domains, or anything else),
-you'll maybe have to check &lt;code&gt;RULES&lt;/code&gt; as well, even with simple &lt;code&gt;INHERITANCE&lt;/code&gt;, because &lt;code&gt;INSERT&lt;/code&gt;
-for example should be done on the child table, and &lt;code&gt;INSERT&lt;/code&gt; on the main &lt;code&gt;TABLE&lt;/code&gt; should be redirected elsewhere.&lt;/p&gt;
-
-&lt;h3&gt;6) NOTIFY/LISTEN:&lt;/h3&gt;
-
-&lt;p&gt;PostgreSQL has a builtin fonctionnality for &lt;strong&gt;Observer/observable Design Pattern&lt;/strong&gt;.&lt;/p&gt;
-
-&lt;p&gt;You can &lt;code&gt;NOTIFY&lt;/code&gt; something, as an &lt;code&gt;SQL&lt;/code&gt; command and at the end of your transaction
-(or directly if you're not in a transaction) others SQL sessions which have registered this notification with &lt;code&gt;LISTEN&lt;/code&gt;
-will get your notification (&lt;a href=&quot;http://www.postgresql.org/docs/8.1/interactive/libpq-notify.html&quot;&gt;the doc&lt;/a&gt;).&lt;br/&gt;
-Usefull with server processes (while true processes), a cli process in PHP for example with builtin &lt;a href=&quot;http://www.php.net/manual/en/function.pg-get-notify.php&quot;&gt;pg lib&lt;/a&gt;
-but not with PDO actually.&lt;/p&gt;
-
-&lt;p&gt;Here is as well a &lt;a href=&quot;http://jdbc.postgresql.org/documentation/83/listennotify.html&quot;&gt;Java example&lt;/a&gt; and examples in &lt;a href=&quot;http://pypgsql.cvs.sourceforge.net/viewvc/pypgsql/pypgsql/examples/&quot;&gt;python, the demo2a/b&lt;/a&gt; files.&lt;/p&gt;
-</description>
-				<published>2008-10-30 00:00:00 +0100</published>
-				<link>http://regilero.github.io//PostgreSQL/English/2008/10/30/6_nice_things_not_known_enough_about_postgresql/</link>
-			</item>
-		
-			<item>
-				<title>Autocomplete Ajax search with Dojo and Zend Framework</title>
-				<description>&lt;p&gt;With the new Zend Framework 1.6 we've these nice Dojo widgets.&lt;/p&gt;
-
-&lt;p&gt;New things lacks documentations most of times. &lt;br/&gt;
-So if you want to build something really usefull like theses nice autocomplete search combobox this example could save you a lot of time.&lt;/p&gt;
-
-&lt;p&gt;We'll assume you have Dojo already installed and activated on your views,
-and that acl verifications are done elsewhere, on your Controller plugins for example.&lt;/p&gt;
-
-&lt;p&gt;First let's see HTML code (in your view):&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;html&quot;&gt;  &lt;span class=&quot;nt&quot;&gt;&amp;lt;script &lt;/span&gt;&lt;span class=&quot;na&quot;&gt;type=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;text/javascript&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;dojo.parser&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-    &lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;dojox.data.QueryReadStore&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-    &lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;dijit.form.ComboBox&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-    &lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;dijit.form.FilteringSelect&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-    &lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;custom.FindAutoCompleteReadStore&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-    &lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;dijit.form.Form&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-    &lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;dijit.form.Button&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-  &lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
-  &lt;span class=&quot;nt&quot;&gt;&amp;lt;form&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;id=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;Find_Form&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;action=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;/module/foo/edit&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;method=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;get&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;dojoType=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;dijit.form.Form&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;dojoType=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;custom.FindAutoCompleteReadStore&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;jsId=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;NameStore&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;url=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;/module/foo/find/format/json&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;requestMethod=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;get&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;/div&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;label&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;for=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;id&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;optional&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;Recherchez un nom:&lt;span class=&quot;nt&quot;&gt;&amp;lt;/label&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;span&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;formelement&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;select&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;name=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;id&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;id=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;FindByName&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;hasDownArrow=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;store=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;NameStore&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;size=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;25&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;tabindex=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;99&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;autocomplete=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;1&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;dojoType=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;dijit.form.FilteringSelect&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;pageSize=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;10&amp;quot;&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;/select&amp;gt;&amp;lt;/span&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;span&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;actionbuttons&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;input&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;id=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;Find_go&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;name=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;Find_go&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;value=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;Go:&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;type=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;submit&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;label=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;go:&amp;quot;&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;dojoType=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;dijit.form.Button&amp;quot;&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;/&amp;gt;&amp;lt;/span&amp;gt;&lt;/span&gt;
-  &lt;span class=&quot;nt&quot;&gt;&amp;lt;/form&amp;gt;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;As we can see you'll need an additional custom js: &lt;strong&gt;custom.FindAutoCompleteReadStore&lt;/strong&gt;.&lt;/p&gt;
-
-&lt;p&gt;This is a really simple js to write, create your custom directory in the same level
-as dojo or dijit directory and create &lt;code&gt;FindAutoCompleteReadStore.js&lt;/code&gt; like that:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;js&quot;&gt;&lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;provide&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;custom.FindAutoCompleteReadStore&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-&lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;dojox.data.QueryReadStore&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-&lt;span class=&quot;nx&quot;&gt;dojo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;declare&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;custom.FindAutoCompleteReadStore&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;dojox&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;QueryReadStore&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
-  &lt;span class=&quot;nx&quot;&gt;fetch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;request&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;nx&quot;&gt;request&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;serverQuery&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;Find&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;request&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
-    &lt;span class=&quot;c1&quot;&gt;// cal superclass fecth&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;inherited&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;fetch&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;arguments&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Now you'll need to serve the requested Ajax query
-(requested by the Dojo store linked with our FilteringSelect or Combobox) : &lt;code&gt;/module/foo/find/format/json&lt;/code&gt;&lt;br/&gt;
-This is the method &lt;strong&gt;'findAction'&lt;/strong&gt; in the Controller &lt;strong&gt;'foo'&lt;/strong&gt; on module &lt;strong&gt;'module'&lt;/strong&gt;.&lt;br/&gt;
-But first let's see the preDispatch function of this controller where we handle the &lt;code&gt;format/json&lt;/code&gt; instruction to switch in Ajax mode:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;public function preDispatch()&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;{&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;    $contextSwitch =   $this-&amp;gt;_helper-&amp;gt;getHelper(&amp;#39;contextSwitch&amp;#39;);&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;    $contextSwitch-&amp;gt;setAutoJsonSerialization( true );&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;    $contextSwitch-&amp;gt;addActionContext(&amp;#39;find&amp;#39;, &amp;#39;json&amp;#39;);&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;    $contextSwitch-&amp;gt;initContext();&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;}&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;So now let's write the find function:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;  public function findAction()&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;  {&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      // handle filtering of recieved data&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $replacer = new Zend_Filter_pregReplace(&amp;#39;/\*/&amp;#39;,&amp;#39;%&amp;#39;);&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      // emulate alpha+num filter with some more characters enabled&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      //**** &amp;lt;a href=&amp;quot;http://www.regular-expressions.info/unicode.html&amp;quot; title=&amp;quot;http://www.regular-expressions.info/unicode.html&amp;quot;&amp;gt;http://www.regular-expressions.info/unicode.html&amp;lt;/a&amp;gt; ****&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      // \p{N} --&amp;gt; numeric chars of any language&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      // \s -&amp;gt; withespace&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      //\x0027 : APOSTROPHE&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      //\x002C : COMMA&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      //\x0025% : % in UTF-8 and not in utf-8&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      //\x002D : HYPHEN / MINUS&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      //\x005F : UNDERSCORE&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      //\. DOT&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $mylimit = new Zend_Filter_pregReplace(&amp;#39;/[^\p{L}\p{N}\s\x0027\x002C\x002D\x005F\x0025%\.]/u&amp;#39;,&amp;#39;&amp;#39;);&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $filters = array(&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;              &amp;#39;*&amp;#39; =&amp;gt; &amp;#39;StringTrim&amp;#39;&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;              ,&amp;#39;Find&amp;#39; =&amp;gt; array(&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;              &amp;#39;StripNewlines&amp;#39;&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;              ,$replacer&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;              ,$mylimit&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;              ,&amp;#39;StripTags&amp;#39;&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;          )&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;          ,&amp;#39;start&amp;#39; =&amp;gt; &amp;#39;Int&amp;#39;&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;          ,&amp;#39;count&amp;#39; =&amp;gt; &amp;#39;Int&amp;#39;&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      );&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $validators =array();&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $input = new Zend_Filter_Input($filters, $validators, $_GET);&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $find = $input-&amp;gt;getUnescaped(&amp;#39;Find&amp;#39;);&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      if (empty($find)) $find = &amp;#39;%&amp;#39;;&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $start = intval($input-&amp;gt;getUnescaped(&amp;#39;start&amp;#39;));&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      if (empty($start)) $start = 0;&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $count = intval($input-&amp;gt;getUnescaped(&amp;#39;count&amp;#39;));&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      if (empty($count)) $count = 3;&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      // get the model, here you should adjust with the way you work&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      // then make your query with limits&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $this-&amp;gt;_modeltable = new My_Zend_Db_Table_Foo($this-&amp;gt;db)&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $fieldid = &amp;#39;my_id_field&amp;#39;;&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $fieldident = &amp;#39;my_name_field&amp;#39;;&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $select = $this-&amp;gt;_modeltable-&amp;gt;select();&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $db = $this-&amp;gt;_modeltable-&amp;gt;getAdapter();&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $select-&amp;gt;where($db-&amp;gt;quoteinto($db-&amp;gt;quoteIdentifier($fieldident).&amp;#39; LIKE ?&amp;#39;, $find));&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $select-&amp;gt;limit($count, $start);&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $rows= $this-&amp;gt;_modeltable-&amp;gt;fetchAll($select);&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $rowsarray = $rows-&amp;gt;ToArray();&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $finalarray=array();&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      foreach ($rowsarray as $row)&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      {&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;          $key = $row[$fieldid];&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;          $finalarray[$key] = $row[$fieldident];&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      }&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      //Zend_Debug::dump($finalarray);&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      //die(__METHOD__);&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $this-&amp;gt;_helper-&amp;gt;autoCompleteDojo($finalarray);&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;  }&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;And it should be sufficient, pffiuu.&lt;br/&gt;
-But... there's one remaining problem after that.
-We put the search autocomplete inside a form and we wanted the &lt;strong&gt;'go'&lt;/strong&gt; button to send a request to something like that:&lt;/p&gt;
-
-&lt;p&gt;&lt;code&gt;/module/foo/edit/id/1245&lt;/code&gt; OR &lt;code&gt;/module/foo/edit?id=1245&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;But we'll have something like:&lt;/p&gt;
-
-&lt;p&gt;&lt;code&gt;/module/foo/edit?id=THE NAME&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;too bad...&lt;/p&gt;
-
-&lt;p&gt;To get it done I had to change one thing in Zend Framework library on the Zend/Controller/Action/Helper/AutoCompleteDojo.php Helper:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;  public function prepareAutoCompletion($data, $keepLayouts = false)&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;  {&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;    $items = array();&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;    foreach ($data as $key =&amp;gt; $value) {&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      $items[] = array(&amp;#39;label&amp;#39; =&amp;gt; $value, &amp;#39;name&amp;#39; =&amp;gt; $value, &amp;#39;key&amp;#39; =&amp;gt; $key);&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;    }&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;    $final = array(&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      &amp;#39;identifier&amp;#39; =&amp;gt; &amp;#39;key&amp;#39;,&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;      &amp;#39;items&amp;#39; =&amp;gt; $items,&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;     );&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;    return $this-&amp;gt;encodeJson($final, $keepLayouts);&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;  }&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Line 66 &lt;code&gt;'key'&lt;/code&gt; is added on the item and line 69 &lt;code&gt;'identifier'&lt;/code&gt; is set to &lt;code&gt;'key'&lt;/code&gt; and not &lt;code&gt;'name'&lt;/code&gt;.&lt;br/&gt;
-&lt;code&gt;'identifier'&lt;/code&gt; is used by the Dojo Filtering Select to decide which field will be used for the form,
-for more info see &lt;a href=&quot;http://dojotoolkit.org/reference-guide/1.9/&quot;&gt;dojo book page&lt;/a&gt; and search &lt;code&gt;'abbreviation'&lt;/code&gt;.&lt;/p&gt;
-
-&lt;p&gt;There's also a bug talking about that for Zend Framework,
-to get other solutions or info on the way it will be fixed later look &lt;a href=&quot;http://framework.zend.com/issues/browse/ZF-4494&quot;&gt;there&lt;/a&gt;.&lt;/p&gt;
-</description>
-				<published>2008-10-26 00:00:00 +0200</published>
-				<link>http://regilero.github.io//Zend%20Framework/English/2008/10/26/autocomplete_ajax_search_dojo_zend_framework/</link>
 			</item>
 		
 	</channel>

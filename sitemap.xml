@@ -11,6 +11,16 @@
       <changefreq>never</changefreq>
   </url>
   <url>
+      <loc>http://regilero.github.io/Drupal/English/2011/09/03/Install_drupal_in_php_fpm_fastcgi_and_apache_chroot/</loc>
+      <lastmod>2011-09-03</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
+      <loc>http://regilero.github.io/Drupal/English/2011/09/02/Tune_your_php_settings_for_drupal/</loc>
+      <lastmod>2011-09-02</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
       <loc>http://regilero.github.io/Drupal/English/2011/09/01/better_rewrite_rules_for_drupal/</loc>
       <lastmod>2011-09-01</lastmod>
       <changefreq>never</changefreq>

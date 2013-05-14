@@ -242,6 +242,7 @@ ul.topNav  {
 	text-align: justify;
 }
 
+#left-content  h1,
 #left-content  h2 {
 	font-size:26px;
 	background:#DDD;
@@ -254,6 +255,7 @@ ul.topNav  {
 	border-bottom:2px solid #757575;
 	margin-bottom:10px;
 }
+#left-content  h1 span,
 #left-content  h2 span{
 	font-size:14px;
 	padding-left: 15px;
@@ -272,7 +274,7 @@ ul.topNav  {
   line-height: 18px;
 }
 h3 {
-	font-size:26px;
+	font-size:22px;
 	background:#757575;
 	color:#FFFFFF;
 	padding-left:10px;
@@ -395,13 +397,17 @@ a.effect img {
 
 img.left {
   margin-right: 5px;
-  margin-top: 8px;
   margin-bottom: 5px;
+  padding: 5px;
+  border: 1px solid #ddd;
+  background-color: #fff;
 }
 img.right {
   margin-left: 5px;
-  margin-top: 8px;
   margin-bottom: 5px;
+  padding: 5px;
+  background-color: #fff;
+  border: 1px solid #ddd;
 }
 table.archive td.time {
   font-size: 10px;
