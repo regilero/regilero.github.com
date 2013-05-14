@@ -2,9 +2,9 @@
 layout: post
 title: Tune your php settings for Drupal
 categories: [Drupal, English]
-tags: [Drupal, Apache, PHP]
+tags: [Drupal, Apache, PHP, Security]
 pic: whiteflower2.png
-excerpt:  
+excerpt: How to make a clean Apache Virtualhost for each drupal project, with PHP settings altered for each project
 
 ---
 
@@ -423,7 +423,7 @@ php_admin_value session.save_path               "tcp://127.0.0.1:11211"
 ###Closely Related articles###
 
  * [Better Rewrite Rules for Drupal]({% post_url 2011-09-01-better_rewrite_rules_for_drupal %})
- * [Drupal with Apache & chrooted php-fpm](http://www.makina-corpus.org/blog/install-drupal-php-fpm-fastcgi-apache-and-chroot-php-fpm)
+ * [Drupal with Apache & chrooted php-fpm]({% post_url 2011-09-03-Install_drupal_in_php_fpm_fastcgi_and_apache_chroot %})
 
 
 

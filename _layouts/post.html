@@ -4,10 +4,10 @@ layout: default
 
 <article>
         <header>
-            <h2>{{ page.title }}
-            <span><i class="icon-clock"></i><time datetime="{{page.date|date:"%F"}}">{{page.date|date:"%b %d, %Y"}}</time></span><br/>
+            <h1>{{ page.title }}
+            <br/><span><i class="icon-clock"></i><time datetime="{{page.date|date:"%F"}}">{{page.date|date:"%b %d, %Y"}}</time></span>
             <span class="category"><i class="icon-list"></i> {{ page.categories | category_links }}</span>
-            </h2>
+            </h1>
         </header>
 
         <div class="entry">

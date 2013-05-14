@@ -332,4 +332,4 @@ For any other help check theses links (or comment, or send me an email)
 ###Closely Related articles###
 
  * [Tune your php settings for Drupal]({% post_url 2011-09-02-Tune_your_php_settings_for_drupal %})
- * [Drupal with Apache & chrooted php-fpm](http://www.makina-corpus.org/blog/install-drupal-php-fpm-fastcgi-apache-and-chroot-php-fpm)
+ * [Drupal with Apache & chrooted php-fpm]({% post_url 2011-09-03-Install_drupal_in_php_fpm_fastcgi_and_apache_chroot %})

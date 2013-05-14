@@ -2,7 +2,7 @@
 layout: post
 title: More on Static file redirector
 categories: [Apache, English]
-tags: [HTTP, Plone, Performance, Proxy, mod_rewrite, RewriteMap]
+tags: [HTTP, Plone, Performance, Proxy, mod_rewrite, RewriteMap, Security]
 pic: blueflower.png
 excerpt: Complements on the previous article. hash the file map, use a /static url, and avoid security problems with tis new mode.  
 previous: 2009-11-05-use_rewrite_map_to_prevent_proxying_for_some_static_contents
