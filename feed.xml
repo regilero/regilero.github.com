@@ -6,6 +6,277 @@
 		<link>http://regilero.github.io/</link>
 		
 			<item>
+				<title>Warning Chrooted php-fpm and Apc with multiple pools</title>
+				<description>&lt;p&gt;PHP-fpm used as a fastgi backend for nginx or Apache is a very nice tool.&lt;br/&gt;
+And the ability to chroot the php-fpm pool use a nice way to enforce projects separations.
+I once wrote a detailled exemple for Apache (but I really prefer nginx),
+with details on &lt;code&gt;open_basedir&lt;/code&gt; and temporary files
+separation for each PHP project.&lt;br/&gt;
+You should really use your PHP projets in such way to avoid having the least secure project
+on your host used to attack other projects.&lt;/p&gt;
+
+&lt;p&gt;But recently I discovered that using several projects on the same host, all using &lt;strong&gt;APC&lt;/strong&gt; opcode and &lt;strong&gt;php-fpm chroot&lt;/strong&gt; I ended up
+with sources files from one project used on the others.. source code &lt;strong&gt;mix&lt;/strong&gt; .. and then really bad things happened...&lt;/p&gt;
+
+&lt;h2&gt;WTF: Why are the conf files mixed between projects?&lt;/h2&gt;
+
+&lt;p&gt;At first we were working with one php-fpm per host. On configurations where you have several hosts for the same project this
+happens more than sharing one host for several projects.&lt;/p&gt;
+
+&lt;p&gt;Then one day on some of theses hosts we deployed a clone of the project. On a different directory, with a second php-fpm pool,
+where the only difference between the 2 projects were the &lt;code&gt;prefix&lt;/code&gt; in the php-fpm pool and the project's application settings
+(where at least the base url name and database backend were different).&lt;/p&gt;
+
+&lt;p&gt;This should be OK, and without APC it was OK. But as soon as APC were used some pages were randomly broken, using domain of
+the first project for css files of the second project, or showing pages of second project in the fist one, a big random mess.
+In our case the random thing was done by the fact several hosts were load balanced between several hosts and did not used the
+same buggy files on each hosts.&lt;/p&gt;
+
+&lt;p&gt;The problem is easy (well, it took me long minutes to find it the fist time),
+APC is storing a compiled version of each file in his opcode cache, and
+&lt;strong&gt;the cache key of this file is  the file name (full path)&lt;/strong&gt;.&lt;br/&gt;
+If two chrooted projects &lt;strong&gt;share the same file names, only one version of this file is stored in APC!&lt;/strong&gt;&lt;br/&gt;
+Without the chroot this never happens on a regular filesystem. But, by definition, using
+a chroot your projects are using a shorter relative path to files, seing it as the real full path.&lt;/p&gt;
+
+&lt;p&gt;So chances are that the configuration files on two projects where one is the production version and one the
+test version will both be seen as (this is a Drupal setting for example):&lt;/p&gt;
+
+&lt;pre&gt;
+  /www/sites/default/settings.php
+&lt;/pre&gt;
+
+
+&lt;p&gt;Whereas the real filesystem paths are:&lt;/p&gt;
+
+&lt;pre&gt;
+  /var/www/app/production/www/sites/default/settings.php
+  /var/www/app/test/www/sites/default/settings.php
+&lt;/pre&gt;
+
+
+&lt;p&gt;As of course the chroots are &lt;code&gt;var/www/app/production&lt;/code&gt; and &lt;code&gt;/var/www/app/test&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Quite easy te see on projects where key files like configuration files gets the same name.&lt;br/&gt;
+But it could also happen with several projects having a lot of differences in file naming,
+and where just one or two file names would conflict. It would make the bug harder to detect.&lt;/p&gt;
+
+&lt;h2&gt;Solutions? one process per pool?&lt;/h2&gt;
+
+&lt;p&gt;There is of course one solution for this problem which is either:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;to remove APC&lt;/li&gt;
+&lt;li&gt;or only use one php-fpm pool per host&lt;/li&gt;
+&lt;li&gt;or only use one php-fpm pool per php-fpm process, and run &lt;strong&gt;several php-fpm daemons&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;So when you want to have 2, 3 or more projects on one host, all using APC and a chrooted php-fpm pools you will duplicate the
+php-fpm daemon for each project to ensure each pool is really independent of the other pools, and that a new APC, with a new shared
+memory segment will be used on this new PHP daemon. You cannot use the default classical way with one daemon and several pools on this daemon.&lt;/p&gt;
+
+&lt;p&gt;You can find examples of this. &lt;strong&gt;But&lt;/strong&gt; the process is not a simple a simply creating a new daemon with a new
+configuration file. On debian, for example, the start/stop init script will likely kill all the php-fpm process running
+on the Hosts, ignoring the fact they are from several different daemons.&lt;/p&gt;
+
+&lt;p&gt;So let's study it in details&lt;/p&gt;
+
+&lt;h3&gt;Duplicate the php-fpm daemon process&lt;/h3&gt;
+
+&lt;p&gt;The first thing to do is to create a new php-fpm configuration for the new php-fpm process. The first process/daemon will be &lt;strong&gt;php-fpm&lt;/strong&gt;,
+we will call the second &lt;strong&gt;php-fpm-test&lt;/strong&gt;. So this new conf file will also have the &lt;strong&gt;-test&lt;/strong&gt; extension.&lt;/p&gt;
+
+&lt;p&gt;Usually, at least on debian, the main configuration file is loading all pools from the pool diectory with
+this instruction:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;include=/etc/php5/fpm/pool.d/*.conf&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;We alter the configuration file to only include one pool. Then we make the copy and alter this name in the second file,
+we also alter the pid setting reference.&lt;br/&gt;
+After that a diff should give something like that:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;diff -bBNaur /etc/php5/fpm/php-fpm.conf /etc/php5/fpm/php-fpm-test.conf
+--- /etc/php5/fpm/php-fpm.conf  2013-04-10 16:48:23.000000000 +0200
++++ /etc/php5/fpm/php-fpm-test.conf  2013-04-10 18:34:12.000000000 +0200
+@@ -22,7 +22,7 @@
+ ; Pid file
+ ; Note: the default prefix is /var
+ ; Default Value: none
+-pid &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; /var/run/php5-fpm.pid
++pid &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; /var/run/php5-fpm-test.pid
+ 
+ ; Error log file
+ ; If it&lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;s &lt;span class=&quot;nb&quot;&gt;set &lt;/span&gt;to &lt;span class=&quot;s2&quot;&gt;&amp;quot;syslog&amp;quot;&lt;/span&gt;, log is sent to syslogd instead of being written
+@@ -118,5 +118,5 @@
+ 
+ ; To configure the pools it is recommended to have one .conf file per
+ ; pool in the following directory:
+-include&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/etc/php5/fpm/pool.d/my-pool.conf
++include&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/etc/php5/fpm/pool.d/my-pool-test.conf
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Now we need an init script starting a new php-fpm daemon using this &lt;code&gt;php-fpm-test.conf&lt;/code&gt; file.&lt;br/&gt;
+Copy the main startup script on a new one with test extension and alter it so that at least you obtain this diff:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;diff -bBNaur /etc/init.d/php5-fpm /etc/init.d/php5-fpm-test
+--- /etc/init.d/php5-fpm  2012-07-23 13:59:30.000000000 +0200
++++ /etc/init.d/php5-fpm-test  2013-04-10 18:56:22.000000000 +0200
+@@ -1,24 +1,24 @@
+ &lt;span class=&quot;c&quot;&gt;#!/bin/sh&lt;/span&gt;
+ &lt;span class=&quot;c&quot;&gt;### BEGIN INIT INFO&lt;/span&gt;
+-# Provides:          php-fpm php5-fpm
++# Provides:          php-fpm-test php5-fpm-test
+ &lt;span class=&quot;c&quot;&gt;# Required-Start:    $remote_fs $network&lt;/span&gt;
+ &lt;span class=&quot;c&quot;&gt;# Required-Stop:     $remote_fs $network&lt;/span&gt;
+ &lt;span class=&quot;c&quot;&gt;# Default-Start:     2 3 4 5&lt;/span&gt;
+ &lt;span class=&quot;c&quot;&gt;# Default-Stop:      0 1 6 &lt;/span&gt;
+-# Short-Description: starts php5-fpm
+-# Description:       Starts PHP5 FastCGI Process Manager Daemon
++# Short-Description: starts php5-fpm-test
++# Description:       Starts PHP5 FastCGI Process Manager Daemon &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;test&lt;/span&gt;
+ &lt;span class=&quot;c&quot;&gt;### END INIT INFO&lt;/span&gt;
+ 
+ &lt;span class=&quot;c&quot;&gt;# Author: Ondrej Sury &amp;lt;ondrej@debian.org&amp;gt;&lt;/span&gt;
+ 
+ &lt;span class=&quot;nv&quot;&gt;PATH&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/sbin:/usr/sbin:/bin:/usr/bin
+ &lt;span class=&quot;nv&quot;&gt;DESC&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;PHP5 FastCGI Process Manager&amp;quot;&lt;/span&gt;
+ &lt;span class=&quot;nv&quot;&gt;NAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;php5-fpm
+ &lt;span class=&quot;nv&quot;&gt;DAEMON&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/usr/sbin/&lt;span class=&quot;nv&quot;&gt;$NAME&lt;/span&gt;
+-DAEMON_ARGS&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;--fpm-config /etc/php5/fpm/php-fpm.conf&amp;quot;&lt;/span&gt;
+-PIDFILE&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/var/run/php5-fpm.pid
++DAEMON_ARGS&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;--fpm-config /etc/php5/fpm/php-fpm-test.conf&amp;quot;&lt;/span&gt;
++PIDFILE&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/var/run/php5-fpm-test.pid
+ &lt;span class=&quot;nv&quot;&gt;TIMEOUT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;30
+-SCRIPTNAME&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/etc/init.d/&lt;span class=&quot;nv&quot;&gt;$NAME&lt;/span&gt;
++SCRIPTNAME&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/etc/init.d/&lt;span class=&quot;nv&quot;&gt;$NAME&lt;/span&gt;-test
+ 
+ &lt;span class=&quot;c&quot;&gt;# Exit if the package is not installed&lt;/span&gt;
+ &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt; -x &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DAEMON&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;exit &lt;/span&gt;0
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Do not forget to add this script on start/stop levels if you want it after reboot.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;  update-rc.d default php5-fpm-test defaults
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Start this new php-fpm, it should be ok.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt; /etc/init.d/php5-fpm-test start
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Test it with this  &lt;code&gt;ps&lt;/code&gt; command, you sholuld see the two daemons and the children, one pool per daemon
+(number of children depends on your pool's settings):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt; ps auxf|grep php
+ 
+ 1005     30688  0.0  0.0   9616   904 pts/0    S+   13:47   0:00              &lt;span class=&quot;se&quot;&gt;\_&lt;/span&gt; grep php
+ root     17906  0.0  0.1 667208  5236 ?        Ss   May07   0:13 php-fpm: master process &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;/etc/php5/fpm/php-fpm-test.conf&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+ 1005      9753  0.0  3.0 733316 122300 ?       S    04:13   0:06  &lt;span class=&quot;se&quot;&gt;\_&lt;/span&gt; php-fpm: pool my-pool-test
+ 1005      9754  0.0  1.9 691336 81188 ?        S    04:13   0:04  &lt;span class=&quot;se&quot;&gt;\_&lt;/span&gt; php-fpm: pool my-pool-test
+ 1005     17920  0.0  3.0 733316 123152 ?       S    05:41   0:05  &lt;span class=&quot;se&quot;&gt;\_&lt;/span&gt; php-fpm: pool my-pool-test                                     
+ root     19130  0.0  0.1 667908  5940 ?        Ss   May07   0:14 php-fpm: master process &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;/etc/php5/fpm/php-fpm.conf&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+ 1005     10731  0.1  2.7 699296 110940 ?       S    May14   1:30  &lt;span class=&quot;se&quot;&gt;\_&lt;/span&gt; php-fpm: pool my-pool
+ 1005     10816  0.1  2.4 688676 99048 ?        S    May14   1:35  &lt;span class=&quot;se&quot;&gt;\_&lt;/span&gt; php-fpm: pool my-pool
+ 1005     10817  0.1  2.5 694604 104196 ?       S    May14   1:18  &lt;span class=&quot;se&quot;&gt;\_&lt;/span&gt; php-fpm: pool my-pool
+ 1005     10912  0.1  2.6 696708 108364 ?       S    May14   1:27  &lt;span class=&quot;se&quot;&gt;\_&lt;/span&gt; php-fpm: pool my-pool
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;Watch the nice crash on start/stop&lt;/h3&gt;
+
+&lt;p&gt;It's not the end!&lt;/p&gt;
+
+&lt;p&gt;If you try to stop one of the 2 daemons you will have a long running stop, and then after 30s the 2 daemons will be down.&lt;br/&gt;
+Redo the ps to see it.&lt;/p&gt;
+
+&lt;p&gt;Problem is coming fom the &lt;code&gt;do_stop&lt;/code&gt; function in the init script:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;#&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# Function that stops the daemon/service&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;#&lt;/span&gt;
+do_stop&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;c&quot;&gt;# Return&lt;/span&gt;
+  &lt;span class=&quot;c&quot;&gt;#   0 if daemon has been stopped&lt;/span&gt;
+  &lt;span class=&quot;c&quot;&gt;#   1 if daemon was already stopped&lt;/span&gt;
+  &lt;span class=&quot;c&quot;&gt;#   2 if daemon could not be stopped&lt;/span&gt;
+  &lt;span class=&quot;c&quot;&gt;#   other if a failure occurred&lt;/span&gt;
+  start-stop-daemon --stop --quiet --retry&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;QUIT/&lt;span class=&quot;nv&quot;&gt;$TIMEOUT&lt;/span&gt;/TERM/5/KILL/5 --pidfile &lt;span class=&quot;nv&quot;&gt;$PIDFILE&lt;/span&gt; --name &lt;span class=&quot;nv&quot;&gt;$NAME&lt;/span&gt;
+  &lt;span class=&quot;nv&quot;&gt;RETVAL&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;$?&amp;quot;&lt;/span&gt;
+  &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;$RETVAL&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; 2 &lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;return &lt;/span&gt;2
+  &lt;span class=&quot;c&quot;&gt;# Wait for children to finish too if this is a daemon that forks&lt;/span&gt;
+  &lt;span class=&quot;c&quot;&gt;# and if the daemon is only ever run from this initscript.&lt;/span&gt;
+  &lt;span class=&quot;c&quot;&gt;# If the above conditions are not satisfied then add some other code&lt;/span&gt;
+  &lt;span class=&quot;c&quot;&gt;# that waits for the process to drop all resources that could be&lt;/span&gt;
+  &lt;span class=&quot;c&quot;&gt;# needed by services started subsequently.  A last resort is to&lt;/span&gt;
+  &lt;span class=&quot;c&quot;&gt;# sleep for some time.&lt;/span&gt;
+  start-stop-daemon --stop --quiet --oknodo --retry&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;0/30/TERM/5/KILL/5 --exec &lt;span class=&quot;nv&quot;&gt;$DAEMON&lt;/span&gt;
+  &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;$?&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; 2 &lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;return &lt;/span&gt;2
+  &lt;span class=&quot;c&quot;&gt;# Many daemons don&amp;#39;t delete their pidfiles when they exit.&lt;/span&gt;
+  rm -f &lt;span class=&quot;nv&quot;&gt;$PIDFILE&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;$RETVAL&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The &lt;code&gt;start-stop-daemon&lt;/code&gt; command is a first stop on the right daemon, based on the pid.
+But after that a second stop is running, ensuring no ghost
+child stay alive, and this second &lt;code&gt;start-stop-daemon&lt;/code&gt; command is running with option &lt;code&gt;--exec&lt;/code&gt; :&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;−x, −−exec executable&lt;/p&gt;
+
+&lt;p&gt;Check for processes that are instances of this executable (according to /proc/pid/exe).&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;p&gt;Let's see whet is this &lt;code&gt;/proc/pid/exe&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;cat /var/run/php5-fpm.pid 
+1246
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;ls -alh /proc/1246/exe
+lrwxrwxrwx 1 root root 0 15 mai   13:30 /proc/1246/exe -&amp;gt; /usr/sbin/php5-fpm
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;So this second stop is waiting for &lt;strong&gt;any&lt;/strong&gt; process whose executable is &lt;code&gt;/usr/sbin/php5-fpm&lt;/code&gt;,
+and if it do not stop after 30 seconds, a SIGTERM and then a SIGKILL is launched.&lt;br/&gt;
+When stopping the php-fpm-test version every other parallel php-daemon running will finally get killed.
+Same for the first daemon.&lt;/p&gt;
+
+&lt;p&gt;That's not very nice.&lt;/p&gt;
+
+&lt;h3&gt;Fix the stop/killal problems&lt;/h3&gt;
+
+&lt;p&gt;First step, indicate a different binary in &lt;strong&gt;/etc/init.d/php5-fpm-test&lt;/strong&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;-NAME&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;php5-fpm
++NAME&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;php5-fpm-test
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Then this binary should exists, doing a symbolic link from php5-fpm-test to php5-fpm will not fool
+the  &lt;code&gt;/proc/pid/exe&lt;/code&gt; link. So one ugly solution is to make a real copy of the binary:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;cp /usr/sbin/php5-fpm /usr/sbin/php5-fpm-test
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;One caveat: when upgrading php5-fpm package you will have to redo this manual copy of the binary.&lt;/p&gt;
+
+&lt;p&gt;One other solution is to comment the second start-stop-daemon line, but you'll get a less robust stop script.&lt;/p&gt;
+
+&lt;p&gt;If you can think of a third solution send me an email.&lt;/p&gt;
+</description>
+				<published>2013-05-16 00:00:00 +0200</published>
+				<link>http://regilero.github.io//Drupal/English/2013/05/16/Warning_chrooted_php_fpm_and_apc/</link>
+			</item>
+		
+			<item>
 				<title>Drupal - Mongodb statistics module published</title>
 				<description>&lt;h3&gt;What is this about?&lt;/h3&gt;
 
@@ -1195,6 +1466,7 @@ Basically the www-user needs &lt;strong&gt;read access&lt;/strong&gt; to the Web
 &lt;h3&gt;Closely Related articles&lt;/h3&gt;
 
 &lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;/Drupal/English/2013/05/16/Warning_chrooted_php_fpm_and_apc/&quot;&gt;Warning Chrooted php-fpm and Apc with multiple pools&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;/Drupal/English/2011/09/01/better_rewrite_rules_for_drupal/&quot;&gt;Better Rewrite Rules for Drupal&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;/Drupal/English/2011/09/02/Tune_your_php_settings_for_drupal/&quot;&gt;Tune your php settings for Drupal&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
@@ -2861,84 +3133,6 @@ some more rule from Apache after the rewrite part.&lt;/p&gt;
 </description>
 				<published>2009-11-05 00:00:00 +0100</published>
 				<link>http://regilero.github.io//Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/</link>
-			</item>
-		
-			<item>
-				<title>Relative/Absolute URL and Proxies</title>
-				<description>&lt;p&gt;If you develop a web application you'll come soon at the moment of building your URLs.&lt;br/&gt;
-The best thing to do, either, is handling relative URL.&lt;/p&gt;
-
-&lt;p&gt;If your app can behave with &lt;strong&gt;relative URL&lt;/strong&gt; and handle a &lt;strong&gt;base_url&lt;/strong&gt; prefix for sites installed in sub-directories
-(like &lt;code&gt;'/myapp/is/here/'&lt;/code&gt;) you'll be friend with sysadmins. -- if you use Zend Framework have a look at the &lt;code&gt;setBaseUrl()&lt;/code&gt; router function--&lt;br/&gt;
-But most app do not handle &lt;code&gt;URL&lt;/code&gt;s this way, and &lt;strong&gt;absolute urls&lt;/strong&gt; are used, sad world.&lt;br/&gt;
-Then you'll find theses &lt;code&gt;URL&lt;/code&gt; in HTML content, in css, in javascript, and every object generated by your web application.&lt;br/&gt;
- That's hell for admins. So lets look deeper.&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;First &lt;strong&gt;moving&lt;/strong&gt; your app on a &lt;strong&gt;different domain&lt;/strong&gt; will maybe be harder
-(especially if you're a bad coder and this absolute URL is not written once in a &lt;strong&gt;config file&lt;/strong&gt;).&lt;/li&gt;
-&lt;li&gt;Then &lt;strong&gt;serving&lt;/strong&gt; your app with &lt;strong&gt;different domains&lt;/strong&gt; in the &lt;strong&gt;same time&lt;/strong&gt; won't be possible.&lt;/li&gt;
-&lt;li&gt;And harder, you'll &lt;strong&gt;break proxy rewriting&lt;/strong&gt;.&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;h3&gt;Exemple and workarounds&lt;/h3&gt;
-
-&lt;p&gt;The job of the proxy is to serve your web application on a different namespace.
-Maybe you have a &lt;strong&gt;myapp.localnetwork.net&lt;/strong&gt; application, that every people in &lt;strong&gt;localnetwork.net&lt;/strong&gt; will see.&lt;br/&gt;
-The proxy will server &lt;strong&gt;myapp.publicdomain.com&lt;/strong&gt; or even &lt;strong&gt;publicdomain.com/myapp/is/here&lt;/strong&gt;.&lt;br/&gt;
-And the &lt;strong&gt;job of the proxy is only handling HTTP headers&lt;/strong&gt;. &lt;br/&gt;
-That means it will only rewrite things like &lt;strong&gt;redirections&lt;/strong&gt; (which is a code and url in headers of the response, not in the HTTP content).&lt;/p&gt;
-
-&lt;pre&gt;
-browser
-\-&gt;myapp.publicdomain.com (proxy)
-\-&gt;myapp.anotherproxy.domain.com (proxy)
-\-&gt;myapp.localnetwork.net
-&lt;/pre&gt;
-
-
-&lt;p&gt;So you'll maybe ask the proxy maintainer to rewrite things on the &lt;strong&gt;content&lt;/strong&gt; as well.&lt;br/&gt;
-OK, this can be done with &lt;strong&gt;mod_proxy_html&lt;/strong&gt; for example in Apache.
-But this as 2 drawbacks:
- * this module is parsing every content and rewriting it, that's really slower.
- * And this module cannot handle all content, it will maybe forget one of your unknow &lt;code&gt;localnetwork.net&lt;/code&gt; url in a javascript file... big bugs.&lt;/p&gt;
-
-&lt;h3&gt;Real app Solutions&lt;/h3&gt;
-
-&lt;p&gt;So... if you either use &lt;strong&gt;absolute_url&lt;/strong&gt;, then you should test if any proxy is between you
-and the guy requesting the page.&lt;br/&gt;
-This is given by Apache to PHP in the &lt;strong&gt;HTTP_X_FORWARDED_HOST&lt;/strong&gt; parameter (or something similar
-if you're not in PHP, that means it's something your webserver knows by HTTP headers of the request).&lt;br/&gt;
-There you'll find a list of proxy used (if any) between you and the browser. &lt;strong&gt;Be careful&lt;/strong&gt;, it's a &lt;strong&gt;coma separated list&lt;/strong&gt;, with &lt;strong&gt;spaces&lt;/strong&gt;.&lt;br/&gt;
-The name you should use as the base name of your site is the &lt;strong&gt;first name of this list&lt;/strong&gt;.&lt;/p&gt;
-
-&lt;p&gt;In our example we'll have: &lt;code&gt;&quot;myapp.publicdomain.com, myapp.anotherproxy.domain.com&quot;&lt;/code&gt; and your absolute url to use is &lt;code&gt;http://myapp.publicdomain.com&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;With that name overriding your default base name you'll have a better app.
-But the problem is not really completly fixed in fact. What you have is the &lt;strong&gt;host name&lt;/strong&gt;,
-but you do not have any information about the &lt;strong&gt;protocol&lt;/strong&gt;.&lt;br/&gt;
-Maybe you'll prefix the name with &lt;strong&gt;'http://'&lt;/strong&gt; and it will be ok,
-but maybe the proxy is using &lt;strong&gt;ssl&lt;/strong&gt;
-(because using ssl for a public filtering proxy before intranet
-application is something used a lot). And the protocol should be &lt;strong&gt;'https://'&lt;/strong&gt;.&lt;/p&gt;
-
-&lt;p&gt;If you decide to handle this in a config file of your application you'll obtain &lt;strong&gt;'https://'&lt;/strong&gt; even in your local network,
-where you should'nt. &lt;br/&gt;
-Your only solution will be to tell your app which protocol to use for which name. Quite dirty.&lt;br/&gt;
-Well, in fact there's a solution, the proxy can set:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RequestHeader&lt;/span&gt; set X-Forwarded-Proto &lt;span class=&quot;s2&quot;&gt;&amp;quot;https&amp;quot;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;On his SSL configuration and you'll have &lt;strong&gt;HTTP_X_FORWARDED_PROTO&lt;/strong&gt; available on your code.&lt;/p&gt;
-
-&lt;p&gt;All theses things works because of 'de facto' http headers added by mod_proxy on Apache.
-You'll maybe wont have them, and your application will rely on proxy configuration. Remember &lt;strong&gt;relative URL&lt;/strong&gt; is still the best solution.&lt;/p&gt;
-</description>
-				<published>2009-06-03 00:00:00 +0200</published>
-				<link>http://regilero.github.io//Apache/English/2009/06/03/relative_absolute_urls_and_proxies/</link>
 			</item>
 		
 	</channel>
