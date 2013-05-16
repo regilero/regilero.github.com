@@ -871,6 +871,8 @@ The autor finally found a useful usage of php [doc_root](http://www.php.net/manu
 
 ###Closely Related articles###
 
+
+ * [Warning Chrooted php-fpm and Apc with multiple pools]({% post_url 2013-05-16-Warning_chrooted_php_fpm_and_apc%})
  * [Better Rewrite Rules for Drupal]({% post_url 2011-09-01-better_rewrite_rules_for_drupal %})
  * [Tune your php settings for Drupal]({% post_url 2011-09-02-Tune_your_php_settings_for_drupal %})
 

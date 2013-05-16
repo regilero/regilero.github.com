@@ -2,7 +2,7 @@
 layout: post
 title: Drupal - Mongodb statistics module published
 categories: [Drupal, English]
-tags: [Drupal, Performance, Mongodb, Statistics]
+tags: [Drupal, Performance, Mongodb, Statistics, PHP]
 pic: flower2.png
 excerpt: mongodb-statistics module for drupal is a replacement for core statistics module using an ajax callback tracker. 
 

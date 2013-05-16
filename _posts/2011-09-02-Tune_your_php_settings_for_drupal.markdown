@@ -2,7 +2,7 @@
 layout: post
 title: Tune your php settings for Drupal
 categories: [Drupal, English]
-tags: [Drupal, Apache, PHP, Security]
+tags: [Drupal, Apache, PHP, Security, APC]
 pic: whiteflower2.png
 excerpt: How to make a clean Apache Virtualhost for each drupal project, with PHP settings altered for each project
 
