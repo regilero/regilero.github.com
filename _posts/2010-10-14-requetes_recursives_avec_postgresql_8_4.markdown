@@ -1,5 +1,6 @@
 ---
 layout: post
+uuid: d1451e02-926f-432e-8657-ebc323b8ab22
 title: Requêtes récursives avec PostgreSQL 8.4 (WITH RECURSIVE)
 categories: [PostgreSQL, Francais]
 tags: [PostgreSQL, Bash]

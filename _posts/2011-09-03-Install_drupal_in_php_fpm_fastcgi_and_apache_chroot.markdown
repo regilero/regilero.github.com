@@ -1,5 +1,6 @@
 ---
 layout: post
+uuid: 039d0a71-89a0-41dd-a6ad-5c03f4b2911a
 title: Install Drupal in php-fpm (fastcgi) with Apache and a chroot php-fpm
 categories: [Drupal, English]
 tags: [Drupal, Apache, PHP, PHP-fpm, Security]

@@ -1,5 +1,6 @@
 ---
 layout: post
+uuid: 2fa0e759-986a-4b5f-a04e-4fa55530e7da
 title: Separate cache Backends with Drupal6 and Drupal7.
 categories: [Drupal, English]
 tags: [Drupal, Performance, Cache, PHP]

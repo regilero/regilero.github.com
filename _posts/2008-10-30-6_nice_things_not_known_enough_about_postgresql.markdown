@@ -1,5 +1,6 @@
 ---
 layout: post
+uuid: b4d9c381-9c78-4039-9155-e3385e81875c
 title: 6 nice things not know enough about PostgreSQL
 categories: [PostgreSQL, English]
 tags: [PostgreSQL]

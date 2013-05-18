@@ -1,5 +1,6 @@
 ---
 layout: post
+uuid: f2b47778-a8de-4cec-9c9e-75f9ae93c696
 title: Temps de réponse réél d'une page web avec ... netcat
 categories: [Monitoring, Francais]
 tags: [Linux, HTTP, Monitoring, Apache, Nginx]

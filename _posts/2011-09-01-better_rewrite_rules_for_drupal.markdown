@@ -1,5 +1,6 @@
 ---
 layout: post
+uuid: 4323720b-b870-4f95-8938-ef0c2dc355d6
 title: Better rewriteRules for Drupal
 categories: [Drupal, English]
 tags: [Drupal, Performance, Apache, PHP, mod_rewrite, Security]

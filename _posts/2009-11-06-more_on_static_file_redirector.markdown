@@ -1,5 +1,6 @@
 ---
 layout: post
+uuid: 6eab1ca2-20a3-4051-8880-57776d835d35
 title: More on Static file redirector
 categories: [Apache, English]
 tags: [HTTP, Plone, Performance, Proxy, mod_rewrite, RewriteMap, Security]

@@ -1,10 +1,11 @@
 ---
 layout: post
+uuid: b6b551cb-c3f9-49a7-b9c7-2f76b12b662d
 title: Warning Chrooted php-fpm and Apc with multiple pools
 categories: [Drupal, English]
 tags: [Drupal, Performance, PHP-fpm, APC]
 pic: ladybird.png
-excerpt: Using several chrooted php-fpm pools with APC opcode may break all your websites (and chroot jails). Step by step of cloning php-fpm daemons.  
+excerpt: Using several chrooted php-fpm pools with APC opcode may break all your websites (and chroot jails). Step by step of cloning php-fpm daemons.
 
 ---
 

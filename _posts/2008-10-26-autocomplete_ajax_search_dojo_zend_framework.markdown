@@ -1,5 +1,6 @@
 ---
 layout: post
+uuid: e1ff7b10-4e59-4762-a294-7dbda908f5a2
 title: Autocomplete Ajax search with Dojo and Zend Framework
 categories: [Zend Framework, English]
 tags: [ZendFramework, Dojo, js, Ajax]

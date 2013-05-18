@@ -1,5 +1,6 @@
 ---
 layout: post
+uuid: 146ce900-469f-483e-9a0e-8ce74364b308
 title: Force HTTP/1.0 Apache response when PHP is there...
 categories: [Apache, English]
 tags: [HTTP, Apache, PHP, Bug]

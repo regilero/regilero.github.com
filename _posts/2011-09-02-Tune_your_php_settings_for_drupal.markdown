@@ -1,5 +1,6 @@
 ---
 layout: post
+uuid: 45a3b558-115a-410c-9d72-96c5a2cb767a
 title: Tune your php settings for Drupal
 categories: [Drupal, English]
 tags: [Drupal, Apache, PHP, Security, APC]
