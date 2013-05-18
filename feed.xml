@@ -3,7 +3,7 @@
 	<channel>
 		<title>RBleug</title>
 		<description>Regilero's blog; Mostly tech things about web stuff.</description>
-		<link>http://regilero.github.io/</link>
+		<link>http://regilero.github.io</link>
 		
 			<item>
 				<title>Warning Chrooted php-fpm and Apc with multiple pools</title>
@@ -273,7 +273,7 @@ the  &lt;code&gt;/proc/pid/exe&lt;/code&gt; link. So one ugly solution is to mak
 &lt;p&gt;If you can think of a third solution send me an email.&lt;/p&gt;
 </description>
 				<published>2013-05-16 00:00:00 +0200</published>
-				<link>http://regilero.github.io//Drupal/English/2013/05/16/Warning_chrooted_php_fpm_and_apc/</link>
+				<link>http://regilero.github.io/Drupal/English/2013/05/16/Warning_chrooted_php_fpm_and_apc/</link>
 			</item>
 		
 			<item>
@@ -300,7 +300,7 @@ So it's not the nicest piece of code I could write :-)&lt;/p&gt;
 
 </description>
 				<published>2011-10-18 00:00:00 +0200</published>
-				<link>http://regilero.github.io//Drupal/English/2011/10/18/drupal_mongodb_statistics_module_published/</link>
+				<link>http://regilero.github.io/Drupal/English/2011/10/18/drupal_mongodb_statistics_module_published/</link>
 			</item>
 		
 			<item>
@@ -588,7 +588,7 @@ Today it's still a sandboxed  module, no official release. available only with D
 Some modules provides lock alternatives which are faster (like the Redis module)...&lt;/p&gt;
 </description>
 				<published>2011-10-03 00:00:00 +0200</published>
-				<link>http://regilero.github.io//Drupal/English/2011/10/03/separate_cache_backends_d6_and_d7/</link>
+				<link>http://regilero.github.io/Drupal/English/2011/10/03/separate_cache_backends_d6_and_d7/</link>
 			</item>
 		
 			<item>
@@ -1473,7 +1473,7 @@ Basically the www-user needs &lt;strong&gt;read access&lt;/strong&gt; to the Web
 
 </description>
 				<published>2011-09-03 00:00:00 +0200</published>
-				<link>http://regilero.github.io//Drupal/English/2011/09/03/Install_drupal_in_php_fpm_fastcgi_and_apache_chroot/</link>
+				<link>http://regilero.github.io/Drupal/English/2011/09/03/Install_drupal_in_php_fpm_fastcgi_and_apache_chroot/</link>
 			</item>
 		
 			<item>
@@ -1908,7 +1908,7 @@ It will be a lot faster, but APC will not even try to see if the file has been u
 
 </description>
 				<published>2011-09-02 00:00:00 +0200</published>
-				<link>http://regilero.github.io//Drupal/English/2011/09/02/Tune_your_php_settings_for_drupal/</link>
+				<link>http://regilero.github.io/Drupal/English/2011/09/02/Tune_your_php_settings_for_drupal/</link>
 			</item>
 		
 			<item>
@@ -2259,7 +2259,7 @@ Check &lt;a href=&quot;/Apache/English/2009/11/05/use_rewrite_map_to_prevent_pro
 
 </description>
 				<published>2011-09-01 00:00:00 +0200</published>
-				<link>http://regilero.github.io//Drupal/English/2011/09/01/better_rewrite_rules_for_drupal/</link>
+				<link>http://regilero.github.io/Drupal/English/2011/09/01/better_rewrite_rules_for_drupal/</link>
 			</item>
 		
 			<item>
@@ -2591,7 +2591,7 @@ La détection de cycle se base ici sur l'array des Identifiants parcourus, des e
 posgreSQL citée plus haut. &lt;strong&gt;Attention&lt;/strong&gt; à ne pas oublier le &lt;code&gt;AND NOT cycle&lt;/code&gt; dans la sous-requête.&lt;/p&gt;
 </description>
 				<published>2010-10-14 00:00:00 +0200</published>
-				<link>http://regilero.github.io//PostgreSQL/Francais/2010/10/14/requetes_recursives_avec_postgresql_8_4/</link>
+				<link>http://regilero.github.io/PostgreSQL/Francais/2010/10/14/requetes_recursives_avec_postgresql_8_4/</link>
 			</item>
 		
 			<item>
@@ -2608,7 +2608,7 @@ posgreSQL citée plus haut. &lt;strong&gt;Attention&lt;/strong&gt; à ne pas oub
 
 </description>
 				<published>2010-08-16 00:00:00 +0200</published>
-				<link>http://regilero.github.io//Js/English/2010/08/16/nice_webapps_and_tools_using_canvas/</link>
+				<link>http://regilero.github.io/Js/English/2010/08/16/nice_webapps_and_tools_using_canvas/</link>
 			</item>
 		
 			<item>
@@ -2847,7 +2847,7 @@ VirtualHost and check the errorLog to observe what is done After the rewrite.&lt
 
 </description>
 				<published>2009-11-06 00:00:00 +0100</published>
-				<link>http://regilero.github.io//Apache/English/2009/11/06/more_on_static_file_redirector/</link>
+				<link>http://regilero.github.io/Apache/English/2009/11/06/more_on_static_file_redirector/</link>
 			</item>
 		
 			<item>
@@ -3132,7 +3132,7 @@ some more rule from Apache after the rewrite part.&lt;/p&gt;
 
 </description>
 				<published>2009-11-05 00:00:00 +0100</published>
-				<link>http://regilero.github.io//Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/</link>
+				<link>http://regilero.github.io/Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/</link>
 			</item>
 		
 	</channel>
