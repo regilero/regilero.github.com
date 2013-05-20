@@ -1,8 +1,6 @@
 (function ($j) {
   $j(document).ready(function(){
-        console.log($j('.effect'));
       $j('.effect').hover(function(){
-        console.log($j(".cover-bottom", this));
           $j(".cover-bottom", this).stop().animate(
               { top: '25px' }
               ,{ queue: false , duration:300 }
@@ -22,4 +20,17 @@
           );
       });
   });
+  
+  $j(document).ready(function(){
+    // Fix deco effect height 
+    var finalh = parseInt($j('#sideBarContent').css('height'),10);
+    $j('.parallax-viewport').css('height',finalh+'px');
+    $j('img:first',$j('.parallax-viewport')).attr('height',finalh+30+'px');
+    $j('img:first',$j('.parallax-viewport')).css('height',finalh+30+'px');
+    // Declare parallax on layers
+    $j('.parallax-layer').parallax({
+      mouseport: $j("#sideBarContent")
+    });
+  });
+  
 })(jQuery);
