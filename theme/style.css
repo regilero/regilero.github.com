@@ -134,7 +134,13 @@ caption     { background: #eee; }
 
 /* Custom stuff
 -------------------------------------------------------------- */
-
+.parallax-layer { position:absolute; }
+.parallax-viewport  { 
+  position:relative;
+  overflow:hidden;
+  width:100%;
+  height:500px; 
+}
 a {
 	color:#5a8cd0;
 	text-decoration:none;
@@ -145,6 +151,26 @@ a:hover {
 }
 body {
 	background:url(img/bgR.png) repeat-x left top #ffffff;
+  background:url(img/bg1.gif) no-repeat left top #ffffff;
+}
+#deco {
+/*  position: absolute;
+  top: 0;
+  left: 0;
+  width: 500px;*/
+  height: 5px;
+  z-index: 1;
+}
+#sideBarContent {
+  position: relative;
+  top: -5px;
+  background-color: rgb(255,255, 255);
+  background-color: rgba(255, 255, 255, 0.8);
+}
+#mastercontainer {
+/*  position: relative;
+  top: -165px;*/
+  z-index: 1000;
 }
 
 /*div.column {
@@ -152,7 +178,15 @@ body {
 }*/
 #branding {
   background: transparent url("img/coccinelle.png") no-repeat 0 0;
+  background-color: rgb(0, 0, 0);
+  background-color: rgba(0, 0, 0, 0.7);
 }
+/*#brandingcontent {
+ position:absolute;
+ z-index: 1000;
+ top 0;
+ left:0;
+}*/
 #branding h1{
 	font-size:62px;
 	font-weight:normal;
@@ -288,7 +322,7 @@ h3 {
 
 
 .sideBarListBox {
-	margin-bottom:20px;
+	padding-bottom:10px;
 }
 .sideBarListBox ul {
 	padding: 0 10px;
@@ -305,7 +339,7 @@ h3 {
 .sideBarListBox ul li a,
 .sideBarListBox ul li a:hover,
 .sideBarListBox ul li a:visited {
-	color:#5a5a5a;
+	color:#2a2a2a;
 	line-height:16px;
 }
 
@@ -421,4 +455,18 @@ table.archive td.category {
 }
 table.archive td.tag {
   font-size: 11px;
+}
+.taglink {
+  font-variant: small-caps;
+  line-height: 0.9em;
+}
+a.taglink,
+a.taglink:visited {
+  color: #033;
+}
+a.taglink:hover {
+  color: #000;
+}
+.tagcloud {
+  text-align: justify;
 }

@@ -9,9 +9,9 @@
     <link rel="icon" type="image/x-icon" href="/theme/img/regilero.ico" />
     <link rel="shortcut icon" type="image/x-icon" href="/theme/img/regilero.ico" />
     <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="{{site.baseurl}}/feed.xml" />
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.5.2/jquery.min.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
     <script src="/theme/js/effects.js" ></script>
-    <!-- <script src="/theme/js/jquery.jparallax.js"></script> -->
+    <script src="/theme/js/jquery.parallax.min.js"></script>
     <link rel="stylesheet" href="/theme/blueprint/screen.css" type="text/css" media="screen, projection">
     <link rel="stylesheet" href="/theme/blueprint/print.css" type="text/css" media="print">
     <link rel="stylesheet" href="/theme/syntax.css" type="text/css" />
@@ -37,11 +37,14 @@
 </script>
   </head>
   <body>
-    <div class="container">
+
+    <div id="mastercontainer" class="container">
        <div id="branding" class="column span-24 last">
-         <h1 class="logo"><a href="{{site.baseurl}}/">{{ site.name }}</a></h1>
-         <hr/>
-         <h2 class="alt">{{site.description}}</h2>
+         <div id="brandingcontent">
+           <h1 class="logo"><a href="{{site.baseurl}}/">{{ site.name }}</a></h1>
+           <hr/>
+           <h2 class="alt">{{site.description}}</h2>
+         </div>
        </div>
        
        <div id="menu" class="column span-24 last">
@@ -55,71 +58,83 @@
        </div>
        
        <div id="content" class="">
-           <div id="left-content" class="column span-15 prepend-1">
+         <div id="left-content" class="column span-15 prepend-1">
              
-            {{ content }}    
+          {{ content }}    
     
-           </div>
-           <div id="sideBar" class="column span-8 last">
-            {% if page.id %}
+         </div>
+         <div id="sideBar" class="column span-8 last">
+            <div id="deco">
+              <div class="parallax-viewport">
+                 <!-- Seven image layers, each layer slightly bigger than the one behind, making 'closer' layers move faster. -->
+                 <img class="parallax-layer" src="/theme/img/parallax/0.gif" alt="" style="width:310px; height:825px;"/>
+                 <img class="parallax-layer" src="/theme/img/parallax/1.gif" alt="" style="width:320px; height:850px;"/>
+                 <img class="parallax-layer" src="/theme/img/parallax/2.gif" alt="" style="width:350px; height:900px;"/>
+                 <img class="parallax-layer" src="/theme/img/parallax/4.gif" alt="" style="width:360px; height:950px;"/>
+                 <img class="parallax-layer" src="/theme/img/parallax/6.gif" alt="" style="width:400px; height:1000px;"/>
+               </div>
+             </div>
+            <div id="sideBarContent"> 
+              {% if page.id %}
+              <div class="sideBarListBox">
+                <h3>Related posts</h3>
+                <ul>
+                  {% for post in site.related_posts limit: 5 %}
+                     <li><a href="{{ post.url }}">{{ post.title }}</a></li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+      
             <div class="sideBarListBox">
-              <h3>Related posts</h3>
+              <h3>Latest posts</h3>
               <ul>
-                {% for post in site.related_posts limit: 5 %}
-                   <li><a href="{{ post.url }}">{{ post.title }}</a></li>
-                {% endfor %}
+                  {% for post in site.posts limit: 5  %}
+                     <li><a href="{{ post.url }}">{{ post.title }}</a></li>
+                  {% endfor %}
               </ul>
             </div>
-            {% endif %}
-    
-        <div class="sideBarListBox">
-          <h3>Latest posts</h3>
-          <ul>
-              {% for post in site.posts limit: 5  %}
-                 <li><a href="{{ post.url }}">{{ post.title }}</a></li>
-              {% endfor %}
-          </ul>
-        </div>
-                
-        <div class="sideBarMore">
-          <h3>More</h3>
-            <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
-            <a href="https://github.com/regilero" target="_blank"><img src="/theme/img/github_thumb.png" width="48" height="48" alt="Github regilero" title="Github regilero"></a>
-            <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
-            <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
-            <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
-            <p>Follow me also on <a rel="me" href="http://makina-corpus.org/blogs/regilero">makina-corpus.org</a>.</p>
-        </div>
+            
+            <div class="sideBarListBox">
+              <h3>Tags</h3>
+              <div class="tagcloud">
+              {% tag_cloud font-size: 12 - 32px %}
+              </div>
+            </div>
+          </div> <!-- end sideBarContent -->
+            
+            <div class="sideBarMore">
+              <h3>More</h3>
+                <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
+                <a href="https://github.com/regilero" target="_blank"><img src="/theme/img/github_thumb.png" width="48" height="48" alt="Github regilero" title="Github regilero"></a>
+                <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
+                <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
+                <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+                <p>Follow me also on <a rel="me" href="http://makina-corpus.org/blogs/regilero">makina-corpus.org</a>.</p>
+            </div>
+            <div class="sideBarItem">
+              <h3>Friends</h3>
+                <ul>
+                  <li><a class="effect" target="_blank" href="http://www.makina-corpus.org">Blogs Makina Corpus<div class="cover-right"><img src="/theme/img/makinaorg.png" height="30" width="30"><img src="/theme/img/makinaorg_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://www.makina-corpus.com">Makina Corpus<div class="cover-right"><img src="/theme/img/makinacom.png" height="30" width="30"><img src="/theme/img/makinacom_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://www.processus.org/">Pounard, processus.org<div class="cover-right"><img src="/theme/img/pounard.png" height="30" width="30"><img src="/theme/img/pounard_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://toutpt.makina-corpus.org/" >Toupt<div class="cover-right"><img src="/theme/img/toupt.png" height="30" width="30"><img src="/theme/img/toupt_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://francoisgaudin.com/">François Gaudin<div class="cover-right"><img src="/theme/img/gaudin.png" height="30" width="30"><img src="/theme/img/gaudin_banner.png" height="30" width="117"></div></a></li>
+                </ul>
+                <div class="clear"></div>
+            </div>
+         </div> <!-- end sidebar -->
         
-        <div class="sideBarListBox">
-          <h3>Tags</h3>
-          {% tag_cloud %}
-        </div>
-        
-        <div class="sideBarItem">
-          <h3>Friends</h3>
-            <ul>
-              <li><a class="effect" target="_blank" href="http://www.makina-corpus.org">Blogs Makina Corpus<div class="cover-right"><img src="/theme/img/makinaorg.png" height="30" width="30"><img src="/theme/img/makinaorg_banner.png" height="30" width="117"></div></a></li>
-              <li><a class="effect" target="_blank" href="http://www.makina-corpus.com">Makina Corpus<div class="cover-right"><img src="/theme/img/makinacom.png" height="30" width="30"><img src="/theme/img/makinacom_banner.png" height="30" width="117"></div></a></li>
-              <li><a class="effect" target="_blank" href="http://www.processus.org/">Pounard, processus.org<div class="cover-right"><img src="/theme/img/pounard.png" height="30" width="30"><img src="/theme/img/pounard_banner.png" height="30" width="117"></div></a></li>
-              <li><a class="effect" target="_blank" href="http://toutpt.makina-corpus.org/" >Toupt<div class="cover-right"><img src="/theme/img/toupt.png" height="30" width="30"><img src="/theme/img/toupt_banner.png" height="30" width="117"></div></a></li>
-              <li><a class="effect" target="_blank" href="http://francoisgaudin.com/">François Gaudin<div class="cover-right"><img src="/theme/img/gaudin.png" height="30" width="30"><img src="/theme/img/gaudin_banner.png" height="30" width="117"></div></a></li>
-            </ul>
-            <div class="clear"></div>
-        </div>
-        
-      </div> <!-- end sidebar -->
-        
-         </div><!-- end content -->
+       </div><!-- end content -->
          
-         <div id="footer" class="column span-24 last">
-            <hr />
-            <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/"><img alt="Licence Creative Commons" style="border-width:0" src="http://i.creativecommons.org/l/by-sa/3.0/fr/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/Text" property="dct:title" rel="dct:type">regilero's blog</span> est mis à disposition selon les termes de la <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/">licence Creative Commons Attribution -  Partage dans les Mêmes Conditions 3.0 France</a>.<br />Fondé(e) sur une œuvre à <a xmlns:dct="http://purl.org/dc/terms/" href="http://regilero.github.io" rel="dct:source">http://regilero.github.io</a>.
-           <hr />
-           <a href="http://pgday.fr/" class="media" title="Pg Day 2013 à Nantes le 13 Juin">
+       <div id="footer" class="column span-24 last">
+          <hr />
+          <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/"><img alt="Licence Creative Commons" style="border-width:0" src="http://i.creativecommons.org/l/by-sa/3.0/fr/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/Text" property="dct:title" rel="dct:type">regilero's blog</span> est mis à disposition selon les termes de la <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/">licence Creative Commons Attribution -  Partage dans les Mêmes Conditions 3.0 France</a>.<br />Fondé(e) sur une œuvre à <a xmlns:dct="http://purl.org/dc/terms/" href="http://regilero.github.io" rel="dct:source">http://regilero.github.io</a>.
+         <hr />
+         <a href="http://pgday.fr/" class="media" title="Pg Day 2013 à Nantes le 13 Juin">
             <img src="http://www.pgday.fr/_media/banniere_pgdayfr2013.png" class="media" alt="Pg Day 2013 à Nantes le 13 Juin" width="720" height="120">
-          </a>
-         </div>
+         </a>
+       </div>
 
       </div><!-- end container -->
     </body>
