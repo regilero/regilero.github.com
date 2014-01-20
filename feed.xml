@@ -80,7 +80,7 @@ So we wanted to add a simple way to manage several lines in a file, without rege
 
 &lt;p&gt;Block identity targeting and delimitation is done by a comment. By default it use a &lt;code&gt;bash&lt;/code&gt; type of comment with &lt;code&gt;#&lt;/code&gt; characters. But you can alter it, if your target is an html file you could use &lt;code&gt;&amp;lt;!-- --&amp;gt;&lt;/code&gt; comments, if it's a code file you could use &lt;code&gt;/* */&lt;/code&gt; comments, etc.&lt;/p&gt;
 
-&lt;p&gt;If you need several blocks in the same file you will need a way to identify theses different blocks, so inside theses comments there should be a unique block identifier. The whole marker line is searched, so the whole marker is this unique identifier. But if you make several blocks from the same marker model you should maybe add inside a unique variation, this is why the &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;state documentation&lt;/a&gt; example show usage of a jinja &lt;code&gt;myvar&lt;/code&gt; variable present in the state id and in the block marker (imagine theses states running in a jinja for loop, with &lt;code&gt;myvar&lt;/code&gt; taking severa values.&lt;/p&gt;
+&lt;p&gt;If you need several blocks in the same file you will need a way to identify theses different blocks, so inside theses comments there should be a unique block identifier. The whole marker line is searched, so the whole marker is this unique identifier. But if you make several blocks from the same marker model you should maybe add inside a unique variation, this is why the &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;state documentation&lt;/a&gt; example shows usage of a jinja &lt;code&gt;myvar&lt;/code&gt; variable present in the state id and in the block marker (imagine theses states running in a jinja for loop, with &lt;code&gt;myvar&lt;/code&gt; taking severa values.&lt;/p&gt;
 
 &lt;p&gt;The module documentation shows an example of a managed block content in a file (the result):&lt;/p&gt;
 
@@ -94,7 +94,7 @@ text 4
 (...)
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;Here the block is delimited by the 'markers', the starting marker is &lt;code&gt;# START managed zone 42 -DO-NOT-EDIT-&lt;/code&gt; and the ending one is &lt;code&gt;# END managed zone 42 --&lt;/code&gt;. And the job of the state writer (you) is to keep theses markers unique in the file so that salt could indentify the block without any mistakes. Use long markers, short ones could work, of course, but with long markers you will avoid more easily the bad situation in which a part of your block content may contain the same thing as you end marker.&lt;/p&gt;
+&lt;p&gt;Here the block is delimited by the 'markers', the starting marker is &lt;code&gt;# START managed zone 42 -DO-NOT-EDIT-&lt;/code&gt; and the ending one is &lt;code&gt;# END managed zone 42 --&lt;/code&gt;. And the job of the state writer (you) is to keep theses markers unique in the file so that salt could indentify each block without any mistakes. Use long markers, short ones could work, of course, but with long markers you will avoid more easily the bad situation in which a part of your block content may contain the same thing as you end marker.&lt;/p&gt;
 
 &lt;h2&gt;Step by step: Blockreplace real example with hosts&lt;/h2&gt;
 
@@ -353,7 +353,7 @@ Total:     2
 
 &lt;h2&gt;Next?&lt;/h2&gt;
 
-&lt;p&gt;On a future post we will have a look at &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt; examples with managed files, and also with blockreplace. As accumulated data can be used to collect data on several states, which makes this sort of tools very useful in combination with edited blocks managments.&lt;/p&gt;
+&lt;p&gt;A next post will cover &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt; examples with managed files and also with blockreplace. I hope you feel now how powerful could be the combination of harvested data accumulated other several states with multiple edited text blocks.&lt;/p&gt;
 
 &lt;p&gt;&lt;a href=&quot;https://twitter.com/regilero&quot;&gt;Stay tuned on twitter, @regilero&lt;/a&gt;, &lt;a href=&quot;https://twitter.com/makinacorpus&quot;&gt;@makinacorpus&lt;/a&gt;&lt;/p&gt;
 </description>

@@ -143,7 +143,7 @@ So we wanted to add a simple way to manage several lines in a file, without rege
 
 <p>Block identity targeting and delimitation is done by a comment. By default it use a <code>bash</code> type of comment with <code>#</code> characters. But you can alter it, if your target is an html file you could use <code>&lt;!-- --&gt;</code> comments, if it's a code file you could use <code>/* */</code> comments, etc.</p>
 
-<p>If you need several blocks in the same file you will need a way to identify theses different blocks, so inside theses comments there should be a unique block identifier. The whole marker line is searched, so the whole marker is this unique identifier. But if you make several blocks from the same marker model you should maybe add inside a unique variation, this is why the <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace">state documentation</a> example show usage of a jinja <code>myvar</code> variable present in the state id and in the block marker (imagine theses states running in a jinja for loop, with <code>myvar</code> taking severa values.</p>
+<p>If you need several blocks in the same file you will need a way to identify theses different blocks, so inside theses comments there should be a unique block identifier. The whole marker line is searched, so the whole marker is this unique identifier. But if you make several blocks from the same marker model you should maybe add inside a unique variation, this is why the <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace">state documentation</a> example shows usage of a jinja <code>myvar</code> variable present in the state id and in the block marker (imagine theses states running in a jinja for loop, with <code>myvar</code> taking severa values.</p>
 
 <p>The module documentation shows an example of a managed block content in a file (the result):</p>
 
@@ -157,7 +157,7 @@ text 4
 (...)
 </code></pre>
 
-<p>Here the block is delimited by the 'markers', the starting marker is <code># START managed zone 42 -DO-NOT-EDIT-</code> and the ending one is <code># END managed zone 42 --</code>. And the job of the state writer (you) is to keep theses markers unique in the file so that salt could indentify the block without any mistakes. Use long markers, short ones could work, of course, but with long markers you will avoid more easily the bad situation in which a part of your block content may contain the same thing as you end marker.</p>
+<p>Here the block is delimited by the 'markers', the starting marker is <code># START managed zone 42 -DO-NOT-EDIT-</code> and the ending one is <code># END managed zone 42 --</code>. And the job of the state writer (you) is to keep theses markers unique in the file so that salt could indentify each block without any mistakes. Use long markers, short ones could work, of course, but with long markers you will avoid more easily the bad situation in which a part of your block content may contain the same thing as you end marker.</p>
 
 <h2>Step by step: Blockreplace real example with hosts</h2>
 
@@ -416,7 +416,7 @@ Total:     2
 
 <h2>Next?</h2>
 
-<p>On a future post we will have a look at <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated"><code>file.accumulated</code></a> examples with managed files, and also with blockreplace. As accumulated data can be used to collect data on several states, which makes this sort of tools very useful in combination with edited blocks managments.</p>
+<p>A next post will cover <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated"><code>file.accumulated</code></a> examples with managed files and also with blockreplace. I hope you feel now how powerful could be the combination of harvested data accumulated other several states with multiple edited text blocks.</p>
 
 <p><a href="https://twitter.com/regilero">Stay tuned on twitter, @regilero</a>, <a href="https://twitter.com/makinacorpus">@makinacorpus</a></p>
 
@@ -486,36 +486,36 @@ Total:     2
             <div class="sideBarListBox">
               <h3>Tags</h3>
               <div class="tagcloud">
-              <a style='font-size: 19px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+              <a style='font-size: 19px' class='taglink' href='/tag/Plone/'>Plone</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 23px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 23px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 30px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 30px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 19px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 30px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 19px' class='taglink' href='/tag/APC/'>APC</a>
 <a style='font-size: 19px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 26px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 12px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 19px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 29px' class='taglink' href='/tag/HTTP/'>HTTP</a>
 <a style='font-size: 19px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 19px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 29px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
 <a style='font-size: 12px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 12px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 23px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 30px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 19px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 19px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 30px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 26px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 23px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 30px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
 
               </div>
             </div>
