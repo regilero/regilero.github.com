@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
+      <loc>http://regilero.github.io/SaltStack/English/2014/01/20/saltstack_step_by_step_file_blockreplace/</loc>
+      <lastmod>2014-01-20</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
       <loc>http://regilero.github.io/Drupal/English/2013/05/16/Warning_chrooted_php_fpm_and_apc/</loc>
       <lastmod>2013-05-16</lastmod>
       <changefreq>never</changefreq>

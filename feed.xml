@@ -6,6 +6,362 @@
 		<link>http://regilero.github.io</link>
 		
 			<item>
+				<title>SaltStack, Manage entries in unmanaged files with File Blockreplace</title>
+				<description>&lt;p&gt;Makina Corpus recently started to use Salt-stack, and by using it I mean we also started some contributions.
+Salt-stack is a great set of tools, but sometimes your needs aren't covered yet, and in theses cases you'll find that salt-stack is also very easy to improve. The community is very open to contributions, on this blog post we'll study one of out first addition, &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;&lt;code&gt;file.blockreplace&lt;/code&gt;&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2&gt;Managed files and unmanaged ones&lt;/h2&gt;
+
+&lt;p&gt;When using salt-stack, one of the most important task is usually to &lt;strong&gt;set some configuration parameters&lt;/strong&gt; for your system services. To do that one of the very useful tool available in the salt-stack toolkit is the
+&lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed&quot;&gt;&lt;code&gt;file.managed&lt;/code&gt;&lt;/a&gt;. This let you use a file, retrieved from the salt server, computed with a template language like jinja. And you can do almost everything with that, you have a very flexible language, some variables coming from your state, and you create the final setting file. You even have some magic tools like &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt; that I will explain in a next post.&lt;/p&gt;
+
+&lt;p&gt;But using this implies that salt will be the &lt;strong&gt;only master&lt;/strong&gt; on this file. On every highstate run from salt the file could be recreated, updated or even removed (not with the managed state, but &lt;code&gt;file.absent&lt;/code&gt; would do that).&lt;/p&gt;
+
+&lt;p&gt;So sometimes &lt;em&gt;managing the whole file is not what you want to do&lt;/em&gt;. Let's see some examples of files that I would not manage with &lt;code&gt;managed&lt;/code&gt;:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;A file inherited from a package, and having a lot of different forms depending on the host, like an apache central configuration file, compare RedHat and Debian versions, Trying to handle that with &lt;code&gt;managed&lt;/code&gt; would maybe mean re-doing the package maintainers job&lt;/li&gt;
+&lt;li&gt;A file where salt is not the only actor, like &lt;code&gt;~/.ssh/authorized_keys&lt;/code&gt; or &lt;code&gt;/etc/hosts&lt;/code&gt;. Theses files may contain previous entries from humans and may get edited later by theses same people.&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;In most cases you have one simple solution for that, a lot of daemons and services allows for an directory-inclusion of configuration files, usually this means a directory &lt;code&gt;foo.d/&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;If you have a look at a debian system you have for example:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;/etc/mysql/conf.d&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;/etc/apache2/conf.d&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;/etc/apt/sources.list.d/&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;/etc/cron.d/&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;/etc/cron.daily/&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;(...)&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;And this would let you use a &lt;code&gt;file.managed&lt;/code&gt; state to add your local configuration, without altering the package maintained files. Good thing.&lt;/p&gt;
+
+&lt;p&gt;But still not covering all the needs, there is no &lt;code&gt;/etc/hosts.d/&lt;/code&gt; and no &lt;code&gt;/etc/postgresql/pg_hba.conf.d/&lt;/code&gt;. To edit the postgresql access file or your local hosts file you must work on the existing files.&lt;/p&gt;
+
+&lt;p&gt;You need a way to edit some files, to replace some key values, &lt;strong&gt;while not managing the whole file&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;The file module has two tools for such needs:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.replace&quot;&gt;&lt;code&gt;file.replace&lt;/code&gt;&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;&lt;code&gt;file.blockreplace&lt;/code&gt;&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;The first one is a python based replacement for the old &lt;code&gt;file.sed&lt;/code&gt; function, it let you use some regex to find a content and replace it. But there's some drawbacks in its usage, at least on my point of view:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;MULTILINE regex are not supported, even if the documentation says it works, @see &lt;a href=&quot;https://github.com/saltstack/salt/issues/7999&quot;&gt;issue #7999&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;the file is altered at each salt run, errors may break it badly (empyt or partially empty), and access to the file whil salt is editing it should not happen (partial content), @see &lt;a href=&quot;https://github.com/saltstack/salt/issues/8051&quot;&gt;issue #8051&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;the MULTILINE regex issue was a big problem for us, because our first usage of unmanaged files edition was managing hosts files, with several lines added and &lt;em&gt;managed&lt;/em&gt;.
+So we wanted to add a simple way to manage several lines in a file, without regex support (using replace for that), and we made it with blockreplace.&lt;/p&gt;
+
+&lt;h2&gt;File.blockreplace&lt;/h2&gt;
+
+&lt;p&gt;The main idea under &lt;strong&gt;blockreplace&lt;/strong&gt; is to &lt;strong&gt;manage blocks of edited contents&lt;/strong&gt; in files where everything outside of theses blocks is ignored by Salt-stack.&lt;/p&gt;
+
+&lt;p&gt;With this module and/or state salt-stack can :&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Add&lt;/strong&gt; the block of content (on top or on bottom) if it is not present&lt;/li&gt;
+&lt;li&gt;manage &lt;strong&gt;several lines&lt;/strong&gt; inside the block&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;remove&lt;/strong&gt; content from a block&lt;/li&gt;
+&lt;li&gt;identify &lt;strong&gt;several different blocks&lt;/strong&gt; in the same file&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;Block identity targeting and delimitation is done by a comment. By default it use a &lt;code&gt;bash&lt;/code&gt; type of comment with &lt;code&gt;#&lt;/code&gt; characters. But you can alter it, if your target is an html file you could use &lt;code&gt;&amp;lt;!-- --&amp;gt;&lt;/code&gt; comments, if it's a code file you could use &lt;code&gt;/* */&lt;/code&gt; comments, etc.&lt;/p&gt;
+
+&lt;p&gt;If you need several blocks in the same file you will need a way to identify theses different blocks, so inside theses comments there should be a unique block identifier. The whole marker line is searched, so the whole marker is this unique identifier. But if you make several blocks from the same marker model you should maybe add inside a unique variation, this is why the &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;state documentation&lt;/a&gt; example show usage of a jinja &lt;code&gt;myvar&lt;/code&gt; variable present in the state id and in the block marker (imagine theses states running in a jinja for loop, with &lt;code&gt;myvar&lt;/code&gt; taking severa values.&lt;/p&gt;
+
+&lt;p&gt;The module documentation shows an example of a managed block content in a file (the result):&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;(...)
+# START managed zone 42 -DO-NOT-EDIT-
+First line of content
+text 2
+text 3
+text 4
+# END managed zone 42 --
+(...)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Here the block is delimited by the 'markers', the starting marker is &lt;code&gt;# START managed zone 42 -DO-NOT-EDIT-&lt;/code&gt; and the ending one is &lt;code&gt;# END managed zone 42 --&lt;/code&gt;. And the job of the state writer (you) is to keep theses markers unique in the file so that salt could indentify the block without any mistakes. Use long markers, short ones could work, of course, but with long markers you will avoid more easily the bad situation in which a part of your block content may contain the same thing as you end marker.&lt;/p&gt;
+
+&lt;h2&gt;Step by step: Blockreplace real example with hosts&lt;/h2&gt;
+
+&lt;p&gt;So now, to get a little deeper, we'll have a look at a real complete example. All theses examples are available in a github repository &lt;a href=&quot;https://github.com/regilero/regilero-blog-examples/tree/master/blockreplace-step-by-step&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Note that you can find other examples of usage &lt;a href=&quot;https://github.com/saltstack/salt/blob/develop/tests/unit/modules/file_test.py&quot;&gt;in the module unit test cases&lt;/a&gt;, search for &lt;code&gt;FileBlockReplaceTestCase&lt;/code&gt; class. And feel free to add your test cases (and issues) if you find something wrong.&lt;/p&gt;
+
+&lt;p&gt;Back on our step by step, let's say I want to add some entries in a hosts file. In this example we'll say that the salt minion is building some services and knows several aliases for theses services (db.local.net, http.local.net, etc) that should be added on the hosts file, all targeting the 127.0.0.1 IP.&lt;/p&gt;
+
+&lt;p&gt;The first step is to start with a very simple state, we will use it to see if at least salt can create the block in &lt;code&gt;/etc/hosts&lt;/code&gt;. This state is written in a &lt;code&gt;hostsedit1.sls&lt;/code&gt; file which should be on your salt states root directory (if it's not directly on the root, add &lt;code&gt;path.to.this.state.directory&lt;/code&gt; in the salt-call calls). Here is this state:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;test-etc-hosts-blockreplace-services:
+  file.blockreplace:
+    - name: /etc/hosts
+    - marker_start: &quot;# BLOCK TOP : salt managed zone : local services : please do not edit&quot;
+    - marker_end: &quot;# BLOCK BOTTOM : end of salt managed zone --&quot;
+    - content: '# here be dragons'
+    - show_changes: True
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Here you can see I used a full name for the &lt;strong&gt;state id&lt;/strong&gt; (1st line), and not just the file path, as using full descriptive and unique ids is a very good habit. And using the name shortcut as a state id is maybe more readable in examples but it can lead to states overwrites, bad things. So I won't do that.&lt;/p&gt;
+
+&lt;p&gt;The content is a comment, it's a test. I did &lt;strong&gt;not&lt;/strong&gt; alter manually the &lt;code&gt;/etc/hosts&lt;/code&gt; file to add my markers inside.&lt;/p&gt;
+
+&lt;p&gt;Let's run the test (and not a highstate, only this simple sls), run it with a user having write access on the targeted hosts file, like the root user:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#$: salt-call state.sls hostsedit1    
+local:
+----------
+    State: - file
+    Name:      /etc/hosts
+    Function:  blockreplace
+    Result:    False
+    Comment:   An exception occurred in this state: Traceback (most recent call last):
+  File &quot;/path/to/salt/state.py&quot;, line 1325, in call
+    *cdata['args'], **cdata['kwargs'])
+  File &quot;path/to/salt/states/file.py&quot;, line 1882, in blockreplace
+    show_changes=show_changes)
+  File &quot;path/to/salt/modules/file.py&quot;, line 1105, in blockreplace
+    raise CommandExecutionError(&quot;Cannot edit marked block. Markers were not found in file.&quot;)
+CommandExecutionError: Cannot edit marked block. Markers were not found in file.
+    Changes:   
+
+Summary
+------------
+Succeeded: 0
+Failed:    1
+------------
+Total:     1
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;And if fails. Because the block is not found in the file. We need to tell salt that in this case the block should be added on top (&lt;code&gt;append_if_not_found&lt;/code&gt;) or on the bottom of the file (&lt;code&gt;prepend_if_not_found&lt;/code&gt;). You're maybe wondering why the state fails badly instead of creating the block by default. The reason is that you may have edited the marker (to add some variables) or you may have edited the file and remove an important thing (like the bottom marker), and you would not want the state to overwrite a part of your file or to duplicate the block. I prefer having exception when something bad happens, and no changes on the targeted file.
+We need to add the append instruction, this is done in hostsedit2 (on this step by step I use different states, but you could edit the same state file)&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;test-etc-hosts-blockreplace-services:
+  file.blockreplace:
+    - name: /etc/hosts
+    - marker_start: &quot;# BLOCK TOP : salt managed zone : local services : please do not edit&quot;
+    - marker_end: &quot;# BLOCK BOTTOM : end of salt managed zone --&quot;
+    - content: '# here be dragons'
+    - show_changes: True
+    - append_if_not_found: True
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Run it:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#$: salt-call state.sls hostsedit2
+ local:
+----------
+    State: - file
+    Name:      /etc/hosts
+    Function:  blockreplace
+        Result:    True
+        Comment:   Changes were made
+        Changes:   Invalid Changes data: --- 
++++ 
+@@ -45,3 +45,6 @@
+ 192.168.1.52.3 toto3.foo.com
+ 192.168.1.52.4 toto4.foo.com
+ 192.168.1.52.5 toto5.foo.com
++# BLOCK TOP : salt managed zone : local services : please do not edit
++# here be dragons
++# BLOCK BOTTOM : end of salt managed zone --
+
+
+Summary
+------------
+Succeeded: 1
+Failed:    0
+------------
+Total:     1
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The &lt;code&gt;Invalid Changes data&lt;/code&gt; is a known bug that should get fixed soon, is a false positive (changes should be a list of changes and not just the string I think, something like that), the changes are in fact OK. You can chek the hosts file, the block of text was added at the end of the file.&lt;/p&gt;
+
+&lt;p&gt;And if you launch the state a second time you will see that no changes were detected, so the file is untouched.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;local:
+----------
+    State: - file
+    Name:      /etc/hosts
+    Function:  blockreplace
+        Result:    True
+        Comment:   No changes were made
+        Changes:   
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Note that using an empty content argument would empty your block in /etc/hosts, while leaving in place the block markers comments.&lt;/p&gt;
+
+&lt;p&gt;So now we'll add some more realistic content in the hosts file, some IP and DNS data. We'll do that in a &lt;code&gt;hostedit3.sls&lt;/code&gt; file:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;test-etc-hosts-blockreplace-services:
+  file.blockreplace:
+    - name: /etc/hosts
+    - marker_start: &quot;# BLOCK TOP : salt managed zone : local services : please do not edit&quot;
+    - marker_end: &quot;# BLOCK BOTTOM : end of salt managed zone --&quot; 
+    - content: |
+        127.0.0.1 db.local.net
+        127.0.0.1 http.local.net
+        127.0.0.1 foo bar foo.local.net bar.local.net
+        127.0.0.1 foobar # with a comment
+    - show_changes: True
+    - append_if_not_found: True
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Look at the &lt;code&gt;|&lt;/code&gt; this is used for multiline input in yaml, with newlines preservation.
+Spaces, as always in yaml, are very important, If I show the first spaces with &lt;code&gt;x&lt;/code&gt; you can see that you need 4 more spaces after this pipe:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;test-etc-hosts-blockreplace-services:
+xxfile.blockreplace:
+xxxx- name: /etc/hosts
+xxxx- marker_start: &quot;# BLOCK TOP : salt managed zone : local services : please do not edit&quot;
+xxxx- marker_end: &quot;# BLOCK BOTTOM : end of salt managed zone --&quot; 
+xxxx- content: |
+xxxxxxxx127.0.0.1 db.local.net
+xxxxxxxx127.0.0.1 http.local.net
+xxxxxxxx127.0.0.1 foo bar foo.local.net bar.local.net
+xxxxxxxx127.0.0.1 foobar # with a comment
+xxxx- show_changes: True
+xxxx- append_if_not_found: True
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;And run it:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#$: salt-call state.sls hostsedit3
+ local:
+----------
+    State: - file
+    Name:      /etc/hosts
+    Function:  blockreplace
+        Result:    True
+        Comment:   Changes were made
+        Changes:   Invalid Changes data: --- 
++++ 
+@@ -46,5 +46,9 @@
+
+ #-- end salt managed zoneend --
+ # BLOCK TOP : salt managed zone : local services : please do not edit
+-# here be dragons
++127.0.0.1 db.local.net
++127.0.0.1 http.local.net
++127.0.0.1 foo bar foo.local.net bar.local.net
++127.0.0.1 foobar # with a comment
++
+ # BLOCK BOTTOM : end of salt managed zone --
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;And we will end this first example by managing two different blocks in the same file.&lt;/p&gt;
+
+&lt;p&gt;Let's say we will now manage two different blocks on the file, one with local services, and one with external services, this is &lt;code&gt;hostedit4.sls&lt;/code&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;test-etc-hosts-blockreplace-services-local:
+  file.blockreplace:
+    - name: /etc/hosts
+    - marker_start: &quot;# BLOCK TOP : salt managed zone : local services : please do not edit&quot;
+    - marker_end: &quot;# BLOCK BOTTOM : local : end of salt managed zone --&quot; 
+    - content: |
+        127.0.0.1 db.local.net
+        127.0.0.1 http.local.net
+        127.0.0.1 foo bar foo.local.net bar.local.net
+        127.0.0.1 foobar # with a comment
+    - show_changes: True
+    - append_if_not_found: True
+
+test-etc-hosts-blockreplace-services-central:
+  file.blockreplace:
+    - name: /etc/hosts
+    - marker_start: &quot;# BLOCK TOP : salt managed zone : central services : please do not edit&quot;
+    - marker_end: &quot;# BLOCK BOTTOM : central : end of salt managed zone --&quot; 
+    - content: |
+        8.8.8.8 ns1.dns.net
+        8.8.4.4 ns2.dns.net
+    - show_changes: True
+    - append_if_not_found: True
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The states ids are altered with &lt;code&gt;-local&lt;/code&gt; and &lt;code&gt;-central&lt;/code&gt; and the second state uses a different marker message. If I had used the same marker messages the second would have overwritten the first one. You may also see that I have added a  &lt;code&gt;central&lt;/code&gt; and a  &lt;code&gt;local&lt;/code&gt; keyword on the &lt;code&gt;marker_end&lt;/code&gt; sections. This way end markers are also uniques, the states could work with non unique end marker, the block end is detected on the first match of the end marker. But with unique end markers you will detect more easily broken blocks.&lt;/p&gt;
+
+&lt;p&gt;And if I do not alter the &lt;code&gt;/etc/hosts&lt;/code&gt; file before running theses states I should see an example of broken block, because I altered the end marker for the first block, and salt cannot find this end marker on the current file, let's test it (let's be mad):&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#$: salt-call state.sls hostsedit4
+local:
+----------
+    State: - file
+    Name:      /etc/hosts
+    Function:  blockreplace
+        Result:    False
+        Comment:   An exception occurred in this state: Traceback (most recent call last):
+  File &quot;/path/to/salt/state.py&quot;, line 1325, in call
+    *cdata['args'], **cdata['kwargs'])
+  File &quot;/path/to/salt/states/file.py&quot;, line 1882, in blockreplace
+    show_changes=show_changes)
+  File &quot;/path/to/salt/modules/file.py&quot;, line 1095, in blockreplace
+    raise CommandExecutionError(&quot;Unterminated marked block. End of file reached before marker_end.&quot;)
+CommandExecutionError: Unterminated marked block. End of file reached before marker_end.
+
+ Changes:   
+----------
+    State: - file
+    Name:      /etc/hosts
+    Function:  blockreplace
+        Result:    True
+        Comment:   Changes were made
+        Changes:   Invalid Changes data: --- 
++++ 
+@@ -52,3 +52,6 @@
+ 127.0.0.1 foobar # with a comment
+
+ # BLOCK BOTTOM : end of salt managed zone --
+    +# BLOCK TOP : salt managed zone : central services : please do not edit
++8.8.8.8 ns1.dns.net
+8.8.4.4 ns2.dns.net
+
++# BLOCK BOTTOM : central : end of salt managed zone --
+
+
+Summary
+------------
+Succeeded: 1
+Failed:    1
+------------
+Total:     2
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Perfect, the second block was added and salt detected that the first state's block was now invalid &lt;code&gt;Unterminated marked block. End of file reached before marker_end&lt;/code&gt;. The block was not removed from the hosts file, simply salt is now unable to manage it.&lt;/p&gt;
+
+&lt;p&gt;The fix here is either:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;to edit the /etc/hosts and replace the marker end comment of the first block from &lt;code&gt;# BLOCK BOTTOM : end of salt managed zone --&lt;/code&gt; to &lt;code&gt;# BLOCK BOTTOM : local : end of salt managed zone --&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;to do the contrary in the state, let the first block end on the &lt;code&gt;# BLOCK BOTTOM : end of salt managed zone --&lt;/code&gt; marker.&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;You can test it, You'll get two working salt states, both editing the same hosts file and managing two different sections of the file.&lt;/p&gt;
+
+&lt;h2&gt;Next?&lt;/h2&gt;
+
+&lt;p&gt;On a future post we will have a look at &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt; examples with managed files, and also with blockreplace. As accumulated data can be used to collect data on several states, which makes this sort of tools very useful in combination with edited blocks managments.&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://twitter.com/regilero&quot;&gt;Stay tuned on twitter, @regilero&lt;/a&gt;, &lt;a href=&quot;https://twitter.com/makinacorpus&quot;&gt;@makinacorpus&lt;/a&gt;&lt;/p&gt;
+</description>
+				<published>2014-01-20 00:00:00 +0100</published>
+				<link>http://regilero.github.io/SaltStack/English/2014/01/20/saltstack_step_by_step_file_blockreplace/</link>
+			</item>
+		
+			<item>
 				<title>Warning Chrooted php-fpm and Apc with multiple pools</title>
 				<description>&lt;p&gt;PHP-fpm used as a fastgi backend for nginx or Apache is a very nice tool.&lt;br/&gt;
 And the ability to chroot the php-fpm pool use a nice way to enforce projects separations.
@@ -2848,291 +3204,6 @@ VirtualHost and check the errorLog to observe what is done After the rewrite.&lt
 </description>
 				<published>2009-11-06 00:00:00 +0100</published>
 				<link>http://regilero.github.io/Apache/English/2009/11/06/more_on_static_file_redirector/</link>
-			</item>
-		
-			<item>
-				<title>Use RewriteMap to prevent proxying for some static contents</title>
-				<description>&lt;p&gt;Let's say we would like to prevent an application server to serve static content.
-And let's take a complex example, &lt;strong&gt;Plone&lt;/strong&gt;.
-Plone is a Zope based application server and is not using a clean url-map for static contents.&lt;/p&gt;
-
-&lt;p&gt;We'll take Plone as an example but it's not the only app which is not handling static files outside general uri-application-mapping.
-With url prefixed by a &lt;code&gt;/static/&lt;/code&gt; it would be quite easy to redirect apache handler for theses urls on the default-handler
-(static content handler) and prevent proxy settings from redirecting theses requests to the application server he is proxying
-(as in our case this app server is behind an Apache httpd proxy).&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;    &lt;span class=&quot;err&quot;&gt;Apache-&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;HTTPD&lt;/span&gt;
-    /            \
-&lt;span class=&quot;nb&quot;&gt;filesystem&lt;/span&gt;       proxied webapp
-&lt;span class=&quot;err&quot;&gt;static-&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;files&lt;/span&gt;     dynamic-pages
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;So lets say we know something like 100 or 150 files which are css files,
-some js and somes images which are actually served by this plone server,
-on a lot of different url &lt;code&gt;/foo/bar/toto.png&lt;/code&gt;, &lt;code&gt;/foobar/main.css&lt;/code&gt; which
-represents some directories where we do not have only static contents.
-And we want to prevent the webapp from handling theses known files.&lt;/p&gt;
-
-&lt;p&gt;Here's a nice solution based on &lt;strong&gt;mod_rewrite&lt;/strong&gt;, and especially
-&lt;a href=&quot;http://httpd.apache.org/docs/current/rewrite/rewritemap.html&quot;&gt;rewriteMap&lt;/a&gt;,
-where all theses contents will be served by Apache directly from the filesystem,
-with some content-expiration settings and without openning back-doors to neighbour
-content which should certainly not be available statically
-(like for example python source code files).&lt;br/&gt;
-So first let's have a basic plone proxy setting for an apache Virtualhost,
-we serve &lt;code&gt;plone.from.outside.net&lt;/code&gt; which is a proxy on &lt;code&gt;plone.inside.lan&lt;/code&gt;.&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;VirtualHost&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;*:80&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;ServerName&lt;/span&gt;  plone.from.outside.net
-
-    &lt;span class=&quot;c&quot;&gt;# in case apache is not set in utf-8&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;AddDefaultCharset&lt;/span&gt; UTF-8
-
-    &lt;span class=&quot;nb&quot;&gt;DocumentRoot&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/htdocs&lt;/span&gt;
-
-    &lt;span class=&quot;nb&quot;&gt;LogLevel&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;info&lt;/span&gt;
-    &lt;span class=&quot;c&quot;&gt;#LogLevel debug&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;ErrorLog&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/var/log/error.log&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;CustomLog&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/var/log/access.log&lt;/span&gt; combined
-    &lt;span class=&quot;c&quot;&gt;## uncomment below to enter maintenance mode&lt;/span&gt;
-    &lt;span class=&quot;c&quot;&gt;#ErrorDocument 503 /htdocs/err/503.html&lt;/span&gt;
-    &lt;span class=&quot;c&quot;&gt;#RedirectMatch 503 ^/(?!err/)&lt;/span&gt;
-
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;IfModule&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;mod_proxy.c&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-            &lt;span class=&quot;c&quot;&gt;#&lt;/span&gt;
-            &lt;span class=&quot;c&quot;&gt;# No open proxy&lt;/span&gt;
-            &lt;span class=&quot;nb&quot;&gt;ProxyRequests&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;off&lt;/span&gt;
-            &lt;span class=&quot;nt&quot;&gt;&amp;lt;Proxy&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-                    &lt;span class=&quot;nb&quot;&gt;Order&lt;/span&gt; allow,deny
-                    &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
-            &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Proxy&amp;gt;&lt;/span&gt;
-            &lt;span class=&quot;nb&quot;&gt;ProxyTimeout&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;1200&lt;/span&gt;
-            &lt;span class=&quot;c&quot;&gt;#exceptions, do not proxy theses ones&lt;/span&gt;
-            &lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       &lt;span class=&quot;sx&quot;&gt;/server-status&lt;/span&gt;  !
-            &lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       &lt;span class=&quot;sx&quot;&gt;/index.php&lt;/span&gt; !
-            &lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       &lt;span class=&quot;sx&quot;&gt;/err/&lt;/span&gt; !
-            &lt;span class=&quot;c&quot;&gt;#Proxy rewriting&lt;/span&gt;
-            &lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       /       &amp;lt;a href=&lt;span class=&quot;s2&quot;&gt;&amp;quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;quot;&lt;/span&gt; title=&lt;span class=&quot;s2&quot;&gt;&amp;quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;quot;&lt;/span&gt;&amp;gt;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;lt;/a&amp;gt;
-            &lt;span class=&quot;nb&quot;&gt;ProxyPassReverse&lt;/span&gt; /      &amp;lt;a href=&lt;span class=&quot;s2&quot;&gt;&amp;quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;quot;&lt;/span&gt; title=&lt;span class=&quot;s2&quot;&gt;&amp;quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;quot;&lt;/span&gt;&amp;gt;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;lt;/a&amp;gt;
-            &lt;span class=&quot;c&quot;&gt;###########&lt;/span&gt;
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/IfModule&amp;gt;&lt;/span&gt;
-
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;nb&quot;&gt;Options&lt;/span&gt; FollowSymLinks
-        &lt;span class=&quot;c&quot;&gt;# prevent .htaccess reads on all the filesystem&lt;/span&gt;
-        &lt;span class=&quot;nb&quot;&gt;AllowOverride&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;None&lt;/span&gt;
-        &lt;span class=&quot;nb&quot;&gt;order&lt;/span&gt; allow,deny
-        &lt;span class=&quot;nb&quot;&gt;deny&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
-
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/var/www/proxyplone/htdocs&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;nb&quot;&gt;order&lt;/span&gt; allow,deny
-        &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;All&lt;/span&gt;
-        &lt;span class=&quot;nb&quot;&gt;DirectoryIndex&lt;/span&gt; index.php
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;nt&quot;&gt;&amp;lt;/Virtualhost&amp;gt;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Ouch, in fact I've added a few more settings to be able to serve an index.php
-page from this same virtualhost, and being a proxy for anything else, just to
-have something more 'real-life wtf'.&lt;br/&gt;
-Oh and as well I've added a nice trick for maintenance mode via &lt;strong&gt;RedirectMatch&lt;/strong&gt;,
-for the happy few.&lt;/p&gt;
-
-&lt;h3&gt;And now what about static files handling?&lt;/h3&gt;
-
-&lt;p&gt;Let's do it in 2 steps.&lt;br/&gt;
-We'll make a simple one first,
-redirecting targeted files on direct static handling and then next time we'll add a &lt;strong&gt;virtual /static directory&lt;/strong&gt;
-(like serious apps).
-So the app dev will build for us a nice rewriteMap file.
-This file will map all static urls to the real filesystem file. In this way:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# staticplonefiles.txt&lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;# url =&amp;gt; real filesystem file, from an arbitray root&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;zonea/images/clean&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;png&lt;/span&gt; foo/bar/img/clean.png
-&lt;span class=&quot;err&quot;&gt;zonea/images/logo&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;jpg&lt;/span&gt; foo/src/module/foo/images/logo.png
-&lt;span class=&quot;err&quot;&gt;/module/bar/images/people&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;png&lt;/span&gt; foo/src/module/bar/v1.2.5-5/images/people.png
-&lt;span class=&quot;c&quot;&gt;# ... to be continued&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;We will store this file in &lt;strong&gt;/var/www/proxyplone/etc/staticplonefiles.txt&lt;/strong&gt; and reference it in the apache configuration.&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RewriteMap&lt;/span&gt; statics txt:/var/www/proxyplone/etc/staticplonefiles.txt
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Then we can pass any url in &lt;code&gt;${static:/here/the/url}&lt;/code&gt; and obtain the filesystem mapping as the result.
-Let's look at a rewriteRule catching potientially static contents
-with a regex like that: &lt;code&gt;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&lt;/code&gt;.&lt;br/&gt;
-Catched urls will be available in the next part of the rewrite rule,
-or in preceding RewriteConds as &lt;em&gt;$1&lt;/em&gt;.
-We will serve the static contents from the plone source code base,
-which is available in the server at &lt;em&gt;/opt/plone/source&lt;/em&gt;.
-So the &lt;em&gt;foo/bar/img/clean.png&lt;/em&gt; in the rewritemap file is
-in fact &lt;em&gt;/opt/plone/source/foo/bar/img/clean.png&lt;/em&gt;.&lt;br/&gt;
-Here you see Apache needs direct access to the files via is filesystem,
-if real files aren't directly there you should ensure they will.
-You can use &lt;strong&gt;rsync&lt;/strong&gt; or &lt;strong&gt;NFS&lt;/strong&gt; for example,
-but &lt;strong&gt;the apache server must have direct access to theses files&lt;/strong&gt;,
-as he will not proxy them.&lt;/p&gt;
-
-&lt;p&gt;Starting with a rule:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; ^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js)) &lt;span class=&quot;sx&quot;&gt;/opt/plone/source/&lt;/span&gt;${statics:$1}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;wont work, as the rewrite engine will prefix the final destination with the current documentRoot. So we should better use:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; ^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js)) ${statics:$1}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;and change the DocumentRoot to:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;DocumentRoot&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/opt/plone/source&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;And to do it we must fix accordingly previous content like our index.php,
-which is not anymore in the documentRoot.
-To keep the same fonctionnal DocumentRoot we can add a rule:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;Alias&lt;/span&gt; / &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/htdocs/&lt;/span&gt; (do not forget last &amp;#39;/&amp;#39;)
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Now a finished rule must always contains some flags at the end. here we'll use:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;err&quot;&gt;[NC,L,handler=default-handler]&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;ul&gt;
-&lt;li&gt;&lt;code&gt;NC&lt;/code&gt; will make the match-rule case-insensitive (to catch .PNG for example)&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;L&lt;/code&gt; will stop rewrite execution on succesfull match&lt;/li&gt;
-&lt;li&gt;and the &lt;code&gt;handler&lt;/code&gt; is just a security, we force apache to treat static contents as static contents :-)&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;And last but not least we'll need a RewriteCond juste before this rule, to ensure unmatched documents
-(static files not listed in the rewrite map) won't be handled by our rewriteRule
-and will still be served by the app server.&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; ${statics:$1} !=&lt;span class=&quot;s2&quot;&gt;&amp;quot;&amp;quot;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;will do that for us,
-it ensure the result is not empty,
-and &lt;em&gt;$1&lt;/em&gt; is the matching content from the related rewriteRule.
-Let's note as well the rewriteMap is stored in a cache
-and not re-read at each request.&lt;/p&gt;
-
-&lt;p&gt;Put it all together we have:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;VirtualHost&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;*:80&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;ServerName&lt;/span&gt;  plone.from.outside.net
-    
-    &lt;span class=&quot;c&quot;&gt;# in case apache is not set in utf-8&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;AddDefaultCharset&lt;/span&gt; UTF-8
- 
-    &lt;span class=&quot;nb&quot;&gt;DocumentRoot&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/opt/plone/source&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;LogLevel&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;info&lt;/span&gt;
-    &lt;span class=&quot;c&quot;&gt;#LogLevel debug&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;ErrorLog&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/var/log/error.log&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;CustomLog&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/var/log/access.log&lt;/span&gt; combined
-    &lt;span class=&quot;c&quot;&gt;## uncomment below to enter maintenance mode&lt;/span&gt;
-    &lt;span class=&quot;c&quot;&gt;#ErrorDocument 503 /htdocs/err/503.html&lt;/span&gt;
-    &lt;span class=&quot;c&quot;&gt;#RedirectMatch 503 ^/(?!err/)&lt;/span&gt;
-
-    &lt;span class=&quot;c&quot;&gt;# REWRITER for Static files managment rules&lt;/span&gt;
-    &lt;span class=&quot;c&quot;&gt;# we need:&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;RewriteEngine&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt;
-    &lt;span class=&quot;c&quot;&gt;#RewriteLog /var/www/proxyplone/var/log/rewrite.log&lt;/span&gt;
-    &lt;span class=&quot;c&quot;&gt;# from 0 to 9&lt;/span&gt;
-    &lt;span class=&quot;c&quot;&gt;#RewriteLogLevel 9&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;RewriteMap&lt;/span&gt; statics txt:/var/www/proxyplone/etc/staticplonefiles.txt
-    &lt;span class=&quot;c&quot;&gt;# only apply the rewriterule for entries listed in the rewritemap, $1 refers to the $1 from next rewriteRule&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; ${statics:$1} !=&lt;span class=&quot;s2&quot;&gt;&amp;quot;&amp;quot;&lt;/span&gt;
-    &lt;span class=&quot;c&quot;&gt;# prevent rewritemap parsing for URI not containing static file extensions&lt;/span&gt;
-    &lt;span class=&quot;c&quot;&gt;# NC: case insensitive in comparison of testString and Pattern&lt;/span&gt;
-    &lt;span class=&quot;c&quot;&gt;# L: stop rewriting&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; ^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js)) /${statics:$1} [NC,L,handler=default-handler]
-
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;IfModule&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;mod_proxy.c&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-            &lt;span class=&quot;c&quot;&gt;#&lt;/span&gt;
-            &lt;span class=&quot;c&quot;&gt;# No open proxy&lt;/span&gt;
-            &lt;span class=&quot;nb&quot;&gt;ProxyRequests&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;off&lt;/span&gt;
-            &lt;span class=&quot;nt&quot;&gt;&amp;lt;Proxy&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-                    &lt;span class=&quot;nb&quot;&gt;Order&lt;/span&gt; allow,deny
-                    &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
-            &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Proxy&amp;gt;&lt;/span&gt;
-            &lt;span class=&quot;nb&quot;&gt;ProxyTimeout&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;1200&lt;/span&gt;
-            &lt;span class=&quot;c&quot;&gt;#exceptions, do not proxy theses ones&lt;/span&gt;
-            &lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       &lt;span class=&quot;sx&quot;&gt;/server-status&lt;/span&gt;  !
-            &lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       &lt;span class=&quot;sx&quot;&gt;/index.php&lt;/span&gt; !
-            &lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       &lt;span class=&quot;sx&quot;&gt;/err/&lt;/span&gt; !
-            &lt;span class=&quot;c&quot;&gt;#Proxy rewriting&lt;/span&gt;
-            &lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       /       &amp;lt;a href=&lt;span class=&quot;s2&quot;&gt;&amp;quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;quot;&lt;/span&gt; title=&lt;span class=&quot;s2&quot;&gt;&amp;quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;quot;&lt;/span&gt;&amp;gt;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;lt;/a&amp;gt;
-            &lt;span class=&quot;nb&quot;&gt;ProxyPassReverse&lt;/span&gt; /      &amp;lt;a href=&lt;span class=&quot;s2&quot;&gt;&amp;quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;quot;&lt;/span&gt; title=&lt;span class=&quot;s2&quot;&gt;&amp;quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;quot;&lt;/span&gt;&amp;gt;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&amp;lt;/a&amp;gt;
-            &lt;span class=&quot;c&quot;&gt;###########&lt;/span&gt;
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/IfModule&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;nb&quot;&gt;Options&lt;/span&gt; FollowSymLinks
-        &lt;span class=&quot;c&quot;&gt;# prevent .htaccess reads on all the filesystem&lt;/span&gt;
-        &lt;span class=&quot;nb&quot;&gt;AllowOverride&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;None&lt;/span&gt;
-        &lt;span class=&quot;nb&quot;&gt;order&lt;/span&gt; allow,deny
-        &lt;span class=&quot;nb&quot;&gt;deny&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;Alias&lt;/span&gt; / &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/htdocs/&lt;/span&gt;
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/var/www/proxyplone/htdocs&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;nb&quot;&gt;order&lt;/span&gt; allow,deny
-        &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;All&lt;/span&gt;
-        &lt;span class=&quot;nb&quot;&gt;DirectoryIndex&lt;/span&gt; index.php
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/opt/plone/source&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;nb&quot;&gt;order&lt;/span&gt; allow,deny
-        &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;All&lt;/span&gt;
-    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;nt&quot;&gt;&amp;lt;/Virtualhost&amp;gt;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;And &lt;strong&gt;it works&lt;/strong&gt;, at this point you should note the rewriteRule
-is a endpoint for matching content,
-no other apache rule can be applied,
-but at least you need a Directory directive
-to allow content from your plone source to be acceded.&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;No security Hole&lt;/strong&gt;, as some could think with the documentRoot
-in plone source,&lt;br/&gt;
-asking for &lt;code&gt;/&lt;/code&gt; url wont serve your source content as:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;there's an &lt;strong&gt;alias on /&lt;/strong&gt; redirecting to /var/www/proxyplone/htdocs/&lt;/li&gt;
-&lt;li&gt;there's a &lt;strong&gt;proxy on /&lt;/strong&gt; redirecting to plone app server.&lt;/li&gt;
-&lt;li&gt;but &lt;strong&gt;do not&lt;/strong&gt; remove mod_alias and mod_proxy from apache :-)&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;Do not hesitate to uncomment RewriteLog and RewriteLogLevel directives to see what is done.
-Next time we'll make a static virtual directory and we'll be able to apply
-some more rule from Apache after the rewrite part.&lt;/p&gt;
-
-&lt;h3&gt;Closely Related articles&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href=&quot;/Apache/English/2009/11/06/more_on_static_file_redirector/&quot;&gt;More on Static file redirector&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-</description>
-				<published>2009-11-05 00:00:00 +0100</published>
-				<link>http://regilero.github.io/Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/</link>
 			</item>
 		
 	</channel>
