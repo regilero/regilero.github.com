@@ -68,7 +68,7 @@ With this module and/or state salt-stack can :
  
 Block identity targeting and delimitation is done by a comment. By default it use a ``bash`` type of comment with ``#`` characters. But you can alter it, if your target is an html file you could use ``<!-- -->`` comments, if it's a code file you could use ``/* */`` comments, etc.
   
-If you need several blocks in the same file you will need a way to identify theses different blocks, so inside theses comments there should be a unique block identifier. The whole marker line is searched, so the whole marker is this unique identifier. But if you make several blocks from the same marker model you should maybe add inside a unique variation, this is why the [state documentation][FILEBLOCKREPLACE] example show usage of a jinja ``myvar`` variable present in the state id and in the block marker (imagine theses states running in a jinja for loop, with ``myvar`` taking severa values.
+If you need several blocks in the same file you will need a way to identify theses different blocks, so inside theses comments there should be a unique block identifier. The whole marker line is searched, so the whole marker is this unique identifier. But if you make several blocks from the same marker model you should maybe add inside a unique variation, this is why the [state documentation][FILEBLOCKREPLACE] example shows usage of a jinja ``myvar`` variable present in the state id and in the block marker (imagine theses states running in a jinja for loop, with ``myvar`` taking severa values.
 
 The module documentation shows an example of a managed block content in a file (the result):
 
@@ -81,7 +81,7 @@ The module documentation shows an example of a managed block content in a file (
     # END managed zone 42 --
     (...)
 
-Here the block is delimited by the 'markers', the starting marker is ``# START managed zone 42 -DO-NOT-EDIT-`` and the ending one is ``# END managed zone 42 --``. And the job of the state writer (you) is to keep theses markers unique in the file so that salt could indentify the block without any mistakes. Use long markers, short ones could work, of course, but with long markers you will avoid more easily the bad situation in which a part of your block content may contain the same thing as you end marker.
+Here the block is delimited by the 'markers', the starting marker is ``# START managed zone 42 -DO-NOT-EDIT-`` and the ending one is ``# END managed zone 42 --``. And the job of the state writer (you) is to keep theses markers unique in the file so that salt could indentify each block without any mistakes. Use long markers, short ones could work, of course, but with long markers you will avoid more easily the bad situation in which a part of your block content may contain the same thing as you end marker.
 
 Step by step: Blockreplace real example with hosts
 --------------------------------------------------
@@ -330,7 +330,7 @@ You can test it, You'll get two working salt states, both editing the same hosts
 Next?
 -----
 
-On a future post we will have a look at [``file.accumulated``][FILEACCUMULATED] examples with managed files, and also with blockreplace. As accumulated data can be used to collect data on several states, which makes this sort of tools very useful in combination with edited blocks managments.
+A next post will cover [``file.accumulated``][FILEACCUMULATED] examples with managed files and also with blockreplace. I hope you feel now how powerful could be the combination of harvested data accumulated other several states with multiple edited text blocks.
 
 [Stay tuned on twitter, @regilero][TWITTER], [@makinacorpus][TWITTERMAK]
 
