@@ -1,0 +1,655 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title> SaltStack, Use file.accumulated accumulators with file.managed and file.blockreplace |  RBleug</title>
+    <meta name="description" content="Regilero's blog; Mostly tech things about web stuff."/>
+    <meta name="author" content="regilero"/>
+    <link rel="author" href="/contact/" title="who am I?" type="text/html" />
+    <link rel="icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/feed.xml" />
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+    <script src="/theme/js/effects.js" ></script>
+    <script src="/theme/js/jquery.parallax.min.js"></script>
+    <link rel="stylesheet" href="/theme/blueprint/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/blueprint/print.css" type="text/css" media="print">
+    <link rel="stylesheet" href="/theme/syntax.css" type="text/css" />
+    <!--[if lt IE 8]>
+      <link rel="stylesheet" href="/theme/blueprint/ie.css" type="text/css" media="screen, projection">
+    <![endif]-->
+    <link rel="stylesheet" href="/theme/blueprint/plugins/link-icons/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/fontello/css/fontello.css">
+    <!--[if IE 7]><link rel="stylesheet" href="/theme/fontello/css/fontello-ie7.css"><![endif]-->
+    <link href="/theme/style.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-40859893-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+  </head>
+  <body>
+
+    <div id="mastercontainer" class="container">
+       <div id="branding" class="column span-24 last">
+         <div id="brandingcontent">
+           <h1 class="logo"><a href="/">RBleug</a></h1>
+           <hr/>
+           <h2 class="alt">Regilero's blog; Mostly tech things about web stuff.</h2>
+         </div>
+       </div>
+       
+       <div id="menu" class="column span-24 last">
+         <ul class="topNav">
+            <li><a href="/" class="topNavAct" ><i class="icon-home"></i>Tech notes</a></li>
+            <li><a href="/archive/"   ><i class="icon-th"></i>Archives</a></li>
+            <li><a href="/contact/"  ><i class="icon-phone"></i>Contact</a></li>
+            <li><a href="/feed.xml"><i class="icon-rss"></i>RSS Feed</a></li>
+         </ul>
+         <div class="clear"></div>
+       </div>
+       
+       <div id="content" class="">
+         <div id="left-content" class="column span-15 prepend-1">
+             
+          <article>
+        <header>
+            <h1>SaltStack, Use file.accumulated accumulators with file.managed and file.blockreplace
+            <br/><span><i class="icon-clock"></i><time datetime="2014-01-27">Jan 27, 2014</time></span>
+            <span class="category"><i class="icon-list"></i> <a href="/English/">English</a> and <a href="/SaltStack/">SaltStack</a></span>
+            </h1>
+        </header>
+
+        <div class="entry">
+          <img class="right" src="/theme/img/pic/whiteflower2.png" width="260" alt="This is a detailled example of salt-stack's file.accumulated usage." title="This is a detailled example of salt-stack's file.accumulated usage." />
+          <p><a href="/SaltStack/English/2014/01/20/saltstack_step_by_step_file_blockreplace/">On the last salt-stack post</a> we saw a first step by step usage of <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace"><code>file.blockreplace</code></a>. On this post we'll study usage of state accumulators with <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated"><code>file.accumulated</code></a>. Accumulators are used to collect data on several states and let you use this data on other file states (Actually only the blockreplace and managed states).</p>
+
+<p>You can find the examples used on this post on <a href="https://github.com/regilero/regilero-blog-examples/tree/master/accumulated-blockreplace">this github repository</a>.</p>
+
+<h2>Why using accumulated accumulators?</h2>
+
+<p>Let's start by the needs. What sort of problems could be solved by accumulators?. In fact, the idea is to use states executed before a final state. And this state ordering can be solved using requisites or orders. On theses first states you <strong>collect data</strong> for later usage. Then, on the final state, you have a dictionary containing this collected data, the <em>accumulator</em> dictionary, and you can do what you want with it with jinja, or even without jinja in the blockreplace case. Note that you only collect data in the current highstate execution, so all accumulators must run (be included) if you need the data at the end.</p>
+
+<p>You can use this system to record one or more lists of things likes users, services, addresses, configuration commands or wathever else you want, while running the states. And all theses states recording data will have to run before the one using that data for something (writing theses lists on a targeted file). Doing that you will avoid doing the write operation after each new record, you will wait for the final list before doing the write. This will be faster, but also easier to manage. Inserting, updating and removing data in a file, in one shot.</p>
+
+<p>In this post I will use two examples, one for a managed file and one for a blockreplace edited file. The first example is an apache configuration file with several states adding some inputs inside. The second example will fill a list of DNS IP-name associations that should be added in a hosts file.</p>
+
+<h2>States ordering</h2>
+
+<p>As I said before states ordering is very important here. The final step must be final. And used states may be split upon several sls files. You can use the order <code>order</code> keyword to ensure the final order, this way:</p>
+
+<pre><code># first.sls
+STATEID1:
+  cmd.run:
+    name: echo STATEID1
+    order: 100
+
+# second.sls
+STATEID2:
+  cmd.run:
+    name: echo last
+    order: 900
+
+# third sls
+STATEID3:
+  cmd.run
+    name: echo STATEID3
+    order: 200
+</code></pre>
+
+<p>This will make a final execution order of:</p>
+
+<pre><code>echo STATEID1
+echo STATEID3
+echo last
+</code></pre>
+
+<p>But to do that you need an ordering schema for all you states. I do not find that very useful when you have a lot of states.</p>
+
+<p>The second way of ordering states is using <a href="http://docs.saltstack.com/ref/states/requisites.html"><code>requisites</code></a>. Using this method you can declare dependencies between states. But having a list of all the states that collects data into accumulators, and eediting this list on the state using the accumulator would be quite hard. The best thing here is to use the <code>*_in</code> form of the requisites, to declare the dependency from the dependent state. When adding a new state using the accumulator the dependency will have to be set in this state and not in the previous managed state entry.</p>
+
+<p>So using <code>require_in</code> the previous example would be:</p>
+
+<pre><code># first.sls
+STATEID1:
+  cmd.run:
+    name: echo STATEID1
+    require_in:
+      - cmd: STATEID2
+
+# second.sls
+STATEID2:
+  cmd.run:
+    name: echo last
+
+# third sls
+STATEID3:
+  cmd.run
+    name: echo STATEID3
+    require_in:
+      - cmd: STATEID2
+</code></pre>
+
+<p><strong>Be careful:</strong> the syntax for a requisite is:</p>
+
+<pre><code>&lt;requisite&gt;:
+  - &lt;module&gt;: &lt;state id&gt;
+</code></pre>
+
+<p>It is not:</p>
+
+<pre><code>&lt;requisite&gt;:
+  - &lt;module&gt;.&lt;function&gt;: &lt;state id&gt;
+</code></pre>
+
+<p>So it is not <code>cmd.run:</code> here but only <code>cmd:</code>. And as soon as you start using requisites you see that using meaningfull states ids and not names shortcuts to declare states is quite important, for clarity at least.</p>
+
+<h2>file.managed using file.accumulated</h2>
+
+<p>All <a href="https://github.com/regilero/regilero-blog-examples/tree/master/accumulated-blockreplace">examples are available on github here</a>.</p>
+
+<p>In this first example we'll use several states, the last state will install a <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed">managed file</a> in <code>/etc/apache2/sites-available/100-foo.example.com</code>, it's an apache virtualhost file, in the debian way. The jinja template associated with this file will contain the basic rules, but we want to allow some other states to add instructions on this virtualhost. We'll see theses states later. We start by the end, with this state building a virtualhost file in a <code>example_com_apache_virtualhost.sls</code> file:</p>
+
+<pre><code>apache-install:
+  pkg.installed:
+    - pkgs:
+      - apache2
+
+100_example_com_virtualhost:
+  file.managed:
+    - source: salt://files/apache_vhost
+    - name: /etc/apache2/sites-available/100-example.com
+    - user: root
+    - group: root
+    - mode: "0664"
+    - template: jinja
+    - defaults:
+        - docroot: /path/to/www
+        - servername: example.com
+    - require:
+        - pkg: apache-install
+</code></pre>
+
+<p>This file should be put somewhere on your state tree, in this example I will make the function calls as if it were on the root of this tree (like the top.sls file). But there's also a <em>source</em> template for the managed file, which is called <code>salt://files/apache_vhost</code>, this file should be present under the salt master tree, in the directory <code>files</code> (or alter the used path). This is this very simple basic virtualhost example template content:</p>
+
+<pre><code># Main Virtualhost for {{ servername }}
+&lt;VirtualHost *:80&gt;
+    ServerAdmin foo@example.com
+
+    DocumentRoot {{ docroot }}
+
+    ServerName {{ servername }}
+
+    LogLevel info
+
+  &lt;Directory /&gt;
+    AllowOverride None
+    Order allow, deny
+    deny from all
+  &lt;/Directory&gt;
+
+  &lt;Directory {{ docroot }}&gt;
+    Options FollowSymLinks
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+  &lt;/Directory&gt;
+
+&lt;/VirtualHost&gt;
+</code></pre>
+
+<p>Let's test this simple state:</p>
+
+<pre><code>$# salt-call -linfo state.sls example_com_apache_virtualhost
+</code></pre>
+
+<p>You should en up with two states in success and a <code>/etc/apache2/sites-available/100-example.com</code> file created.
+Now let's say we want other states, an infinite list of other states, to be able to alter this file and add content either in the main Directory section or at the end of the file. This way other states could add some apache configuration (this is an example, another way of doing it could be apache's include directive).</p>
+
+<p>Here comes the <strong>accumulator</strong> jinja variable. It's a dictionnary, with several keys. Each key of this dictionary is the result of <strong>one or more</strong> <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated"><code>file.accumulated</code></a> states. So you may have this variable (or not) and it may contain some keys with text data inside. Let's see how to use this on the jinja template (and at first, we known it's empty, we did not used any accumulated state yet).</p>
+
+<pre><code># Main Virtualhost for {{ servername }}
+&lt;VirtualHost *:80&gt;
+    ServerAdmin foo@example.com
+
+    DocumentRoot {{ docroot }}
+
+    ServerName {{ servername }}
+
+    LogLevel info
+
+  &lt;Directory /&gt;
+    AllowOverride None
+    Order allow, deny
+    deny from all
+  &lt;/Directory&gt;
+
+  &lt;Directory {{ docroot }}&gt;
+    Options FollowSymLinks
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+
+    # Here any extra configuration settings if any:
+    {% if accumulator|default(False) %}
+    {%   if 'extra-settings-example-virtualhost-maindir' in accumulator %}
+    {%     for line in accumulator['extra-settings-example-virtualhost-maindir'] %}
+    {{ line }}
+    {%     endfor %}
+    {%   endif %}
+    {% endif %}
+
+  &lt;/Directory&gt;
+
+# Here any extra configuration settings if any:
+{% if accumulator|default(False) %}
+{%   if 'extra-settings-example-virtualhost' in accumulator %}
+{%     for line in accumulator['extra-settings-example-virtualhost'] %}
+{{ line }}
+{%     endfor %}
+{%   endif %}
+{% endif %}
+
+&lt;/VirtualHost&gt;
+</code></pre>
+
+<p>If you run the state nothing should move, except maybe the two comments lines. The thing we need to do now is to feed this accumulator variable with <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated"><code>file.accumulated</code></a> states. On theses states the <code>name</code> of the state will match the accumulator key.</p>
+
+<p>So, for this example, we will use a second sls file <code>more-things-for-virtualhost.sls</code> :</p>
+
+<pre><code>{# Include dependencies #}
+include:
+  - example_com_apache_virtualhost
+
+example-a-first-rewrite-rule:
+  file.accumulated:
+    - name: extra-settings-example-virtualhost-maindir
+    - filename: /etc/apache2/sites-available/100-example.com
+    - text: |
+        # this is an example of thing added in the middle
+        RewriteEngine On
+        RewriteCond %{REQUEST_FILENAME}  -d
+        RewriteRule ^(.+[^/])$  $1/  [R]
+    - require_in:
+        - file: 100_example_com_virtualhost
+
+example-some-icons-added:
+  file.accumulated:
+    - name: extra-settings-example-virtualhost
+    - filename: /etc/apache2/sites-available/100-example.com
+    - text: |
+        # this is an example of thing added at the end'
+        Alias /icons /path/to/icons&gt;
+        &lt;Directory /path/to/icons
+          Order allow,deny
+          Allow from all
+        &lt;/Directory&gt;
+    - require_in:
+        - file: 100_example_com_virtualhost
+
+example-another-thing:
+  file.accumulated:
+    - name: extra-settings-example-virtualhost-maindir
+    - filename: /etc/apache2/sites-available/100-example.com
+    - text: |
+        # this is another example of thing added in the middle
+        RewriteRule    ^/cgi-bin/imagemap(.*)  $1  [PT]
+    - require_in:
+        - file: 100_example_com_virtualhost
+    - require:
+        - file: example-a-first-rewrite-rule
+
+example-another-thing-again:
+  file.accumulated:
+    - name: extra-settings-example-virtualhost-maindir
+    - filename: /etc/apache2/sites-available/100-example.com
+    - text: |
+        # this is another example of thing added in the middle
+        &lt;FilesMatch "\.(gif|jpe?g|png)$"&gt;
+            ExpiresDefault A2592000
+        &lt;/FilesMatch&gt;
+    - require_in:
+        - file: 100_example_com_virtualhost
+</code></pre>
+
+<p>Now let's run this new sls:</p>
+
+<pre><code>$# salt-call -linfo state.sls more-things-for-virtualhost
+</code></pre>
+
+<p>You should get a nice diff showing you that all theses states added content on the right place:</p>
+
+<pre><code>+++ 
+@@ -21,9 +21,41 @@
+     Allow from all
+     # Here any extra configuration settings if any:
+
++    
++    
++    # this is an example of thing added in the middle
++RewriteEngine On
++RewriteCond %{REQUEST_FILENAME}  -d
++RewriteRule ^(.+[^/])$  $1/  [R]
++
++    
++    # this is another example of thing added in the middle
++RewriteRule    ^/cgi-bin/imagemap(.*)  $1  [PT]
++
++    
++    # this is another example of thing added in the middle
++&lt;FilesMatch "\.(gif|jpe?g|png)$"&gt;
++    ExpiresDefault A2592000
++&lt;/FilesMatch&gt;
++
++    
++    
++    
+   &lt;/Directory&gt;
+
+ # Here any extra configuration settings if any:
+
+
++
++# this is an example of thing added at the end'
++Alias /icons /path/to/icons&gt;
++&lt;Directory /path/to/icons
++  Order allow,deny
++  Allow from all
++&lt;/Directory&gt;
++
++
++
++
++
+ &lt;/VirtualHost&gt;
+</code></pre>
+
+<p>You can see that some extra spaces were added by my jinja control commands. We can strip down those whitespaces with jinja's<code>-</code>. Instead of:</p>
+
+<pre><code>{% if accumulator|default(False) %}
+{%   if 'extra-settings-example-virtualhost-maindir' in accumulator %}
+{%     for line in accumulator['extra-settings-example-virtualhost-maindir'] %}
+{{ line }}
+{%     endfor %}
+{%   endif %}
+{% endif %}
+</code></pre>
+
+<p>Use:</p>
+
+<pre><code>{% if accumulator|default(False) -%}
+{%   if 'extra-settings-example-virtualhost-maindir' in accumulator -%}
+{%     for line in accumulator['extra-settings-example-virtualhost-maindir'] -%}
+{{ line }}
+{%-     endfor %}
+{%-   endif %}
+{%- endif %}
+</code></pre>
+
+<p>And to get the right number of spaces on the resulting file use the indent filter:</p>
+
+<pre><code>{{ line|indent(4) }}
+</code></pre>
+
+<h2>file.blockreplace using file.accumulated</h2>
+
+<p>Now if you read the <a href="/SaltStack/English/2014/01/20/saltstack_step_by_step_file_blockreplace/">previous post on <code>file.blockreplace</code></a> you may wonder how to use it with accumulators. It will differ a little from the <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed"><code>file.managed</code></a> usage of accumulators.</p>
+
+<p>With <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed"><code>file.managed</code></a> you have this <em>accumulator</em> jinja variable and several keys inside. With <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace"><code>file.blockreplace</code></a> you have nothing to do.</p>
+
+<ul>
+<li>If one accumulator is targeted on the same file (the same as the one targeted by the blockreplace), then the blockreplace <code>content</code> attribute will be filled with all the lines contained on this accumulator. Any data directly set in the content attribute is not loose, accumulator data is only added, but the content attribute is not required so it could also be empty.</li>
+<li>If several accumulators are targeted on this file they will be merged, but if you use several blockreplace states on the same file the accumulators are merged using the requisites dependencies you've made and accumulators names.</li>
+</ul>
+
+
+<p>This last sentence is maybe weird. We'll make an example to see it, but another way of saying that is that it's magical and it should do the things you think it should do (if not, make bug reports).</p>
+
+<p>So in this example we'll reuse the last example of managing entries in an <code>/etc/hosts</code> file. But we will manage two blocks of edition. So we have theses two states in an <code>hostsedit_acc.sls</code> file:</p>
+
+<pre><code>test-etc-hosts-blockreplace-services-local:
+  file.blockreplace:
+    - name: /etc/hosts
+    - marker_start: "# BLOCK TOP : salt managed zone : local services : please do not edit"
+    - marker_end: "# BLOCK BOTTOM : local : end of salt managed zone --"
+    - show_changes: True
+    - append_if_not_found: True
+
+test-etc-hosts-blockreplace-services-central:
+  file.blockreplace:
+    - name: /etc/hosts
+    - marker_start: "# BLOCK TOP : salt managed zone : central services : please do not edit"
+    - marker_end: "# BLOCK BOTTOM : central : end of salt managed zone --"
+    - show_changes: True
+    - append_if_not_found: True
+</code></pre>
+
+<p>Same blocks as in the <a href="/SaltStack/English/2014/01/20/saltstack_step_by_step_file_blockreplace/">previous guide</a> on blockreplace. But there I removed the content attribute (it <em>could</em> work with a content attribute adding more static stuff, but I do not need it).</p>
+
+<p>So now if I want to use <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated"><code>file.accumulated</code></a> to push some content in theses blocks I just need to do two things:</p>
+
+<ul>
+<li>target the blockreplace state id in a requisite to ensure my current state will run before</li>
+<li>target the same file (name attribute)</li>
+</ul>
+
+
+<p>Quite simple, but here we have <strong>two</strong> managed blocks, my accumulated content will be set in the block targeted by my requisite.</p>
+
+<p>Let's try it in a second sls file: <code>hosts_data.sls</code>, but you could split that on more files if everything gets included at the end:</p>
+
+<pre><code>{# Include dependencies #}
+include:
+    - hostsedit_acc
+
+hostadata1-external-google-dns:
+  file.accumulated:
+    - filename: /etc/hosts
+    - text: |
+        8.8.8.8 ns1.google.com
+        8.8.8.4 ns2.google.com
+    - require_in:
+        - file: test-etc-hosts-blockreplace-services-central
+
+hostadata2-external-thing:
+  file.accumulated:
+    - filename: /etc/hosts
+    - text: "93.184.216.119 : www.example.com"
+    - require_in:
+        - file: test-etc-hosts-blockreplace-services-central
+
+hostdata3-internal-stuff1:
+  file.accumulated:
+    - filename: /etc/hosts
+    - text: "127.0.0.1 foo bar foo.local.net bar.local.net"
+    - require_in:
+        - file: test-etc-hosts-blockreplace-services-local
+
+hostdata4-internal-stuff2:
+  file.accumulated:
+    - filename: /etc/hosts
+    - text: |
+        127.0.0.1 db.local.net
+        127.0.0.1 http.local.net
+        127.0.0.1 foobar
+    - require_in:
+        - file: test-etc-hosts-blockreplace-services-local
+</code></pre>
+
+<p>Note that I did not use the <code>name</code> attribute in theses states. Using name I could name the dictionary key, or we could say I would set the accumulator name. I could use names, but using the same accumulator name with the four states, strange things would happen, data from all theses accumulators would be merged in the same accumulator name. So, either avoid name attributes or use it with different names if the targeted blockedit is different. And test your recipes :-)</p>
+
+<p>Now run it with:</p>
+
+<pre><code>$# salt-call -linfo state.sls hosts_data
+</code></pre>
+
+<p>You should get theses two managed blocks in <code>/etc/hosts</code>, filled from several states:</p>
+
+<pre><code># BLOCK TOP : salt managed zone : local services : please do not edit
+127.0.0.1 foo bar foo.local.net bar.local.net
+127.0.0.1 db.local.net
+127.0.0.1 http.local.net
+127.0.0.1 foobar
+
+# BLOCK BOTTOM : local : end of salt managed zone --
+# BLOCK TOP : salt managed zone : central services : please do not edit    
+93.184.216.119 : www.example.com
+8.8.8.8 ns1.google.com
+8.8.8.4 ns2.google.com
+
+# BLOCK BOTTOM : central : end of salt managed zone --
+</code></pre>
+
+<h2>Last words</h2>
+
+<p>Note that this example is based on the development github repository of salt. You may not be able to run theses examples on versions prior to 0.18.0. The multiple blockreplace case is one of the last fix added by @kiorky.
+If you use accumulators you may need to subscribe on this <a href="https://github.com/saltstack/salt/issues/8881">reload_module vs accumulated issue</a> on github. It's a quite general issue, but this actually prevents using accumulators on states with too much <em>distance</em>, as you may loose the accumulated data if something restarted the minion while your states are running.</p>
+
+<p><a href="https://twitter.com/regilero">Stay tuned on twitter, @regilero</a>, <a href="https://twitter.com/makinacorpus">@makinacorpus</a></p>
+
+        </div>
+        <div class="tag"><i class="icon-tag"></i><a href="/tag/Accumulated/">Accumulated</a>, <i class="icon-tag"></i><a href="/tag/BlockReplace/">BlockReplace</a>, <i class="icon-tag"></i><a href="/tag/Managed/">Managed</a>, <i class="icon-tag"></i><a href="/tag/SaltStack/">SaltStack</a></div>
+</article>
+<hr/>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: * * */
+    var disqus_shortname = "regilero";
+    var disqus_identifier = '671fb11a-8778-11e3-b2e4-d231feb1dc81';
+    var disqus_title = "SaltStack, Use file.accumulated accumulators with file.managed and file.blockreplace";
+    var disqus_url = 'http://regilero.github.io/SaltStack/English/2014/01/27/saltstack_use_file_accumulated_accumulators_with_file_managed_and_file_blockreplace/';
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+
+    
+    
+         </div>
+         <div id="sideBar" class="column span-8 last">
+            <div id="deco">
+              <div class="parallax-viewport">
+                 <!-- Seven image layers, each layer slightly bigger than the one behind, making 'closer' layers move faster. -->
+                 <img class="parallax-layer" src="/theme/img/parallax/0.gif" alt="" style="width:310px; height:825px;"/>
+                 <img class="parallax-layer" src="/theme/img/parallax/1.gif" alt="" style="width:320px; height:850px;"/>
+                 <img class="parallax-layer" src="/theme/img/parallax/2.gif" alt="" style="width:350px; height:900px;"/>
+                 <img class="parallax-layer" src="/theme/img/parallax/4.gif" alt="" style="width:360px; height:950px;"/>
+                 <img class="parallax-layer" src="/theme/img/parallax/6.gif" alt="" style="width:400px; height:1000px;"/>
+               </div>
+             </div>
+            <div id="sideBarContent"> 
+              
+              <div class="sideBarListBox">
+                <h3>Related posts</h3>
+                <ul>
+                  
+                     <li><a href="/SaltStack/English/2014/01/20/saltstack_step_by_step_file_blockreplace/">SaltStack, Manage entries in unmanaged files with File Blockreplace</a></li>
+                  
+                </ul>
+              </div>
+              
+      
+            <div class="sideBarListBox">
+              <h3>Latest posts</h3>
+              <ul>
+                  
+                     <li><a href="/SaltStack/English/2014/01/27/saltstack_use_file_accumulated_accumulators_with_file_managed_and_file_blockreplace/">SaltStack, Use file.accumulated accumulators with file.managed and file.blockreplace</a></li>
+                  
+                     <li><a href="/SaltStack/English/2014/01/20/saltstack_step_by_step_file_blockreplace/">SaltStack, Manage entries in unmanaged files with File Blockreplace</a></li>
+                  
+                     <li><a href="/Drupal/English/2013/05/16/Warning_chrooted_php_fpm_and_apc/">Warning Chrooted php-fpm and Apc with multiple pools</a></li>
+                  
+                     <li><a href="/Drupal/English/2011/10/18/drupal_mongodb_statistics_module_published/">Drupal - Mongodb statistics module published</a></li>
+                  
+                     <li><a href="/Drupal/English/2011/10/03/separate_cache_backends_d6_and_d7/">Separate cache Backends with Drupal6 and Drupal7.</a></li>
+                  
+              </ul>
+            </div>
+            
+            <div class="sideBarListBox">
+              <h3>Tags</h3>
+              <div class="tagcloud">
+              <a style='font-size: 29px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 19px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 23px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 19px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 19px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 19px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 23px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 30px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 19px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 30px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 19px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 19px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 30px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 26px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 19px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+
+              </div>
+            </div>
+          </div> <!-- end sideBarContent -->
+            
+            <div class="sideBarMore">
+              <h3>More</h3>
+                <a href="https://twitter.com/regilero" target="_blank"><img src="/theme/img/twitter_thumb.png" width="48" height="48" alt="Twitter regilero" title="Twitter regilero"></a>
+                <a href="https://github.com/regilero" target="_blank"><img src="/theme/img/github_thumb.png" width="48" height="48" alt="Github regilero" title="Github regilero"></a>
+                <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
+                <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
+                <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
+                <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+                <p>Follow me also on <a rel="me" href="http://makina-corpus.org/blogs/regilero">makina-corpus.org</a>.</p>
+            </div>
+            <div class="sideBarItem">
+              <h3>Friends</h3>
+                <ul>
+                  <li><a class="effect" target="_blank" href="http://www.makina-corpus.org">Blogs Makina Corpus<div class="cover-right"><img src="/theme/img/makinaorg.png" height="30" width="30"><img src="/theme/img/makinaorg_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://www.makina-corpus.com">Makina Corpus<div class="cover-right"><img src="/theme/img/makinacom.png" height="30" width="30"><img src="/theme/img/makinacom_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://www.processus.org/">Pounard, processus.org<div class="cover-right"><img src="/theme/img/pounard.png" height="30" width="30"><img src="/theme/img/pounard_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://toutpt.makina-corpus.org/" >Toupt<div class="cover-right"><img src="/theme/img/toupt.png" height="30" width="30"><img src="/theme/img/toupt_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://francoisgaudin.com/">François Gaudin<div class="cover-right"><img src="/theme/img/gaudin.png" height="30" width="30"><img src="/theme/img/gaudin_banner.png" height="30" width="117"></div></a></li>
+                </ul>
+                <div class="clear"></div>
+            </div>
+         </div> <!-- end sidebar -->
+        
+       </div><!-- end content -->
+         
+       <div id="footer" class="column span-24 last">
+          <hr />
+          <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/"><img alt="Licence Creative Commons" style="border-width:0" src="http://i.creativecommons.org/l/by-sa/3.0/fr/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/Text" property="dct:title" rel="dct:type">regilero's blog</span> est mis à disposition selon les termes de la <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/">licence Creative Commons Attribution -  Partage dans les Mêmes Conditions 3.0 France</a>.<br />Fondé(e) sur une œuvre à <a xmlns:dct="http://purl.org/dc/terms/" href="http://regilero.github.io" rel="dct:source">http://regilero.github.io</a>.
+       </div>
+
+      </div><!-- end container -->
+    </body>
+</html>
