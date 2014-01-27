@@ -13,7 +13,7 @@ Drupal use a lot of caches at different levels but all of them are by default st
 
 In this article we'll study how to push all these caches in better places.
 
-Thi is a new feature of default Drupal7, but simple solutions are available if you want the same thing on a Drupal6 installation.
+This is a new feature of default Drupal7, but simple solutions are available if you want the same thing on a Drupal6 installation.
 
 ###The default situation###
 
