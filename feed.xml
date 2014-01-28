@@ -6,6 +6,539 @@
 		<link>http://regilero.github.io</link>
 		
 			<item>
+				<title>SaltStack, Merge dictionaries of settings with grains.filter_by</title>
+				<description>&lt;p&gt;If you read some formulas you may have noticed a nice way of managing settings. The &lt;a href=&quot;http://docs.saltstack.com/ref/modules/all/salt.modules.grains.html#salt.modules.grains.filter_by&quot;&gt;&lt;code&gt;grains.filter_by&lt;/code&gt;&lt;/a&gt; function. Values used in salt states are usually dynamic, coming from grains, from the pillar, from variations depending on the host environment. When you have a big number of variables using only the default jinja tools is sometimes frustrating. This is a must-know feature.&lt;/p&gt;
+
+&lt;p&gt;There's a nice example in &lt;a href=&quot;https://github.com/saltstack-formulas/apache-formula/blob/master/apache/map.jinja&quot;&gt;the Apache formula map.jinja file&lt;/a&gt;, which may evolve, so let's show what it looks like:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;{% set apache = salt['grains.filter_by']({
+    'Debian': {
+        'server': 'apache2',
+        'service': 'apache2',
+
+        'mod_wsgi': 'libapache2-mod-wsgi',
+
+        'vhostdir': '/etc/apache2/sites-available',
+        'confdir': '/etc/apache2/conf.d',
+        'logdir': '/var/log/apache2',
+        'wwwdir': '/srv',
+    },
+    'RedHat': {
+        'server': 'httpd',
+        'service': 'httpd',
+
+        'mod_wsgi': 'mod_wsgi',
+
+        'vhostdir': '/etc/httpd/conf.d',
+        'confdir': '/etc/httpd/conf.d',
+        'logdir': '/var/log/httpd',
+        'wwwdir': '/var/www',
+    },
+}, merge=salt['pillar.get']('apache:lookup')) %}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This sets an &lt;code&gt;apache&lt;/code&gt; jinja variable, a dictionary containing &lt;code&gt;server&lt;/code&gt;, &lt;code&gt;service&lt;/code&gt;,&lt;code&gt;confdir&lt;/code&gt; or &lt;code&gt;wwwdir&lt;/code&gt; keys (and some more).&lt;/p&gt;
+
+&lt;p&gt;The main idea of &lt;code&gt;salt['grains.filter_by']&lt;/code&gt; is to filter a settings dictionary based on a grain: &lt;strong&gt;os_family&lt;/strong&gt; (here the value may be 'Redhat' or 'Debian').&lt;/p&gt;
+
+&lt;p&gt;Usage of this &lt;code&gt;map.jinja&lt;/code&gt; file can be &lt;a href=&quot;https://github.com/saltstack-formulas/apache-formula/blob/master/apache/init.sls&quot;&gt;seen on the init.sls&lt;/a&gt;:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;{% from &quot;apache/map.jinja&quot; import apache with context %}
+
+apache:
+  pkg:
+    - installed
+    - name: {{ apache.server }}
+(...)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now if you have a pretty recent version (&gt; 0.17.2) of Salt-stack this &lt;a href=&quot;http://docs.saltstack.com/ref/modules/all/salt.modules.grains.html#salt.modules.grains.filter_by&quot;&gt;&lt;code&gt;filter_by&lt;/code&gt;&lt;/a&gt; function has some new very interesting features.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;salt.modules.grains.filter_by(lookup_dict, grain='os_family', merge=None, default='default')
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;the &lt;strong&gt;lookup dict&lt;/strong&gt; is your dictionary of settings where you want a filter to be applied, so at the end you will obtain a subtree of this dictionary.&lt;/li&gt;
+&lt;li&gt;the &lt;strong&gt;grain&lt;/strong&gt; is by default the &lt;em&gt;os_family&lt;/em&gt; grain, but you can use any defined grain key (&lt;code&gt;salt-call grains.items&lt;/code&gt; to see them).&lt;/li&gt;
+&lt;li&gt;the &lt;strong&gt;merge&lt;/strong&gt; argument lets you merge another dictionary on top of the end result, this is very useful, as seen on the apache's formula, to retrieve pillar data overriding the default settings dictionary.&lt;/li&gt;
+&lt;li&gt;and the new argument is &lt;strong&gt;default&lt;/strong&gt;, which lets you specify which key of the &lt;em&gt;lookup dict&lt;/em&gt; should be used if you did not have the requested grain or if the requested grain value is not present in this &lt;em&gt;lookup dict&lt;/em&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;So this function is now a really good shortcut for a default settings registry mapping.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;{% set settings = salt['grains.filter_by']({
+    'unset': { 'foo': 'The coconut's tropical', 'bar': 'King Arthur'},
+    'prod': { 'foo': 'Bridgekeeper', 'bar': 'We want a shrubbery' },
+    'preprod': { 'foo': 'Sir Lancelot', bar: 'Blue. No, yel…'},
+  },
+  grain='my_env',
+  merge=salt['pillar.get']('apache:lookup')),
+  default='unset' 
+%}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://twitter.com/regilero&quot;&gt;Stay tuned on twitter, @regilero&lt;/a&gt;, &lt;a href=&quot;https://twitter.com/makinacorpus&quot;&gt;@makinacorpus&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+				<published>2014-01-28 00:00:00 +0100</published>
+				<link>http://regilero.github.io/SaltStack/English/2014/01/28/saltstack_merge_dictionaries_of_settings_with_grains_filter_by/</link>
+			</item>
+		
+			<item>
+				<title>SaltStack, Use file.accumulated accumulators with file.managed and file.blockreplace</title>
+				<description>&lt;p&gt;&lt;a href=&quot;/SaltStack/English/2014/01/20/saltstack_step_by_step_file_blockreplace/&quot;&gt;On the last salt-stack post&lt;/a&gt; we saw a first step by step usage of &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;&lt;code&gt;file.blockreplace&lt;/code&gt;&lt;/a&gt;. On this post we'll study usage of state accumulators with &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt;. Accumulators are used to collect data on several states and let you use this data on other file states (Actually only the blockreplace and managed states).&lt;/p&gt;
+
+&lt;p&gt;You can find the examples used on this post on &lt;a href=&quot;https://github.com/regilero/regilero-blog-examples/tree/master/accumulated-blockreplace&quot;&gt;this github repository&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2&gt;Why using accumulated accumulators?&lt;/h2&gt;
+
+&lt;p&gt;Let's start by the needs. What sort of problems could be solved by accumulators?. In fact, the idea is to use states executed before a final state. And this state ordering can be solved using requisites or orders. On theses first states you &lt;strong&gt;collect data&lt;/strong&gt; for later usage. Then, on the final state, you have a dictionary containing this collected data, the &lt;em&gt;accumulator&lt;/em&gt; dictionary, and you can do what you want with it with jinja, or even without jinja in the blockreplace case. Note that you only collect data in the current highstate execution, so all accumulators must run (be included) if you need the data at the end.&lt;/p&gt;
+
+&lt;p&gt;You can use this system to record one or more lists of things likes users, services, addresses, configuration commands or wathever else you want, while running the states. And all theses states recording data will have to run before the one using that data for something (writing theses lists on a targeted file). Doing that you will avoid doing the write operation after each new record, you will wait for the final list before doing the write. This will be faster, but also easier to manage. Inserting, updating and removing data in a file, in one shot.&lt;/p&gt;
+
+&lt;p&gt;In this post I will use two examples, one for a managed file and one for a blockreplace edited file. The first example is an apache configuration file with several states adding some inputs inside. The second example will fill a list of DNS IP-name associations that should be added in a hosts file.&lt;/p&gt;
+
+&lt;h2&gt;States ordering&lt;/h2&gt;
+
+&lt;p&gt;As I said before states ordering is very important here. The final step must be final. And used states may be split upon several sls files. You can use the order &lt;code&gt;order&lt;/code&gt; keyword to ensure the final order, this way:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;# first.sls
+STATEID1:
+  cmd.run:
+    name: echo STATEID1
+    order: 100
+
+# second.sls
+STATEID2:
+  cmd.run:
+    name: echo last
+    order: 900
+
+# third sls
+STATEID3:
+  cmd.run
+    name: echo STATEID3
+    order: 200
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This will make a final execution order of:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;echo STATEID1
+echo STATEID3
+echo last
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;But to do that you need an ordering schema for all you states. I do not find that very useful when you have a lot of states.&lt;/p&gt;
+
+&lt;p&gt;The second way of ordering states is using &lt;a href=&quot;http://docs.saltstack.com/ref/states/requisites.html&quot;&gt;&lt;code&gt;requisites&lt;/code&gt;&lt;/a&gt;. Using this method you can declare dependencies between states. But having a list of all the states that collects data into accumulators, and eediting this list on the state using the accumulator would be quite hard. The best thing here is to use the &lt;code&gt;*_in&lt;/code&gt; form of the requisites, to declare the dependency from the dependent state. When adding a new state using the accumulator the dependency will have to be set in this state and not in the previous managed state entry.&lt;/p&gt;
+
+&lt;p&gt;So using &lt;code&gt;require_in&lt;/code&gt; the previous example would be:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;# first.sls
+STATEID1:
+  cmd.run:
+    name: echo STATEID1
+    require_in:
+      - cmd: STATEID2
+
+# second.sls
+STATEID2:
+  cmd.run:
+    name: echo last
+
+# third sls
+STATEID3:
+  cmd.run
+    name: echo STATEID3
+    require_in:
+      - cmd: STATEID2
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;strong&gt;Be careful:&lt;/strong&gt; the syntax for a requisite is:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;&amp;lt;requisite&amp;gt;:
+  - &amp;lt;module&amp;gt;: &amp;lt;state id&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;It is not:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;&amp;lt;requisite&amp;gt;:
+  - &amp;lt;module&amp;gt;.&amp;lt;function&amp;gt;: &amp;lt;state id&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;So it is not &lt;code&gt;cmd.run:&lt;/code&gt; here but only &lt;code&gt;cmd:&lt;/code&gt;. And as soon as you start using requisites you see that using meaningfull states ids and not names shortcuts to declare states is quite important, for clarity at least.&lt;/p&gt;
+
+&lt;h2&gt;file.managed using file.accumulated&lt;/h2&gt;
+
+&lt;p&gt;All &lt;a href=&quot;https://github.com/regilero/regilero-blog-examples/tree/master/accumulated-blockreplace&quot;&gt;examples are available on github here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;In this first example we'll use several states, the last state will install a &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed&quot;&gt;managed file&lt;/a&gt; in &lt;code&gt;/etc/apache2/sites-available/100-foo.example.com&lt;/code&gt;, it's an apache virtualhost file, in the debian way. The jinja template associated with this file will contain the basic rules, but we want to allow some other states to add instructions on this virtualhost. We'll see theses states later. We start by the end, with this state building a virtualhost file in a &lt;code&gt;example_com_apache_virtualhost.sls&lt;/code&gt; file:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;apache-install:
+  pkg.installed:
+    - pkgs:
+      - apache2
+
+100_example_com_virtualhost:
+  file.managed:
+    - source: salt://files/apache_vhost
+    - name: /etc/apache2/sites-available/100-example.com
+    - user: root
+    - group: root
+    - mode: &quot;0664&quot;
+    - template: jinja
+    - defaults:
+        - docroot: /path/to/www
+        - servername: example.com
+    - require:
+        - pkg: apache-install
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This file should be put somewhere on your state tree, in this example I will make the function calls as if it were on the root of this tree (like the top.sls file). But there's also a &lt;em&gt;source&lt;/em&gt; template for the managed file, which is called &lt;code&gt;salt://files/apache_vhost&lt;/code&gt;, this file should be present under the salt master tree, in the directory &lt;code&gt;files&lt;/code&gt; (or alter the used path). This is this very simple basic virtualhost example template content:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;# Main Virtualhost for {{ servername }}
+&amp;lt;VirtualHost *:80&amp;gt;
+    ServerAdmin foo@example.com
+
+    DocumentRoot {{ docroot }}
+
+    ServerName {{ servername }}
+
+    LogLevel info
+
+  &amp;lt;Directory /&amp;gt;
+    AllowOverride None
+    Order allow, deny
+    deny from all
+  &amp;lt;/Directory&amp;gt;
+
+  &amp;lt;Directory {{ docroot }}&amp;gt;
+    Options FollowSymLinks
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+  &amp;lt;/Directory&amp;gt;
+
+&amp;lt;/VirtualHost&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Let's test this simple state:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;$# salt-call -linfo state.sls example_com_apache_virtualhost
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;You should en up with two states in success and a &lt;code&gt;/etc/apache2/sites-available/100-example.com&lt;/code&gt; file created.
+Now let's say we want other states, an infinite list of other states, to be able to alter this file and add content either in the main Directory section or at the end of the file. This way other states could add some apache configuration (this is an example, another way of doing it could be apache's include directive).&lt;/p&gt;
+
+&lt;p&gt;Here comes the &lt;strong&gt;accumulator&lt;/strong&gt; jinja variable. It's a dictionnary, with several keys. Each key of this dictionary is the result of &lt;strong&gt;one or more&lt;/strong&gt; &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt; states. So you may have this variable (or not) and it may contain some keys with text data inside. Let's see how to use this on the jinja template (and at first, we known it's empty, we did not used any accumulated state yet).&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;# Main Virtualhost for {{ servername }}
+&amp;lt;VirtualHost *:80&amp;gt;
+    ServerAdmin foo@example.com
+
+    DocumentRoot {{ docroot }}
+
+    ServerName {{ servername }}
+
+    LogLevel info
+
+  &amp;lt;Directory /&amp;gt;
+    AllowOverride None
+    Order allow, deny
+    deny from all
+  &amp;lt;/Directory&amp;gt;
+
+  &amp;lt;Directory {{ docroot }}&amp;gt;
+    Options FollowSymLinks
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+
+    # Here any extra configuration settings if any:
+    {% if accumulator|default(False) %}
+    {%   if 'extra-settings-example-virtualhost-maindir' in accumulator %}
+    {%     for line in accumulator['extra-settings-example-virtualhost-maindir'] %}
+    {{ line }}
+    {%     endfor %}
+    {%   endif %}
+    {% endif %}
+
+  &amp;lt;/Directory&amp;gt;
+
+# Here any extra configuration settings if any:
+{% if accumulator|default(False) %}
+{%   if 'extra-settings-example-virtualhost' in accumulator %}
+{%     for line in accumulator['extra-settings-example-virtualhost'] %}
+{{ line }}
+{%     endfor %}
+{%   endif %}
+{% endif %}
+
+&amp;lt;/VirtualHost&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;If you run the state nothing should move, except maybe the two comments lines. The thing we need to do now is to feed this accumulator variable with &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt; states. On theses states the &lt;code&gt;name&lt;/code&gt; of the state will match the accumulator key.&lt;/p&gt;
+
+&lt;p&gt;So, for this example, we will use a second sls file &lt;code&gt;more-things-for-virtualhost.sls&lt;/code&gt; :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;{# Include dependencies #}
+include:
+  - example_com_apache_virtualhost
+
+example-a-first-rewrite-rule:
+  file.accumulated:
+    - name: extra-settings-example-virtualhost-maindir
+    - filename: /etc/apache2/sites-available/100-example.com
+    - text: |
+        # this is an example of thing added in the middle
+        RewriteEngine On
+        RewriteCond %{REQUEST_FILENAME}  -d
+        RewriteRule ^(.+[^/])$  $1/  [R]
+    - require_in:
+        - file: 100_example_com_virtualhost
+
+example-some-icons-added:
+  file.accumulated:
+    - name: extra-settings-example-virtualhost
+    - filename: /etc/apache2/sites-available/100-example.com
+    - text: |
+        # this is an example of thing added at the end'
+        Alias /icons /path/to/icons&amp;gt;
+        &amp;lt;Directory /path/to/icons
+          Order allow,deny
+          Allow from all
+        &amp;lt;/Directory&amp;gt;
+    - require_in:
+        - file: 100_example_com_virtualhost
+
+example-another-thing:
+  file.accumulated:
+    - name: extra-settings-example-virtualhost-maindir
+    - filename: /etc/apache2/sites-available/100-example.com
+    - text: |
+        # this is another example of thing added in the middle
+        RewriteRule    ^/cgi-bin/imagemap(.*)  $1  [PT]
+    - require_in:
+        - file: 100_example_com_virtualhost
+    - require:
+        - file: example-a-first-rewrite-rule
+
+example-another-thing-again:
+  file.accumulated:
+    - name: extra-settings-example-virtualhost-maindir
+    - filename: /etc/apache2/sites-available/100-example.com
+    - text: |
+        # this is another example of thing added in the middle
+        &amp;lt;FilesMatch &quot;\.(gif|jpe?g|png)$&quot;&amp;gt;
+            ExpiresDefault A2592000
+        &amp;lt;/FilesMatch&amp;gt;
+    - require_in:
+        - file: 100_example_com_virtualhost
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now let's run this new sls:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;$# salt-call -linfo state.sls more-things-for-virtualhost
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;You should get a nice diff showing you that all theses states added content on the right place:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;+++ 
+@@ -21,9 +21,41 @@
+     Allow from all
+     # Here any extra configuration settings if any:
+
++    
++    
++    # this is an example of thing added in the middle
++RewriteEngine On
++RewriteCond %{REQUEST_FILENAME}  -d
++RewriteRule ^(.+[^/])$  $1/  [R]
++
++    
++    # this is another example of thing added in the middle
++RewriteRule    ^/cgi-bin/imagemap(.*)  $1  [PT]
++
++    
++    # this is another example of thing added in the middle
++&amp;lt;FilesMatch &quot;\.(gif|jpe?g|png)$&quot;&amp;gt;
++    ExpiresDefault A2592000
++&amp;lt;/FilesMatch&amp;gt;
++
++    
++    
++    
+   &amp;lt;/Directory&amp;gt;
+
+ # Here any extra configuration settings if any:
+
+
++
++# this is an example of thing added at the end'
++Alias /icons /path/to/icons&amp;gt;
++&amp;lt;Directory /path/to/icons
++  Order allow,deny
++  Allow from all
++&amp;lt;/Directory&amp;gt;
++
++
++
++
++
+ &amp;lt;/VirtualHost&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;You can see that some extra spaces were added by my jinja control commands. We can strip down those whitespaces with jinja's&lt;code&gt;-&lt;/code&gt;. Instead of:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;{% if accumulator|default(False) %}
+{%   if 'extra-settings-example-virtualhost-maindir' in accumulator %}
+{%     for line in accumulator['extra-settings-example-virtualhost-maindir'] %}
+{{ line }}
+{%     endfor %}
+{%   endif %}
+{% endif %}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Use:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;{% if accumulator|default(False) -%}
+{%   if 'extra-settings-example-virtualhost-maindir' in accumulator -%}
+{%     for line in accumulator['extra-settings-example-virtualhost-maindir'] -%}
+{{ line }}
+{%-     endfor %}
+{%-   endif %}
+{%- endif %}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;And to get the right number of spaces on the resulting file use the indent filter:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;{{ line|indent(4) }}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2&gt;file.blockreplace using file.accumulated&lt;/h2&gt;
+
+&lt;p&gt;Now if you read the &lt;a href=&quot;/SaltStack/English/2014/01/20/saltstack_step_by_step_file_blockreplace/&quot;&gt;previous post on &lt;code&gt;file.blockreplace&lt;/code&gt;&lt;/a&gt; you may wonder how to use it with accumulators. It will differ a little from the &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed&quot;&gt;&lt;code&gt;file.managed&lt;/code&gt;&lt;/a&gt; usage of accumulators.&lt;/p&gt;
+
+&lt;p&gt;With &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed&quot;&gt;&lt;code&gt;file.managed&lt;/code&gt;&lt;/a&gt; you have this &lt;em&gt;accumulator&lt;/em&gt; jinja variable and several keys inside. With &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;&lt;code&gt;file.blockreplace&lt;/code&gt;&lt;/a&gt; you have nothing to do.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;If one accumulator is targeted on the same file (the same as the one targeted by the blockreplace), then the blockreplace &lt;code&gt;content&lt;/code&gt; attribute will be filled with all the lines contained on this accumulator. Any data directly set in the content attribute is not loose, accumulator data is only added, but the content attribute is not required so it could also be empty.&lt;/li&gt;
+&lt;li&gt;If several accumulators are targeted on this file they will be merged, but if you use several blockreplace states on the same file the accumulators are merged using the requisites dependencies you've made and accumulators names.&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;This last sentence is maybe weird. We'll make an example to see it, but another way of saying that is that it's magical and it should do the things you think it should do (if not, make bug reports).&lt;/p&gt;
+
+&lt;p&gt;So in this example we'll reuse the last example of managing entries in an &lt;code&gt;/etc/hosts&lt;/code&gt; file. But we will manage two blocks of edition. So we have theses two states in an &lt;code&gt;hostsedit_acc.sls&lt;/code&gt; file:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;test-etc-hosts-blockreplace-services-local:
+  file.blockreplace:
+    - name: /etc/hosts
+    - marker_start: &quot;# BLOCK TOP : salt managed zone : local services : please do not edit&quot;
+    - marker_end: &quot;# BLOCK BOTTOM : local : end of salt managed zone --&quot;
+    - show_changes: True
+    - append_if_not_found: True
+
+test-etc-hosts-blockreplace-services-central:
+  file.blockreplace:
+    - name: /etc/hosts
+    - marker_start: &quot;# BLOCK TOP : salt managed zone : central services : please do not edit&quot;
+    - marker_end: &quot;# BLOCK BOTTOM : central : end of salt managed zone --&quot;
+    - show_changes: True
+    - append_if_not_found: True
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Same blocks as in the &lt;a href=&quot;/SaltStack/English/2014/01/20/saltstack_step_by_step_file_blockreplace/&quot;&gt;previous guide&lt;/a&gt; on blockreplace. But there I removed the content attribute (it &lt;em&gt;could&lt;/em&gt; work with a content attribute adding more static stuff, but I do not need it).&lt;/p&gt;
+
+&lt;p&gt;So now if I want to use &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt; to push some content in theses blocks I just need to do two things:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;target the blockreplace state id in a requisite to ensure my current state will run before&lt;/li&gt;
+&lt;li&gt;target the same file (name attribute)&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;Quite simple, but here we have &lt;strong&gt;two&lt;/strong&gt; managed blocks, my accumulated content will be set in the block targeted by my requisite.&lt;/p&gt;
+
+&lt;p&gt;Let's try it in a second sls file: &lt;code&gt;hosts_data.sls&lt;/code&gt;, but you could split that on more files if everything gets included at the end:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;{# Include dependencies #}
+include:
+    - hostsedit_acc
+
+hostadata1-external-google-dns:
+  file.accumulated:
+    - filename: /etc/hosts
+    - text: |
+        8.8.8.8 ns1.google.com
+        8.8.8.4 ns2.google.com
+    - require_in:
+        - file: test-etc-hosts-blockreplace-services-central
+
+hostadata2-external-thing:
+  file.accumulated:
+    - filename: /etc/hosts
+    - text: &quot;93.184.216.119 : www.example.com&quot;
+    - require_in:
+        - file: test-etc-hosts-blockreplace-services-central
+
+hostdata3-internal-stuff1:
+  file.accumulated:
+    - filename: /etc/hosts
+    - text: &quot;127.0.0.1 foo bar foo.local.net bar.local.net&quot;
+    - require_in:
+        - file: test-etc-hosts-blockreplace-services-local
+
+hostdata4-internal-stuff2:
+  file.accumulated:
+    - filename: /etc/hosts
+    - text: |
+        127.0.0.1 db.local.net
+        127.0.0.1 http.local.net
+        127.0.0.1 foobar
+    - require_in:
+        - file: test-etc-hosts-blockreplace-services-local
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Note that I did not use the &lt;code&gt;name&lt;/code&gt; attribute in theses states. Using name I could name the dictionary key, or we could say I would set the accumulator name. I could use names, but using the same accumulator name with the four states, strange things would happen, data from all theses accumulators would be merged in the same accumulator name. So, either avoid name attributes or use it with different names if the targeted blockedit is different. And test your recipes :-)&lt;/p&gt;
+
+&lt;p&gt;Now run it with:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;$# salt-call -linfo state.sls hosts_data
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;You should get theses two managed blocks in &lt;code&gt;/etc/hosts&lt;/code&gt;, filled from several states:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;# BLOCK TOP : salt managed zone : local services : please do not edit
+127.0.0.1 foo bar foo.local.net bar.local.net
+127.0.0.1 db.local.net
+127.0.0.1 http.local.net
+127.0.0.1 foobar
+
+# BLOCK BOTTOM : local : end of salt managed zone --
+# BLOCK TOP : salt managed zone : central services : please do not edit    
+93.184.216.119 : www.example.com
+8.8.8.8 ns1.google.com
+8.8.8.4 ns2.google.com
+
+# BLOCK BOTTOM : central : end of salt managed zone --
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2&gt;Last words&lt;/h2&gt;
+
+&lt;p&gt;Note that this example is based on the development github repository of salt. You may not be able to run theses examples on versions prior to 0.18.0. The multiple blockreplace case is one of the last fix added by @kiorky.
+If you use accumulators you may need to subscribe on this &lt;a href=&quot;https://github.com/saltstack/salt/issues/8881&quot;&gt;reload_module vs accumulated issue&lt;/a&gt; on github. It's a quite general issue, but this actually prevents using accumulators on states with too much &lt;em&gt;distance&lt;/em&gt;, as you may loose the accumulated data if something restarted the minion while your states are running.&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://twitter.com/regilero&quot;&gt;Stay tuned on twitter, @regilero&lt;/a&gt;, &lt;a href=&quot;https://twitter.com/makinacorpus&quot;&gt;@makinacorpus&lt;/a&gt;&lt;/p&gt;
+</description>
+				<published>2014-01-27 00:00:00 +0100</published>
+				<link>http://regilero.github.io/SaltStack/English/2014/01/27/saltstack_use_file_accumulated_accumulators_with_file_managed_and_file_blockreplace/</link>
+			</item>
+		
+			<item>
 				<title>SaltStack, Manage entries in unmanaged files with File Blockreplace</title>
 				<description>&lt;p&gt;Makina Corpus recently started to use Salt-stack, and by using it I mean we also started some contributions.
 Salt-stack is a great set of tools, but sometimes your needs aren't covered yet, and in theses cases you'll find that salt-stack is also very easy to improve. The community is very open to contributions, on this blog post we'll study one of out first addition, &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;&lt;code&gt;file.blockreplace&lt;/code&gt;&lt;/a&gt;.&lt;/p&gt;
@@ -80,7 +613,7 @@ So we wanted to add a simple way to manage several lines in a file, without rege
 
 &lt;p&gt;Block identity targeting and delimitation is done by a comment. By default it use a &lt;code&gt;bash&lt;/code&gt; type of comment with &lt;code&gt;#&lt;/code&gt; characters. But you can alter it, if your target is an html file you could use &lt;code&gt;&amp;lt;!-- --&amp;gt;&lt;/code&gt; comments, if it's a code file you could use &lt;code&gt;/* */&lt;/code&gt; comments, etc.&lt;/p&gt;
 
-&lt;p&gt;If you need several blocks in the same file you will need a way to identify theses different blocks, so inside theses comments there should be a unique block identifier. The whole marker line is searched, so the whole marker is this unique identifier. But if you make several blocks from the same marker model you should maybe add inside a unique variation, this is why the &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;state documentation&lt;/a&gt; example show usage of a jinja &lt;code&gt;myvar&lt;/code&gt; variable present in the state id and in the block marker (imagine theses states running in a jinja for loop, with &lt;code&gt;myvar&lt;/code&gt; taking severa values.&lt;/p&gt;
+&lt;p&gt;If you need several blocks in the same file you will need a way to identify theses different blocks, so inside theses comments there should be a unique block identifier. The whole marker line is searched, so the whole marker is this unique identifier. But if you make several blocks from the same marker model you should maybe add inside a unique variation, this is why the &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;state documentation&lt;/a&gt; example shows usage of a jinja &lt;code&gt;myvar&lt;/code&gt; variable present in the state id and in the block marker (imagine theses states running in a jinja for loop, with &lt;code&gt;myvar&lt;/code&gt; taking severa values.&lt;/p&gt;
 
 &lt;p&gt;The module documentation shows an example of a managed block content in a file (the result):&lt;/p&gt;
 
@@ -94,7 +627,7 @@ text 4
 (...)
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;Here the block is delimited by the 'markers', the starting marker is &lt;code&gt;# START managed zone 42 -DO-NOT-EDIT-&lt;/code&gt; and the ending one is &lt;code&gt;# END managed zone 42 --&lt;/code&gt;. And the job of the state writer (you) is to keep theses markers unique in the file so that salt could indentify the block without any mistakes. Use long markers, short ones could work, of course, but with long markers you will avoid more easily the bad situation in which a part of your block content may contain the same thing as you end marker.&lt;/p&gt;
+&lt;p&gt;Here the block is delimited by the 'markers', the starting marker is &lt;code&gt;# START managed zone 42 -DO-NOT-EDIT-&lt;/code&gt; and the ending one is &lt;code&gt;# END managed zone 42 --&lt;/code&gt;. And the job of the state writer (you) is to keep theses markers unique in the file so that salt could indentify each block without any mistakes. Use long markers, short ones could work, of course, but with long markers you will avoid more easily the bad situation in which a part of your block content may contain the same thing as you end marker.&lt;/p&gt;
 
 &lt;h2&gt;Step by step: Blockreplace real example with hosts&lt;/h2&gt;
 
@@ -353,7 +886,7 @@ Total:     2
 
 &lt;h2&gt;Next?&lt;/h2&gt;
 
-&lt;p&gt;On a future post we will have a look at &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt; examples with managed files, and also with blockreplace. As accumulated data can be used to collect data on several states, which makes this sort of tools very useful in combination with edited blocks managments.&lt;/p&gt;
+&lt;p&gt;A next post will cover &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt; examples with managed files and also with blockreplace. I hope you feel now how powerful could be the combination of harvested data accumulated other several states with multiple edited text blocks.&lt;/p&gt;
 
 &lt;p&gt;&lt;a href=&quot;https://twitter.com/regilero&quot;&gt;Stay tuned on twitter, @regilero&lt;/a&gt;, &lt;a href=&quot;https://twitter.com/makinacorpus&quot;&gt;@makinacorpus&lt;/a&gt;&lt;/p&gt;
 </description>
@@ -665,7 +1198,7 @@ So it's not the nicest piece of code I could write :-)&lt;/p&gt;
 
 &lt;p&gt;In this article we'll study how to push all these caches in better places.&lt;/p&gt;
 
-&lt;p&gt;Thi is a new feature of default Drupal7, but simple solutions are available if you want the same thing on a Drupal6 installation.&lt;/p&gt;
+&lt;p&gt;This is a new feature of default Drupal7, but simple solutions are available if you want the same thing on a Drupal6 installation.&lt;/p&gt;
 
 &lt;h3&gt;The default situation&lt;/h3&gt;
 
@@ -2948,262 +3481,6 @@ posgreSQL citée plus haut. &lt;strong&gt;Attention&lt;/strong&gt; à ne pas oub
 </description>
 				<published>2010-10-14 00:00:00 +0200</published>
 				<link>http://regilero.github.io/PostgreSQL/Francais/2010/10/14/requetes_recursives_avec_postgresql_8_4/</link>
-			</item>
-		
-			<item>
-				<title>Nice Webapps and tools using canvas</title>
-				<description>&lt;p&gt;Doing some research on HTML5/Canvas usage I found theses tools on the web:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href=&quot;http://pencil.evolus.vn/en-US/Home.aspx&quot;&gt;Pencil Project&lt;/a&gt;: graphic editor, nice replacement for dia&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;http://www.websequencediagrams.com/&quot;&gt;Web Sequence Diagrams&lt;/a&gt;: simple and useful UML sequence diagrams tool, I also like the &lt;a href=&quot;http://zwibbler.com/&quot;&gt;Human Drawing editor&lt;/a&gt; from the same author, nice code.&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;http://typeface.neocracy.org/&quot;&gt;Typeface&lt;/a&gt; , &lt;a href=&quot;http://cufon.shoqolate.com&quot;&gt;Cufon&lt;/a&gt;, &lt;a href=&quot;http://www.netzgesta.de/dev/text/&quot;&gt;StrokeText&lt;/a&gt;: 3 libraries used to add embeded font support on a page (and for other js usage).&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;http://www.benjoffe.com/code/all&quot;&gt;demos there&lt;/a&gt;, I especially like the '3D walker'&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;http://code.google.com/p/iecanvas/&quot;&gt;http://code.google.com/p/iecanvas/&lt;/a&gt;, &lt;a href=&quot;http://code.google.com/p/explorercanvas/&quot;&gt;http://code.google.com/p/explorercanvas/&lt;/a&gt; some libs to try adding canvas support in IE&lt;/li&gt;
-&lt;/ul&gt;
-
-</description>
-				<published>2010-08-16 00:00:00 +0200</published>
-				<link>http://regilero.github.io/Js/English/2010/08/16/nice_webapps_and_tools_using_canvas/</link>
-			</item>
-		
-			<item>
-				<title>More on Static file redirector</title>
-				<description>&lt;p&gt;So On &lt;a href=&quot;/Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/&quot;&gt;a previous blog entry&lt;/a&gt;
-I presented the basics for a rewriteRule settings to serve some targeted plone static files directly from apache and
-without proxying to Plone.&lt;/p&gt;
-
-&lt;p&gt;This article, in short introduce apache as a proxy for most pages but as a direct file server for static ressources,
-having a map of application url to filesystem real files stored in a text file and served via RewriteMap.&lt;/p&gt;
-
-&lt;p&gt;No let's make this solution even better.&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;use a &lt;strong&gt;hash map&lt;/strong&gt; for url mappings&lt;/li&gt;
-&lt;li&gt;create a virtual &lt;code&gt;/static&lt;/code&gt; url and apply some cache managment rules on his contents&lt;/li&gt;
-&lt;li&gt;allow the use of the &lt;code&gt;/satic/&lt;/code&gt; url directly&lt;/li&gt;
-&lt;li&gt;ensure only mapped static files are served via this static directory&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;So first thing to change, we used a simple text file for the mapping, mod_rewrite allows us to use a &lt;strong&gt;hash file&lt;/strong&gt;.&lt;br/&gt;
-Simply change:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RewriteMap&lt;/span&gt; statics txt:/var/www/proxyplone/etc/staticplonefiles.txt
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;by:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# RewriteMap statics txt:/var/www/proxyplone//etc/staticplonefiles.txt&lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;# to generate hash version of previous file use (do not forget the rm):&lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;# rm /var/www/proxyplone//etc/staticplonefiles.map; &lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;# httxt2dbm -i /var/www/proxyplone/etc/staticplonefiles.txt -o /var/www/proxyplone/etc/staticplonefiles.map&lt;/span&gt;
-&lt;span class=&quot;nb&quot;&gt;RewriteMap&lt;/span&gt; statics dbm:/var/www/proxyplone/etc/staticplonefiles.map
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;And to generate the .map file simply read the comments. &lt;br/&gt;
-One important point, if you do not remove the old map before generating the new one,
-old entries are still in the .map, to see it without too much garbage use :&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;strings&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/etc/staticplonefiles.map&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Ok, so now let's look the current RewriteRule,
-for matched elements the rewrite is done and the file is directly served.
-We would like to add some apache settings to theses files,
-the solution is to add the &lt;code&gt;[PT]&lt;/code&gt; (pass-through) option to the rewrite rule.&lt;br/&gt;
-Then Apache will continue to analyse the resulting url as if it were an original
-requested url. &lt;br/&gt;
-That mean the proxy settings for example will be applied on it.&lt;br/&gt;
-So we will as well add a &lt;code&gt;/satic&lt;/code&gt; on the resulting url and prevent &lt;code&gt;/static&lt;/code&gt; to be served by the Proxy.&lt;br/&gt;
-The rewriteRule is now:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; ^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js)) &lt;span class=&quot;sx&quot;&gt;/static/&lt;/span&gt;${statics:$1} [NC,L,handler=default-handler,PT]
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;And we add this ProxyPass exception:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;ProxyPass&lt;/span&gt;       &lt;span class=&quot;sx&quot;&gt;/static&lt;/span&gt;  !
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;We now have a virtual &lt;code&gt;/static&lt;/code&gt; directory with all theses mapped contents inside.
-We can use it to getBack the original DocumentRoot,
-and to use an alias to point &lt;code&gt;/static&lt;/code&gt; to our webapp sources (here &lt;code&gt;/opt/plone/source&lt;/code&gt;).
-And then we can add Expires settings from mod_expires on this &lt;code&gt;/static&lt;/code&gt; location... &lt;br/&gt;
-well in fact mod_expires requires a Directory directive so it will be on the &lt;code&gt;/opt/plone/source&lt;/code&gt; directory.&lt;/p&gt;
-
-&lt;p&gt;Reset DocumentRoot:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;DocumentRoot&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/var/www/proxyplone/htdocs&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Remove this line:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;Alias&lt;/span&gt; / &lt;span class=&quot;sx&quot;&gt;/opt/plone/source/&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;And add theses settings:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;nb&quot;&gt;Alias&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/static&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/opt/plone/source/&lt;/span&gt;
-&lt;span class=&quot;nt&quot;&gt;&amp;lt;Location&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/static&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;Options&lt;/span&gt; FollowSymLinks
-    &lt;span class=&quot;nb&quot;&gt;Order&lt;/span&gt; deny,allow
-    &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;DirectoryIndex&lt;/span&gt; index.html
-    &lt;span class=&quot;c&quot;&gt;# avoid execution of PHP  scripts&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;AddType&lt;/span&gt; text/plain .php
-    &lt;span class=&quot;nb&quot;&gt;AddType&lt;/span&gt; text/plain .php3
-    &lt;span class=&quot;nb&quot;&gt;AddType&lt;/span&gt; text/plain .phps
-&lt;span class=&quot;nt&quot;&gt;&amp;lt;/Location&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;# adding some cache handling for static files&lt;/span&gt;
-&lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/opt/plone/source&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;order&lt;/span&gt; allow,deny
-    &lt;span class=&quot;nb&quot;&gt;allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;ExpiresActive&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;On&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;ExpiresDefault&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;access plus 1 month&amp;quot;&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;ExpiresByType&lt;/span&gt; text/css &lt;span class=&quot;s2&quot;&gt;&amp;quot;access plus 1 day&amp;quot;&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;ExpiresByType&lt;/span&gt; text/javascript &lt;span class=&quot;s2&quot;&gt;&amp;quot;access plus 1 day&amp;quot;&lt;/span&gt;
-&lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;That's done. &lt;strong&gt;Now we have a big security Hole :-(&lt;/strong&gt;.&lt;br/&gt;
-Most files from &lt;code&gt;/opt/plone/source&lt;/code&gt; are available via the &lt;code&gt;/static&lt;/code&gt; url. &lt;br/&gt;
-As &lt;code&gt;/static&lt;/code&gt; is not proxied anymore and is now an alias on the filesystem directory where we have an allow from all ...&lt;br/&gt;
-So we should add some rewriteRules to check which files are allowed via direct access on static.
-And by default it should be *none&lt;strong&gt;.
-But that's sad, it would be nice to promote good behaviour for theses wtf programmers which aren't admins,
-we should let them use &lt;code&gt;/static&lt;/code&gt; urls for files known to be static.
-And maybe one day they'll think it's a good idea to make the distinction between known static files and dynamic content... &lt;br/&gt;
-So we'll ask developpers to add some entries in the &lt;/strong&gt;staticplonefiles.txt** making a mapping from static/files to real files this way (see, every entry is present 2 times):&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# staticplonefiles.txt&lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;# url =&amp;gt; real filesystem file, from an arbitray root&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;zonea/images/clean&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;png&lt;/span&gt; foo/bar/img/clean.png
-&lt;span class=&quot;err&quot;&gt;/static/foo/bar/img/clean&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;png&lt;/span&gt; foo/bar/img/clean.png
-&lt;span class=&quot;err&quot;&gt;zonea/images/logo&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;jpg&lt;/span&gt; foo/src/module/foo/images/logo.png
-&lt;span class=&quot;err&quot;&gt;/static/foo/src/module/foo/images/logo&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;png&lt;/span&gt; foo/src/module/foo/images/logo.png
-&lt;span class=&quot;err&quot;&gt;/module/bar/images/people&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;png&lt;/span&gt; foo/src/module/bar/v1.2.5-5/images/people.png
-&lt;span class=&quot;err&quot;&gt;/static/foo/src/module/bar/v1&lt;/span&gt;.&lt;span class=&quot;err&quot;&gt;2&lt;/span&gt;.&lt;span class=&quot;err&quot;&gt;5-5/images/people&lt;/span&gt;.&lt;span class=&quot;nb&quot;&gt;png&lt;/span&gt; foo/src/module/bar/v1.2.5-5/images/people.png
-&lt;span class=&quot;c&quot;&gt;# ... to be continued&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;And now our 3 static examples are available as well with the /static url. Well in fact do not forget to add this rule:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# Security for uri containing our /static shortcut we should check only&lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;# listed files from rewritemap are served, as&lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;# in this current case the static directory contins as well&lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;# some unsecure files... yep.&lt;/span&gt;
-&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_URI} ^/static/ [NC]
-&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; ${statics:$1} =&lt;span class=&quot;s2&quot;&gt;&amp;quot;&amp;quot;&lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;# F : force forbidden 403 response&lt;/span&gt;
-&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; ^(.*)$ - [F,L]
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;This will check that all directly accessed files via &lt;code&gt;/static&lt;/code&gt; are present in our mapping.
-And it's all done.
-Like for the previous post you should really activate &lt;code&gt;RewriteLog&lt;/code&gt; and look at what he does
-for several different files, but now you should as well adjust Apache logLevel for this
-VirtualHost and check the errorLog to observe what is done After the rewrite.&lt;/p&gt;
-
-&lt;p&gt;As an example of debug here are some debug outputs for:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;a matched image&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;err&quot;&gt;(2)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;init&lt;/span&gt; rewrite engine with requested uri &lt;span class=&quot;sx&quot;&gt;/images/people.png&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;(3)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;applying&lt;/span&gt; pattern &amp;#39;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&amp;#39; to uri &amp;#39;/images/people.png&amp;#39;
-&lt;span class=&quot;err&quot;&gt;(6)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;cache&lt;/span&gt; lookup FAILED, forcing new map lookup
-&lt;span class=&quot;err&quot;&gt;(5)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;map&lt;/span&gt; lookup OK: map=statics[dbm] key=images/people.png -&amp;gt; val=test/img/clean.png
-&lt;span class=&quot;err&quot;&gt;(4)&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;RewriteCond:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;input=&amp;#39;test/img/clean&lt;/span&gt;.&lt;span class=&quot;err&quot;&gt;png&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;pattern=&amp;#39;!=&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;matched&lt;/span&gt;
-(5) cache lookup OK: map=statics[dbm] key=images/people.png -&amp;gt; val=test/img/clean.png
-&lt;span class=&quot;err&quot;&gt;(2)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;rewrite&lt;/span&gt; &amp;#39;/images/people.png&amp;#39; -&amp;gt; &amp;#39;/static/test/img/clean.png&amp;#39;
-&lt;span class=&quot;err&quot;&gt;(2)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;remember&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/static/test/img/clean.png&lt;/span&gt; to have Content-handler &amp;#39;default-handler&amp;#39;
-&lt;span class=&quot;err&quot;&gt;(2)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;forcing&lt;/span&gt; &amp;#39;/static/test/img/clean.png&amp;#39; to get passed through to next API URI-to-filename handler
-&lt;span class=&quot;err&quot;&gt;(1)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;force&lt;/span&gt; filename &lt;span class=&quot;sx&quot;&gt;/tmp/htdocs/test/img/clean.png&lt;/span&gt; to have the Content-handler &amp;#39;default-handler&amp;#39;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;ul&gt;
-&lt;li&gt;index.php which wont be proxified after&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;err&quot;&gt;(2)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;init&lt;/span&gt; rewrite engine with requested uri &lt;span class=&quot;sx&quot;&gt;/index.php&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;(3)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;applying&lt;/span&gt; pattern &amp;#39;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&amp;#39; to uri &amp;#39;/index.php&amp;#39;
-&lt;span class=&quot;err&quot;&gt;(3)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;applying&lt;/span&gt; pattern &amp;#39;^(.*)$&amp;#39; to uri &amp;#39;/index.php&amp;#39;
-&lt;span class=&quot;err&quot;&gt;(4)&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;RewriteCond:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;input=&amp;#39;/index&lt;/span&gt;.&lt;span class=&quot;err&quot;&gt;php&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;pattern=&amp;#39;^/static/&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;[NC]&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;not-&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;matched&lt;/span&gt;
-(1) pass through &lt;span class=&quot;sx&quot;&gt;/index.php&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;ul&gt;
-&lt;li&gt;the / base uri, which will be proxified&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;err&quot;&gt;(2)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;init&lt;/span&gt; rewrite engine with requested uri /
-&lt;span class=&quot;err&quot;&gt;(3)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;applying&lt;/span&gt; pattern &amp;#39;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&amp;#39; to uri &amp;#39;/&amp;#39;
-&lt;span class=&quot;err&quot;&gt;(3)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;applying&lt;/span&gt; pattern &amp;#39;^(.*)$&amp;#39; to uri &amp;#39;/&amp;#39;
-&lt;span class=&quot;err&quot;&gt;(4)&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;RewriteCond:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;input=&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;pattern=&amp;#39;^/static/&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;[NC]&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;not-&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;matched&lt;/span&gt;
-(1) pass through /
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;ul&gt;
-&lt;li&gt;an unmapped image&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;err&quot;&gt;(2)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;init&lt;/span&gt; rewrite engine with requested uri &lt;span class=&quot;sx&quot;&gt;/images/crystal/32/personal.png&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;(3)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;applying&lt;/span&gt; pattern &amp;#39;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&amp;#39; to uri &amp;#39;/images/crystal/32/personal.png&amp;#39;
-&lt;span class=&quot;err&quot;&gt;(6)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;cache&lt;/span&gt; lookup FAILED, forcing new map lookup
-&lt;span class=&quot;err&quot;&gt;(5)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;map&lt;/span&gt; lookup FAILED: map=statics[dbm] key=images/crystal/32/personal.png
-&lt;span class=&quot;err&quot;&gt;(4)&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;RewriteCond:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;input=&amp;#39;&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;pattern=&amp;#39;!=&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;not-&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;matched&lt;/span&gt;
-(3) applying pattern &amp;#39;^(.*)$&amp;#39; to uri &amp;#39;/images/crystal/32/personal.png&amp;#39;
-&lt;span class=&quot;err&quot;&gt;(4)&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;RewriteCond:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;input=&amp;#39;/images/crystal/32/personal&lt;/span&gt;.&lt;span class=&quot;err&quot;&gt;png&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;pattern=&amp;#39;^/static/&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;[NC]&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;not-&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;matched&lt;/span&gt;
-(1) pass through &lt;span class=&quot;sx&quot;&gt;/images/crystal/32/personal.png&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;ul&gt;
-&lt;li&gt;a direct access via /static for a forbidden file&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;apache&quot;&gt;&lt;span class=&quot;err&quot;&gt;(2)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;init&lt;/span&gt; rewrite engine with requested uri &lt;span class=&quot;sx&quot;&gt;/static/config/config.ini&lt;/span&gt;
-&lt;span class=&quot;err&quot;&gt;(3)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;applying&lt;/span&gt; pattern &amp;#39;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&amp;#39; to uri &amp;#39;/static/config/config.ini&amp;#39;
-&lt;span class=&quot;err&quot;&gt;(3)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;applying&lt;/span&gt; pattern &amp;#39;^(.*)$&amp;#39; to uri &amp;#39;/static/config/config.ini&amp;#39;
-&lt;span class=&quot;err&quot;&gt;(4)&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;RewriteCond:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;input=&amp;#39;/static/config/config&lt;/span&gt;.&lt;span class=&quot;err&quot;&gt;ini&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;pattern=&amp;#39;^/static/&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;[NC]&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;matched&lt;/span&gt;
-(6) cache lookup FAILED, forcing new map lookup
-&lt;span class=&quot;err&quot;&gt;(5)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;map&lt;/span&gt; lookup FAILED: map=statics[dbm] key=/static/config/config.ini
-&lt;span class=&quot;err&quot;&gt;(4)&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;RewriteCond:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;input=&amp;#39;&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;pattern=&amp;#39;=&amp;#39;&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;matched&lt;/span&gt;
-(2) forcing responsecode &lt;span class=&quot;m&quot;&gt;403&lt;/span&gt; for &lt;span class=&quot;sx&quot;&gt;/static/config/config.ini&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Quite readable isn't it? But &lt;strong&gt;do not forget to remove debug&lt;/strong&gt; for production env.&lt;/p&gt;
-
-&lt;h3&gt;Closely Related articles&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href=&quot;/Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/&quot;&gt;Use RewriteMap to prevent proxying for some static contents&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-</description>
-				<published>2009-11-06 00:00:00 +0100</published>
-				<link>http://regilero.github.io/Apache/English/2009/11/06/more_on_static_file_redirector/</link>
 			</item>
 		
 	</channel>

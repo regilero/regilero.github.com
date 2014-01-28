@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
+      <loc>http://regilero.github.io/SaltStack/English/2014/01/28/saltstack_merge_dictionaries_of_settings_with_grains_filter_by/</loc>
+      <lastmod>2014-01-28</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
+      <loc>http://regilero.github.io/SaltStack/English/2014/01/27/saltstack_use_file_accumulated_accumulators_with_file_managed_and_file_blockreplace/</loc>
+      <lastmod>2014-01-27</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
       <loc>http://regilero.github.io/SaltStack/English/2014/01/20/saltstack_step_by_step_file_blockreplace/</loc>
       <lastmod>2014-01-20</lastmod>
       <changefreq>never</changefreq>
