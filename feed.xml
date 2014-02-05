@@ -6,6 +6,277 @@
 		<link>http://regilero.github.io</link>
 		
 			<item>
+				<title>SaltStack, Use more than ascii7 on sls files with yaml_utf8 option</title>
+				<description>&lt;p&gt;&lt;strong&gt;Warning&lt;/strong&gt;: &lt;em&gt;this option is only available on the &lt;code&gt;2014-01&lt;/code&gt; branch or the &lt;code&gt;develop&lt;/code&gt; branch, it's not yet available on the 0.17 releases branch.&lt;/em&gt;&lt;/p&gt;
+
+&lt;h2&gt;Special characters?&lt;/h2&gt;
+
+&lt;p&gt;DevOps, developpers and sysadmins are usually nice people. They usually knows that most of the computer's tools they use are made by US people and that using nasty things such as spaces or, nastier, special characters like &lt;code&gt;é&lt;/code&gt; or &lt;code&gt;한&lt;/code&gt; may break their tools.&lt;/p&gt;
+
+&lt;p&gt;This is why most databases names will ends up as nice ascii7 names with spaces replaced by underscores, and most of the filesystem files follows the same rules.&lt;/p&gt;
+
+&lt;p&gt;But we are not anymore in the 60s. Every filesystem allows for utf-8 in file names, even the databases -- on a next post we'll show how salt mysql module has been improved to allow almost any character combination --. So salt-stack should support this fact.&lt;/p&gt;
+
+&lt;p&gt;But you may wonder why your salt-stack installation should support 'strange' characters?
+You should take care of that because you usually provide states that you have tested with very simple hello-world level tests. And as a nice and polite computer guy, you did not add any nasty characters in your tests.
+And your sls files may contain jinja variables, which may be used with data coming from external sources. You may even have a full PaaS or SaaS system running. And sooner or later you will have a user that will feed an input field with something like a company name. This company name will contain spaces and maybe Korean characters... This user entry will maybe end up in a configuration file's name, in a database's name, in a managed file's content. Chances are great that some of &lt;strong&gt;theses strange characters will end up somewhere in your salt's sls files&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;The &lt;a href=&quot;http://docs.saltstack.com/ref/configuration/master.html#yaml-utf8&quot;&gt;new yaml_utf8 option&lt;/a&gt; should be enabled on your salt-stack installation to manage these cases. This is not activated by default, it's a new option, and is waiting for some positive and negative feedbacks (use &lt;a href=&quot;https://github.com/saltstack/salt/pull/9053&quot;&gt;this github pull request&lt;/a&gt; for example, or make new issues). So feel free to experiment.&lt;/p&gt;
+
+&lt;p&gt;Let's see why you need it and what this option is really doing.&lt;/p&gt;
+
+&lt;h1&gt;See it in action&lt;/h1&gt;
+
+&lt;p&gt;What happens if my yaml sls file contains some utf-8 characters? Well, bad things :-).&lt;/p&gt;
+
+&lt;p&gt;Let's try it. We'll make a very simple state, doing some echo, and we'll do that in a &lt;code&gt;testchar.sls&lt;/code&gt; file on the salt tree root.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;# -*- coding: utf-8 -*-
+test-characters:
+  cmd.run:
+    - name: echo &quot;¿Me pones un café, por favor?&quot;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;You can see the python utf-8 markers on the top of the sls file, this makes sure that the characters in this sls file are valid utf-8 characters. Two characters here are not in ascii7 &lt;code&gt;¿&lt;/code&gt; and &lt;code&gt;é&lt;/code&gt;. Let's now run this single state:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#$ salt-call state.sls testchar
+[ERROR   ] An un-handled exception was caught by salt's global exception handler:
+UnicodeEncodeError: 'ascii' codec can't encode character u'\xbf' in position 6: ordinal not in range(128)
+Traceback (most recent call last):
+  File &quot;/usr/local/bin/salt-call&quot;, line 44, in &amp;lt;module&amp;gt;
+    sys.exit(salt.scripts.salt_call())
+  File &quot;/usr/local/salt/scripts.py&quot;, line 82, in salt_call
+    client.run()
+  File &quot;/usr/local/salt/cli/__init__.py&quot;, line 314, in run
+    caller.run()
+  File &quot;/usr/local/salt/cli/caller.py&quot;, line 142, in run
+    ret = self.call()
+  File &quot;/usr/local/salt/cli/caller.py&quot;, line 80, in call
+    ret['return'] = func(*args, **kwargs)
+  File &quot;/usr/local/salt/modules/state.py&quot;, line 383, in sls
+    ret = st_.state.call_high(high_)
+  File &quot;/usr/local/salt/state.py&quot;, line 1701, in call_high
+    chunks = self.compile_high_data(high)
+  File &quot;/usr/local/salt/state.py&quot;, line 976, in compile_high_data
+    chunks = self.order_chunks(chunks)
+  File &quot;/usr/local/salt/state.py&quot;, line 920, in order_chunks
+    chunks.sort(key=lambda k: (k['order'], '{0[state]}{0[name]}{0[fun]}'.format(k)))
+  File &quot;/usr/local/salt/state.py&quot;, line 920, in &amp;lt;lambda&amp;gt;
+    chunks.sort(key=lambda k: (k['order'], '{0[state]}{0[name]}{0[fun]}'.format(k)))
+UnicodeEncodeError: 'ascii' codec can't encode character u'\xbf' in position 6: ordinal not in range(128)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Ouch.&lt;/p&gt;
+
+&lt;p&gt;Now let's find the &lt;code&gt;yaml_utf8&lt;/code&gt; option in your master salt configuration file, for me it was in &lt;code&gt;/etc/salt/master.d/00_global.conf&lt;/code&gt;, and set it to True. Then restart the master and test again:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#$ service salt-master restart
+salt-master stop/waiting
+salt-master start/running, process 5471
+#$ salt-call state.sls testchar
+local:
+----------
+          ID: test-characters
+    Function: cmd.run
+        Name: echo &quot;¿Me pones un café, por favor?&quot;
+      Result: True
+     Comment: Command &quot;echo &quot;¿Me pones un café, por favor?&quot;&quot; run
+     Changes:   
+              ----------
+              pid:
+                  5053
+              retcode:
+                  0
+              stderr:
+
+              stdout:
+                  ¿Me pones un café, por favor?
+
+Summary
+------------
+Succeeded: 1
+Failed:    0
+------------
+Total:     1
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Great.&lt;/p&gt;
+
+&lt;p&gt;Note that the main problem here, in the first example, was that special characters were used on the state &lt;strong&gt;name&lt;/strong&gt;. But it could also happen with harmless attributes. Let's try with a &lt;strong&gt;text&lt;/strong&gt; attribute, and without the &lt;code&gt;yaml_utf8&lt;/code&gt; option set:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;# -*- coding: utf-8 -*-
+test-characters1:
+  file.touch:
+    - name: /tmp/foobar
+test-characters2:
+  file.append:
+    - name: /tmp/foobar
+    - text: &quot;¿Me pones un café, por favor?&quot;
+    - require:
+      - file: test-characters1
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;It will also fail:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#$ salt-call state.sls testch
+local:
+----------
+          ID: test-characters1
+    Function: file.touch
+        Name: /tmp/foobar
+      Result: True
+     Comment: Updated times on file /tmp/foobar
+     Changes:   
+----------
+          ID: test-characters2
+    Function: file.append
+        Name: /tmp/foobar
+      Result: False
+     Comment: An exception occurred in this state: Traceback (most recent call last):
+                File &quot;/usr/local/salt/state.py&quot;, line 1370, in call
+                  **cdata['kwargs'])
+                File &quot;/usr/local/salt/states/file.py&quot;, line 2519, in append
+                  name, salt.utils.build_whitespace_split_regex(chunk)):
+                File &quot;/usr/local/salt/utils/__init__.py&quot;, line 772, in     build_whitespace_split_regex
+                  parts = [re.escape(s) for s in __build_parts(line)]
+                File &quot;/usr/local/salt/utils/__init__.py&quot;, line 761, in     __build_parts
+                  lexer = shlex.shlex(text)
+                File &quot;/usr/lib/python2.7/shlex.py&quot;, line 25, in __init__
+                  instream = StringIO(instream)
+              UnicodeEncodeError: 'ascii' codec can't encode character u'\xbf' in position 0: ordinal not in range(128)
+     Changes:   
+
+Summary
+------------
+Succeeded: 1
+Failed:    1
+------------
+Total:     2
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;But here, at least, you have a catched exception.&lt;/p&gt;
+
+&lt;p&gt;Obviously, after using the &lt;code&gt;yaml_utf8&lt;/code&gt; option this state will work.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;local:
+----------
+          ID: test-characters1
+    Function: file.touch
+        Name: /tmp/foobar
+      Result: True
+     Comment: Updated times on file /tmp/foobar
+     Changes:   
+----------
+          ID: test-characters2
+    Function: file.append
+        Name: /tmp/foobar
+      Result: True
+     Comment: Appended 1 lines
+     Changes:   
+              ----------
+              diff:
+                  --- 
+                  +++ 
+                  @@ -0,0 +1 @@
+                  +¿Me pones un café, por favor?
+Summary
+------------
+Succeeded: 2
+Failed:    0
+------------
+Total:     2
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1&gt;What happened exactly?&lt;/h1&gt;
+
+&lt;p&gt;If you want to understand this better I'll give some details. You do not need to understand the details, but it could be useful, especially if you are american (or part of the subset of humanity using pounds, miles and ascii7).&lt;/p&gt;
+
+&lt;p&gt;The error was there:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;  File &quot;/usr/local/salt/state.py&quot;, line 920, in &amp;lt;lambda&amp;gt;
+    chunks.sort(key=lambda k: (k['order'], '{0[state]}{0[name]}{0[fun]}'.format(k)))
+UnicodeEncodeError: 'ascii' codec can't encode character u'\xbf' in position 6: ordinal not in range(128)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Salt is ordering the states and the states' name are used to do the sorting. Here we have special characters on these names and the sort method emits an uncatched exception.&lt;/p&gt;
+
+&lt;p&gt;A fix would be replacing &lt;code&gt;'{0[state]}{0[name]}{0[fun]}'&lt;/code&gt; with &lt;code&gt;u'{0[state]}{0[name]}{0[fun]}'&lt;/code&gt;. But you would need this sort of fix in a thousand places. You would have to fix pretty much every string in salt :-(&lt;/p&gt;
+
+&lt;p&gt;By default, with python 2.x, there are two types of string objects:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;str : the default string object, allow utf-8 encoded strings (a byte string)&lt;/li&gt;
+&lt;li&gt;unicode : an unicode string&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;An example is worth a thousand words:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#$ python
+&amp;gt;&amp;gt;&amp;gt; foo=&quot;foo&quot;
+&amp;gt;&amp;gt;&amp;gt; foo
+'foo'
+&amp;gt;&amp;gt;&amp;gt; type(foo)
+&amp;lt;type 'str'&amp;gt;
+&amp;gt;&amp;gt;&amp;gt; bar=&quot;準&quot;
+&amp;gt;&amp;gt;&amp;gt; bar
+'\xe6\xba\x96'
+&amp;gt;&amp;gt;&amp;gt; type(bar)
+&amp;lt;type 'str'&amp;gt;
+&amp;gt;&amp;gt;&amp;gt; baz=u&quot;準&quot;
+&amp;gt;&amp;gt;&amp;gt; baz
+u'\u6e96'
+&amp;gt;&amp;gt;&amp;gt; type(baz)
+&amp;lt;type 'unicode'&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;So the special character &lt;code&gt;準&lt;/code&gt; is &lt;code&gt;\xe6\xba\x96&lt;/code&gt; in utf-8 encoding and &lt;code&gt;\u6e96&lt;/code&gt; in unicode encoding. Unicode and utf-8 are not the same things. And by default string objects are utf-8 encoded strings.&lt;/p&gt;
+
+&lt;p&gt;The funny thing is that this is not the case in python 3.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#$ /usr/bin/python3.2
+&amp;gt;&amp;gt;&amp;gt; foo=&quot;foo&quot;
+&amp;gt;&amp;gt;&amp;gt; foo
+'foo'
+&amp;gt;&amp;gt;&amp;gt; type(foo)
+&amp;lt;class 'str'&amp;gt;
+&amp;gt;&amp;gt;&amp;gt; bar=&quot;準&quot;
+&amp;gt;&amp;gt;&amp;gt; bar
+'準'
+&amp;gt;&amp;gt;&amp;gt; type(bar)
+&amp;lt;class 'str'&amp;gt;
+&amp;gt;&amp;gt;&amp;gt; baz=bar.encode('utf-8')
+&amp;gt;&amp;gt;&amp;gt; baz
+b'\xe6\xba\x96'
+&amp;gt;&amp;gt;&amp;gt; type(baz)
+&amp;lt;class 'bytes'&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;In python3 the default string class will be unicode (as if you had prefixed all your python2 string with &lt;code&gt;u&lt;/code&gt;), and the old python default str type will be the byte string class. You will need to prefix with &lt;code&gt;b&lt;/code&gt; to get that sort of utf-8 encoded strings.&lt;/p&gt;
+
+&lt;p&gt;You can find a very detailled explanation on &lt;a href=&quot;http://docs.python.org/3.3/howto/unicode.html&quot;&gt;python's unicode documentation&lt;/a&gt; and on &lt;a href=&quot;http://wolfprojects.altervista.org/talks/unicode-and-python-3/&quot;&gt;this slide explaining the difference of string encoding in python2 and 3&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Talking about &lt;strong&gt;&lt;a href=&quot;http://www.saltstack.com/&quot;&gt;Salt-stack&lt;/a&gt;&lt;/strong&gt; we are working in a python2 world. And in pretty every string usage inside salt-stack default strings are used, so byte strings, allowing utf-8 encoding but not unicode. This should allow every special character, if they are well transformed to an utf-8 encoded string. If our special string is managed in this form:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;'\xc2\xbfMe pones un caf\xc3\xa9, por favor?'
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Everything should be fine.&lt;/p&gt;
+
+&lt;p&gt;The problem comes from the sls yaml transcription. Salt works with low states, highstates, etc. This is generated from the sls files with a yaml transcription. And this task is made by a yaml library.&lt;/p&gt;
+
+&lt;p&gt;This &lt;strong&gt;yaml parser library&lt;/strong&gt; is python3-ready, and the result of the yaml parsing is always &lt;strong&gt;unicode strings&lt;/strong&gt; if special characters are encountered, not str default strings. So as soon as you have a special character in the sls salt receive unicode u'foo' strings while everything is made to handle utf-8 encoded strings. This yaml_utf8 option is there to ensure that after the yaml load is made, every unicode string is decoded to utf-8, you can see it in the code &lt;a href=&quot;https://github.com/saltstack/salt/blob/2014.1/salt/renderers/yaml.py#L70-92&quot;&gt;right here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://twitter.com/regilero&quot;&gt;Stay tuned on twitter, @regilero&lt;/a&gt;, &lt;a href=&quot;https://twitter.com/makinacorpus&quot;&gt;@makinacorpus&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+				<published>2014-02-05 00:00:00 +0100</published>
+				<link>http://regilero.github.io/SaltStack/English/2014/02/05/saltstack-use-more-than-ascii7-on-sls-files-with-yaml_utf8-option/</link>
+			</item>
+		
+			<item>
 				<title>SaltStack, Merge dictionaries of settings with grains.filter_by</title>
 				<description>&lt;p&gt;If you read some formulas you may have noticed a nice way of managing settings. The &lt;a href=&quot;http://docs.saltstack.com/ref/modules/all/salt.modules.grains.html#salt.modules.grains.filter_by&quot;&gt;&lt;code&gt;grains.filter_by&lt;/code&gt;&lt;/a&gt; function. Values used in salt states are usually dynamic, coming from grains, from the pillar, from variations depending on the host environment. When you have a big number of variables using only the default jinja tools is sometimes frustrating. This is a must-know feature.&lt;/p&gt;
 
@@ -3149,338 +3420,6 @@ Check &lt;a href=&quot;/Apache/English/2009/11/05/use_rewrite_map_to_prevent_pro
 </description>
 				<published>2011-09-01 00:00:00 +0200</published>
 				<link>http://regilero.github.io/Drupal/English/2011/09/01/better_rewrite_rules_for_drupal/</link>
-			</item>
-		
-			<item>
-				<title>Requêtes récursives avec PostgreSQL 8.4 (WITH RECURSIVE)</title>
-				<description>&lt;p&gt;Si vous avez déjà touché à un Oracle vous connaissez peut-être le mot clef &lt;code&gt;CONNECT BY&lt;/code&gt; qui permet d'effectuer des &lt;strong&gt;requêtes arborescentes&lt;/strong&gt;.&lt;/p&gt;
-
-&lt;p&gt;Les requêtes arborescentes sont très pratiques pour extraire des données sous forme &lt;strong&gt;d'arbre&lt;/strong&gt;, pour, par exemple,
-remplir le jeu de données d'un arbre de type &lt;a href=&quot;http://www.jstree.com/&quot;&gt;jstree&lt;/a&gt; ou autre &lt;a href=&quot;http://plugins.jquery.com/?s=tree&quot;&gt;plugin jquery d'arbre&lt;/a&gt;.&lt;/p&gt;
-
-&lt;p&gt;Pour faire simple dès que vous avez une table avec une &lt;strong&gt;relation parent qui est une jointure sur elle-même&lt;/strong&gt; vous avez des chances
- d'avoir besoin de requêtes arborescentes. &lt;br/&gt;
-Sans cela vous risquez de partir sur des algorithmes assez complexe dans votre language de traitement de données (python, PHP, jsqp, etc).
-Et c'est fort dommage quand le SGBD peut vous sauver la vie.&lt;br/&gt;
-Or donc sous postgreSQL il n'y avait pas d'équivalent du &lt;code&gt;connect by&lt;/code&gt;, pas de requête arborescente.
-Il faudra que dans un billet futur je vous montre mes petits triggers qui permettent de pallier à ça, mais il n'y a rien de simple là-dedans.
-Mais depuis la version &lt;code&gt;8.4&lt;/code&gt;, le mot clef &lt;strong&gt;&quot;WITH RECURSIVE&quot;&lt;/strong&gt; nous permet de faire des requêtes récursives.&lt;br/&gt;
-Nous allons donc voir comment cela se manipule avec un exemple concret.&lt;/p&gt;
-
-&lt;h2&gt;L'exemple: des dossiers et fichiers&lt;/h2&gt;
-
-&lt;p&gt;Nous allons partir d'une table qui représente l'ensemble des fichiers et répertoires du disque dur, et essayer de faire des requêtes ordonnées
-dessus.&lt;/p&gt;
-
-&lt;p&gt;Donc on commence par &lt;strong&gt;la structure de la table qui va acceuillir toutes ces données&lt;/strong&gt;, je mets tout ça dans une base &lt;code&gt;test&lt;/code&gt; accessible avec un user
-&lt;code&gt;testuser&lt;/code&gt; et un mot de passe qui va bien:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;CREATE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TYPE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILETYPE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ENUM&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;file&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;directory&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;create&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;table&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-   &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;              &lt;span class=&quot;nb&quot;&gt;SERIAL&lt;/span&gt;              &lt;span class=&quot;k&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-   &lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;            &lt;span class=&quot;nb&quot;&gt;varchar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;256&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;        &lt;span class=&quot;k&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-   &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;        &lt;span class=&quot;nb&quot;&gt;varchar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1024&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;        &lt;span class=&quot;k&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;null&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;unique&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-   &lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;            &lt;span class=&quot;n&quot;&gt;FILETYPE&lt;/span&gt;             &lt;span class=&quot;k&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;null&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;default&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;file&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-   &lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;           &lt;span class=&quot;n&quot;&gt;INT4&lt;/span&gt;                 &lt;span class=&quot;k&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;null&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;default&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;references&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;update&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;restrict&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;delete&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;restrict&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-   &lt;span class=&quot;k&quot;&gt;CONSTRAINT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;PK_FILE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;primary&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;key&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;create&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;index&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME_IDX&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;create&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;index&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_NAME_IDX&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;On remarque la liaison &lt;code&gt;&quot;references&quot;&lt;/code&gt; sur &lt;code&gt;FILE_PARENT&lt;/code&gt; qui pointe sur la table elle-même, c'est tout le principe.&lt;br/&gt;
-Maintenant il va falloir remplir cette table. Ce n'est pas la partie la plus simple.
-Le mieux serait sans doute un script python mais comme je suis un peu dingue j'ai écrit un script en bash
-(vous remarquerez que je limite à 30 caractères dans le nom de directory pour restreindre l'analyse,
-mais vous pouvez mettre plus si vous avez le temps d'attendre):&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;#!/bin/bash&lt;/span&gt;
-&lt;span class=&quot;nv&quot;&gt;REP_SOURCE&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;/&amp;quot;&lt;/span&gt;;
-&lt;span class=&quot;nv&quot;&gt;BASE&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;test&amp;quot;&lt;/span&gt;;
-&lt;span class=&quot;nv&quot;&gt;HOST&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;localhost&amp;quot;&lt;/span&gt;;
-&lt;span class=&quot;nv&quot;&gt;USER&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;testuser&amp;quot;&lt;/span&gt;;
-&lt;span class=&quot;nv&quot;&gt;MAXLENGHT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;30;
-
-&lt;span class=&quot;c&quot;&gt;# trap ctrl-c and call ctrl_c()&lt;/span&gt;
-&lt;span class=&quot;nb&quot;&gt;trap &lt;/span&gt;ctrl_c INT
-
-&lt;span class=&quot;k&quot;&gt;function &lt;/span&gt;ctrl_c&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;** Trapped CTRL-C&amp;quot;&lt;/span&gt;;
-    &lt;span class=&quot;nb&quot;&gt;exit &lt;/span&gt;1;
-&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-
-&lt;span class=&quot;k&quot;&gt;function &lt;/span&gt;normalize &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;$1&amp;quot;&lt;/span&gt;|sed &lt;span class=&quot;s2&quot;&gt;&amp;quot;s/\&amp;quot;/_/g&amp;quot;&lt;/span&gt;|sed &lt;span class=&quot;s2&quot;&gt;&amp;quot;s/&amp;#39;/_/g&amp;quot;&lt;/span&gt;|sed &lt;span class=&quot;s2&quot;&gt;&amp;quot;s/ /_/g&amp;quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;;
-&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;function &lt;/span&gt;treeanalyse &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;DIR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$1&lt;/span&gt;;
-    &lt;span class=&quot;c&quot;&gt;# shorten duration of this script with path greater than MAXLENGHT chars&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;expr length &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIR&amp;quot;&lt;/span&gt;&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;;
-    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$len&lt;/span&gt; -lt &lt;span class=&quot;nv&quot;&gt;$MAXLENGHT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;; &lt;span class=&quot;k&quot;&gt;then&lt;/span&gt;
-        &lt;span class=&quot;c&quot;&gt;#echo &amp;quot;DIR $DIR&amp;quot;&lt;/span&gt;
-        &lt;span class=&quot;nv&quot;&gt;nDIR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;normalize &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIR&amp;quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;;
-        &lt;span class=&quot;c&quot;&gt;# files detection&lt;/span&gt;
-        find &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIR&amp;quot;&lt;/span&gt; -maxdepth 1 -type f | &lt;span class=&quot;k&quot;&gt;while &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;read &lt;/span&gt;FIL ; &lt;span class=&quot;k&quot;&gt;do&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;            &lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;FILENAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;basename &lt;span class=&quot;s2&quot;&gt;&amp;quot;$FIL&amp;quot;&lt;/span&gt;&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;;
-            &lt;span class=&quot;nv&quot;&gt;nNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;normalize &lt;span class=&quot;s2&quot;&gt;&amp;quot;$FILENAME&amp;quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;;
-            &lt;span class=&quot;nv&quot;&gt;nFIL&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;normalize &lt;span class=&quot;s2&quot;&gt;&amp;quot;$FIL&amp;quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;;
-            &lt;span class=&quot;nv&quot;&gt;SQL&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;INSERT INTO FILE (FILE_NAME,FILE_FULLNAME,FILE_TYPE,FILE_PARENT) SELECT &amp;#39;$nNAME&amp;#39;,&amp;#39;$nFIL&amp;#39;,&amp;#39;file&amp;#39;, FILE_ID FROM FILE WHERE FILE_FULLNAME=&amp;#39;$nDIR&amp;#39;;&amp;quot;&lt;/span&gt;
-            &lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;${SQL}&amp;quot;&lt;/span&gt; &amp;gt;&amp;gt; /tmp/insert.sql
-        &lt;span class=&quot;k&quot;&gt;done&lt;/span&gt;
-        &lt;span class=&quot;c&quot;&gt;# directory detection&lt;/span&gt;
-        find &lt;span class=&quot;s2&quot;&gt;&amp;quot;${DIR}&amp;quot;&lt;/span&gt; -maxdepth 1 -type d | &lt;span class=&quot;k&quot;&gt;while &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;read &lt;/span&gt;SUBDIR ; &lt;span class=&quot;k&quot;&gt;do&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;            &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;$SUBDIR&amp;quot;&lt;/span&gt;;
-            &lt;span class=&quot;nv&quot;&gt;DIRNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;basename &lt;span class=&quot;s2&quot;&gt;&amp;quot;$SUBDIR&amp;quot;&lt;/span&gt;&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;;
-            &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;$SUBDIR&amp;quot;&lt;/span&gt; !&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIR&amp;quot;&lt;/span&gt; -a &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIRNAME&amp;quot;&lt;/span&gt; !&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;proc&amp;quot;&lt;/span&gt; -a &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIRNAME&amp;quot;&lt;/span&gt; !&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;sys&amp;quot;&lt;/span&gt; -a &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIRNAME&amp;quot;&lt;/span&gt; !&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;mnt&amp;quot;&lt;/span&gt; -a &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIRNAME&amp;quot;&lt;/span&gt; !&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;.&amp;quot;&lt;/span&gt; -a &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIRNAME&amp;quot;&lt;/span&gt; !&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;..&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;; &lt;span class=&quot;k&quot;&gt;then&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;                &lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;CLEANDIRNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$DIRNAME&lt;/span&gt;|sed &lt;span class=&quot;s2&quot;&gt;&amp;quot;s/\&amp;quot;/_/g&amp;quot;&lt;/span&gt;|sed &lt;span class=&quot;s2&quot;&gt;&amp;quot;s/&amp;#39;/_/g&amp;quot;&lt;/span&gt;|sed &lt;span class=&quot;s2&quot;&gt;&amp;quot;s/ /_/g&amp;quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;;
-                &lt;span class=&quot;nv&quot;&gt;nDIRNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;normalize &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIRNAME&amp;quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;;
-                &lt;span class=&quot;nv&quot;&gt;nDIR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;normalize &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DIR&amp;quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;;
-                &lt;span class=&quot;nv&quot;&gt;nSUBDIR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;$(&lt;/span&gt;normalize &lt;span class=&quot;s2&quot;&gt;&amp;quot;$SUBDIR&amp;quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;)&lt;/span&gt;;
-                &lt;span class=&quot;nv&quot;&gt;SQL&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;INSERT INTO FILE (FILE_NAME,FILE_FULLNAME,FILE_TYPE,FILE_PARENT) SELECT &amp;#39;$nDIRNAME&amp;#39;,&amp;#39;$nSUBDIR&amp;#39;,&amp;#39;directory&amp;#39;,FILE_ID FROM FILE WHERE FILE_FULLNAME=&amp;#39;$nDIR&amp;#39;;&amp;quot;&lt;/span&gt;
-                &lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;${SQL}&amp;quot;&lt;/span&gt; &amp;gt;&amp;gt; /tmp/insert.sql;
-                &lt;span class=&quot;nv&quot;&gt;DIRBACKUP&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$DIR&lt;/span&gt;; &lt;span class=&quot;c&quot;&gt;# prevent variable overlap in bash&lt;/span&gt;
-                treeanalyse &lt;span class=&quot;nv&quot;&gt;$SUBDIR&lt;/span&gt;;
-                &lt;span class=&quot;nv&quot;&gt;DIR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$DIRBACKUP&lt;/span&gt;; &lt;span class=&quot;c&quot;&gt;# prevent variable overlap in bash&lt;/span&gt;
-            &lt;span class=&quot;k&quot;&gt;fi&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;        done&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;    fi&lt;/span&gt;
-&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-
-&lt;span class=&quot;nv&quot;&gt;PARENTDIR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;0&amp;quot;&lt;/span&gt;
-&lt;span class=&quot;nv&quot;&gt;SQL&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;TRUNCATE FILE;&amp;quot;&lt;/span&gt;
-&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;${SQL}&amp;quot;&lt;/span&gt; &amp;gt; /tmp/insert.sql;
-&lt;span class=&quot;nv&quot;&gt;SQL&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;INSERT INTO FILE (FILE_ID,FILE_NAME,FILE_FULLNAME,FILE_TYPE,FILE_PARENT) VALUES ($PARENTDIR,&amp;#39;$REP_SOURCE&amp;#39;,&amp;#39;$REP_SOURCE&amp;#39;,&amp;#39;directory&amp;#39;,$PARENTDIR);&amp;quot;&lt;/span&gt;
-&lt;span class=&quot;nv&quot;&gt;PARENTDIR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$REP_SOURCE&lt;/span&gt;;
-&lt;span class=&quot;nv&quot;&gt;DIR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$REP_SOURCE&lt;/span&gt;;
-&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;${SQL}&amp;quot;&lt;/span&gt; &amp;gt;&amp;gt; /tmp/insert.sql;
-&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;Analysing&amp;quot;&lt;/span&gt;;
-treeanalyse &lt;span class=&quot;nv&quot;&gt;$DIR&lt;/span&gt;;
-
-&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;STARTING SQL INSERTION:&amp;quot;&lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;#PGCOMMAND=&amp;quot;psql -d $BASE -h $HOST -U $USER --single-transaction -f &amp;quot;&lt;/span&gt;
-&lt;span class=&quot;nv&quot;&gt;PGCOMMAND&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;psql -d $BASE -h $HOST -U $USER -f &amp;quot;&lt;/span&gt;
-&lt;span class=&quot;nv&quot;&gt;$PGCOMMAND&lt;/span&gt; /tmp/insert.sql;
-&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;Done&amp;quot;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;En exécutant ce script (n'oubliez pas le chmod u+x) on obtient un gros fichier &lt;code&gt;/tmp/insert.sql&lt;/code&gt; (109 382 lignes chez moi)
-qui est ensuite importé dans un grosse transaction postgreSQL si tout se passe bien.&lt;br/&gt;
-Bon, il supporte encore assez mal les noms de dossiers avec ' ou des &quot; dedans, mais même si la transaction echoue vous avez
-votre /tmp/insert.sql dans lequel vous pouvez peut-être supprimer les dossiers et fichiers embétants.&lt;/p&gt;
-
-&lt;h2&gt;Tester les requêtes récursives&lt;/h2&gt;
-
-&lt;p&gt;Voyons ensuite la requête récursive, la &lt;a href=&quot;http://www.postgresql.org/docs/8.4/static/queries-with.html&quot;&gt;documentation postgreSQL&lt;/a&gt;  nous donne un modèle:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;RECURSIVE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;VALUES&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-  &lt;span class=&quot;k&quot;&gt;UNION&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;sum&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Qui sur notre table des fichiers va donner:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;RECURSIVE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/usr/local&amp;#39;&lt;/span&gt;
-  &lt;span class=&quot;k&quot;&gt;UNION&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;ORDER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Pour par exemple obtenir le sous arbre de &lt;code&gt;/usr/local&lt;/code&gt;.&lt;/p&gt;
-
-&lt;p&gt;Remarquez la façon dont la table &lt;code&gt;FILE&lt;/code&gt; se voit renommée &lt;strong&gt;3 fois&lt;/strong&gt; pour la requête, &lt;code&gt;rectable&lt;/code&gt; devient la requête récursive,
-une &quot;fausse table&quot; sur laquelle on fait notre requête finale.&lt;br/&gt;
-A l'intérieur nous avons une première partie qui initialise la récursion en sélectionnant une ligne de la table &lt;code&gt;FILE&lt;/code&gt;,
-et après le &lt;code&gt;UNION ALL&lt;/code&gt; nous utilisons &lt;code&gt;rectable&lt;/code&gt; qui contient au départ &lt;strong&gt;l'initialisation&lt;/strong&gt; et plus tard les &lt;strong&gt;résultats&lt;/strong&gt;
-des récursions passées que nous joignons avec la table &lt;code&gt;FILE&lt;/code&gt; renommée pour l'occasion &lt;code&gt;orig&lt;/code&gt;, jointe sur la relation parent.&lt;br/&gt;
-C'est différent de la syntaxe du &lt;code&gt;CONNECT BY&lt;/code&gt; de oracle, mais je ne suis pas loin de penser que c'est plus élégant
-(&lt;strike&gt;peut-être pas encore aussi puissant, pas de détection de cycle, de leaf ou de level
--- quoique en lisant bien la doc je dois pouvoir le faire&lt;/strike&gt;).&lt;/p&gt;
-
-&lt;p&gt;Alors vous me direz que faire un &lt;code&gt;order by&lt;/code&gt; sur le &lt;code&gt;FILE_FULLNAME&lt;/code&gt; pour avoir la requêtre triée c'est un peu de la triche,
-parce qu'on aurait pu alors tout aussi juste stocker le &lt;code&gt;FULLNAME&lt;/code&gt; et se servir du tri sans la récursion.&lt;br/&gt;
-C'est un peu vrai, mais là j'ai mis le &lt;code&gt;FILE_FULLNAME&lt;/code&gt; pour faire &lt;strong&gt;joli&lt;/strong&gt;, je ne suis pas du tout obligé de stocker cette information.
-Donc voici la même mais ordonnée sur la relation parent:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;RECURSIVE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/usr/local&amp;#39;&lt;/span&gt;
-  &lt;span class=&quot;k&quot;&gt;UNION&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;ORDER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Problème on perd notre tri d'arbre.&lt;br/&gt;
-On a d'abord les répertoires et ensuite seulement les fichiers de ces répertoires.
-Si on veut trier proprement sans avoir le &lt;code&gt;FILE_FULLNAME&lt;/code&gt; il faut en fait le récréer dans la récursion:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;RECURSIVE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/usr/local/nagios&amp;#39;&lt;/span&gt;
-  &lt;span class=&quot;k&quot;&gt;UNION&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;ORDER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
- &lt;span class=&quot;n&quot;&gt;file_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;              &lt;span class=&quot;n&quot;&gt;file_name&lt;/span&gt;               &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file_type&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file_parent&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;                        &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;                       
-&lt;span class=&quot;c1&quot;&gt;---------+--------------------------------------+-----------+-------------+------------------------------------------------------&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;80764&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;                               &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80760&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;80782&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bin&lt;/span&gt;                                  &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80764&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bin&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;80785&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;                               &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80782&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bin&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;80784&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;nagiostats&lt;/span&gt;                           &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80782&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bin&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagiostats&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;80786&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ndo2db&lt;/span&gt;                               &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80782&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bin&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ndo2db&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;80783&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ndomod&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;o&lt;/span&gt;                             &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80782&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bin&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ndomod&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;o&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;80765&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;etc&lt;/span&gt;                                  &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80764&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;etc&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;80767&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cgi&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cfg&lt;/span&gt;                              &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80765&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;etc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cgi&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cfg&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;80770&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;htpasswd&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;users&lt;/span&gt;                       &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80765&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;etc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;htpasswd&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;users&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;80766&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cfg&lt;/span&gt;                           &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80765&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;etc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cfg&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;80769&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ndo2db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cfg&lt;/span&gt;                           &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;80765&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;etc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ndo2db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cfg&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Et là où ce type de requête devient &lt;strong&gt;magique&lt;/strong&gt;, je vais aussi pouvoir filtrer pour avoir uniquement les directory,
-par exemple,
-puis filtrer les résultats pour ne garder que les sous-sous répertoires qui commencent par un &lt;code&gt;&quot;.&quot;&lt;/code&gt;:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;RECURSIVE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/usr/local&amp;#39;&lt;/span&gt;
-  &lt;span class=&quot;k&quot;&gt;UNION&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;AND&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;directory&amp;#39;&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;LIKE&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;.%&amp;#39;&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;ORDER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-&lt;span class=&quot;n&quot;&gt;file_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file_name&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;                      &lt;span class=&quot;n&quot;&gt;file_fullname&lt;/span&gt;                      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file_type&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file_parent&lt;/span&gt;
-&lt;span class=&quot;c1&quot;&gt;---------+-----------+---------------------------------------------------------+-----------+-------------&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;31058&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;31047&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;31059&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;libs&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;libs&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;31047&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;31112&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tap&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;          &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;31105&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;31502&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;gl&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;           &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;31243&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;31627&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;lib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;          &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;31565&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;31616&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;lib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tests&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;    &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;31586&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;31766&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;deps&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;31645&lt;/span&gt;
-   &lt;span class=&quot;mi&quot;&gt;31812&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;libs&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nagios&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;libs&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;directory&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;       &lt;span class=&quot;mi&quot;&gt;31645&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;8&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lignes&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Si vous voulez garder les fonctionnalités avancées du &lt;code&gt;CONNECT BY&lt;/code&gt; comme les détection de &lt;strong&gt;levels&lt;/strong&gt; et de &lt;strong&gt;cycles&lt;/strong&gt;
-il y a (en dehors de la méthode expliquée ci-dessous) la solution des &lt;strong&gt;triggers&lt;/strong&gt; à l'insertion, que je rédigerai dès que j'en aurais le temps...&lt;br/&gt;
-Mais déjà nous pouvons ajouter facilement le niveau de profondeur en nous basant sur le premier modèle:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;RECURSIVE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/usr/local/nagios&amp;#39;&lt;/span&gt;
-  &lt;span class=&quot;k&quot;&gt;UNION&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;ORDER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;h2&gt;Essayons de casser un peu tout ça.&lt;/h2&gt;
-
-&lt;p&gt;Nous allons tester la &lt;strong&gt;détection de cycle&lt;/strong&gt; proposée dans la documentation.&lt;/p&gt;
-
-&lt;pre&gt;
-  80764 | nagios   | directory | 80760 | /usr/local/nagios
-  80782 | bin      | directory | 80764 | /usr/local/nagios/bin
-  80772 | objects  | directory | 80765 | /usr/local/nagios/etc/objects
-&lt;/pre&gt;
-
-
-&lt;p&gt;Créeons un &lt;strong&gt;bug&lt;/strong&gt;, On va chercher à partir de &lt;code&gt;/usr/local/nagios-80764&lt;/code&gt; et donner un répertoire parent (&lt;code&gt;/usr/local-80760&lt;/code&gt;)
-comme fils d'un des sous répertoires (&lt;code&gt;/usr/local/nagios/etc/objects-80765&lt;/code&gt;)&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;UPDATE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;SET&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;80765&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;80760&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Utilisons le chemin recomposé et non le &lt;code&gt;FILE_FULLNAME&lt;/code&gt;:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;RECURSIVE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/usr/local/nagios&amp;#39;&lt;/span&gt;
-  &lt;span class=&quot;k&quot;&gt;UNION&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;ORDER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;==&gt; oups ça ne réponds plus (boucle infinie) faire un CTRL-C&lt;br/&gt;
-On va donc ajouter la détection de cycle, notre chemin recomposé va se doubler d'un &lt;strong&gt;tableau des identifiants parcourus&lt;/strong&gt;
-et nous ferons une &lt;strong&gt;recherche&lt;/strong&gt; dans cet &lt;code&gt;array&lt;/code&gt; pour détecter le cycle:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;RECURSIVE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;cycle&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;ARRAY&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;false&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_FULLNAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/usr/local/nagios&amp;#39;&lt;/span&gt;
-  &lt;span class=&quot;k&quot;&gt;UNION&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ALL&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-        &lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;ANY&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;AND&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;cycle&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_NAME&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_TYPE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILE_PARENT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;level&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;cycle&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rectable&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;ORDER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rorder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Et ça fonctionne, on a beaucoup trop de résultats (une partie de &lt;code&gt;/usr/local&lt;/code&gt; branché dans &lt;code&gt;/usr/local/nagios/etc/configObjects&lt;/code&gt;) -- à cause du bug introduit --
-mais au moins la requête réponds et ne fais pas une boucle infinie.
-La détection de cycle se base ici sur l'array des Identifiants parcourus, des exemples plus complexes sont données dans la documentation
-posgreSQL citée plus haut. &lt;strong&gt;Attention&lt;/strong&gt; à ne pas oublier le &lt;code&gt;AND NOT cycle&lt;/code&gt; dans la sous-requête.&lt;/p&gt;
-</description>
-				<published>2010-10-14 00:00:00 +0200</published>
-				<link>http://regilero.github.io/PostgreSQL/Francais/2010/10/14/requetes_recursives_avec_postgresql_8_4/</link>
 			</item>
 		
 	</channel>

@@ -1,0 +1,479 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title> SaltStack, Use more than ascii7 on sls files with yaml_utf8 option |  RBleug</title>
+    <meta name="description" content="Regilero's blog; Mostly tech things about web stuff."/>
+    <meta name="author" content="regilero"/>
+    <link rel="author" href="/contact/" title="who am I?" type="text/html" />
+    <link rel="icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/feed.xml" />
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+    <script src="/theme/js/effects.js" ></script>
+    <script src="/theme/js/jquery.parallax.min.js"></script>
+    <link rel="stylesheet" href="/theme/blueprint/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/blueprint/print.css" type="text/css" media="print">
+    <link rel="stylesheet" href="/theme/syntax.css" type="text/css" />
+    <!--[if lt IE 8]>
+      <link rel="stylesheet" href="/theme/blueprint/ie.css" type="text/css" media="screen, projection">
+    <![endif]-->
+    <link rel="stylesheet" href="/theme/blueprint/plugins/link-icons/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/fontello/css/fontello.css">
+    <!--[if IE 7]><link rel="stylesheet" href="/theme/fontello/css/fontello-ie7.css"><![endif]-->
+    <link href="/theme/style.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-40859893-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+  </head>
+  <body>
+
+    <div id="mastercontainer" class="container">
+       <div id="branding" class="column span-24 last">
+         <div id="brandingcontent">
+           <h1 class="logo"><a href="/">RBleug</a></h1>
+           <hr/>
+           <h2 class="alt">Regilero's blog; Mostly tech things about web stuff.</h2>
+         </div>
+       </div>
+       
+       <div id="menu" class="column span-24 last">
+         <ul class="topNav">
+            <li><a href="/" class="topNavAct" ><i class="icon-home"></i>Tech notes</a></li>
+            <li><a href="/archive/"   ><i class="icon-th"></i>Archives</a></li>
+            <li><a href="/contact/"  ><i class="icon-phone"></i>Contact</a></li>
+            <li><a href="/feed.xml"><i class="icon-rss"></i>RSS Feed</a></li>
+         </ul>
+         <div class="clear"></div>
+       </div>
+       
+       <div id="content" class="">
+         <div id="left-content" class="column span-15 prepend-1">
+             
+          <article>
+        <header>
+            <h1>SaltStack, Use more than ascii7 on sls files with yaml_utf8 option
+            <br/><span><i class="icon-clock"></i><time datetime="2014-02-05">Feb 05, 2014</time></span>
+            <span class="category"><i class="icon-list"></i> <a href="/English/">English</a> and <a href="/SaltStack/">SaltStack</a></span>
+            </h1>
+        </header>
+
+        <div class="entry">
+          <img class="right" src="/theme/img/pic/bee3.png" width="260" alt="If using special characters breaks your salt execution, the yaml_utf8 new option should be enabled." title="If using special characters breaks your salt execution, the yaml_utf8 new option should be enabled." />
+          <p><strong>Warning</strong>: <em>this option is only available on the <code>2014-01</code> branch or the <code>develop</code> branch, it's not yet available on the 0.17 releases branch.</em></p>
+
+<h2>Special characters?</h2>
+
+<p>DevOps, developpers and sysadmins are usually nice people. They usually knows that most of the computer's tools they use are made by US people and that using nasty things such as spaces or, nastier, special characters like <code>é</code> or <code>한</code> may break their tools.</p>
+
+<p>This is why most databases names will ends up as nice ascii7 names with spaces replaced by underscores, and most of the filesystem files follows the same rules.</p>
+
+<p>But we are not anymore in the 60s. Every filesystem allows for utf-8 in file names, even the databases -- on a next post we'll show how salt mysql module has been improved to allow almost any character combination --. So salt-stack should support this fact.</p>
+
+<p>But you may wonder why your salt-stack installation should support 'strange' characters?
+You should take care of that because you usually provide states that you have tested with very simple hello-world level tests. And as a nice and polite computer guy, you did not add any nasty characters in your tests.
+And your sls files may contain jinja variables, which may be used with data coming from external sources. You may even have a full PaaS or SaaS system running. And sooner or later you will have a user that will feed an input field with something like a company name. This company name will contain spaces and maybe Korean characters... This user entry will maybe end up in a configuration file's name, in a database's name, in a managed file's content. Chances are great that some of <strong>theses strange characters will end up somewhere in your salt's sls files</strong>.</p>
+
+<p>The <a href="http://docs.saltstack.com/ref/configuration/master.html#yaml-utf8">new yaml_utf8 option</a> should be enabled on your salt-stack installation to manage these cases. This is not activated by default, it's a new option, and is waiting for some positive and negative feedbacks (use <a href="https://github.com/saltstack/salt/pull/9053">this github pull request</a> for example, or make new issues). So feel free to experiment.</p>
+
+<p>Let's see why you need it and what this option is really doing.</p>
+
+<h1>See it in action</h1>
+
+<p>What happens if my yaml sls file contains some utf-8 characters? Well, bad things :-).</p>
+
+<p>Let's try it. We'll make a very simple state, doing some echo, and we'll do that in a <code>testchar.sls</code> file on the salt tree root.</p>
+
+<pre><code># -*- coding: utf-8 -*-
+test-characters:
+  cmd.run:
+    - name: echo "¿Me pones un café, por favor?"
+</code></pre>
+
+<p>You can see the python utf-8 markers on the top of the sls file, this makes sure that the characters in this sls file are valid utf-8 characters. Two characters here are not in ascii7 <code>¿</code> and <code>é</code>. Let's now run this single state:</p>
+
+<pre><code>#$ salt-call state.sls testchar
+[ERROR   ] An un-handled exception was caught by salt's global exception handler:
+UnicodeEncodeError: 'ascii' codec can't encode character u'\xbf' in position 6: ordinal not in range(128)
+Traceback (most recent call last):
+  File "/usr/local/bin/salt-call", line 44, in &lt;module&gt;
+    sys.exit(salt.scripts.salt_call())
+  File "/usr/local/salt/scripts.py", line 82, in salt_call
+    client.run()
+  File "/usr/local/salt/cli/__init__.py", line 314, in run
+    caller.run()
+  File "/usr/local/salt/cli/caller.py", line 142, in run
+    ret = self.call()
+  File "/usr/local/salt/cli/caller.py", line 80, in call
+    ret['return'] = func(*args, **kwargs)
+  File "/usr/local/salt/modules/state.py", line 383, in sls
+    ret = st_.state.call_high(high_)
+  File "/usr/local/salt/state.py", line 1701, in call_high
+    chunks = self.compile_high_data(high)
+  File "/usr/local/salt/state.py", line 976, in compile_high_data
+    chunks = self.order_chunks(chunks)
+  File "/usr/local/salt/state.py", line 920, in order_chunks
+    chunks.sort(key=lambda k: (k['order'], '{0[state]}{0[name]}{0[fun]}'.format(k)))
+  File "/usr/local/salt/state.py", line 920, in &lt;lambda&gt;
+    chunks.sort(key=lambda k: (k['order'], '{0[state]}{0[name]}{0[fun]}'.format(k)))
+UnicodeEncodeError: 'ascii' codec can't encode character u'\xbf' in position 6: ordinal not in range(128)
+</code></pre>
+
+<p>Ouch.</p>
+
+<p>Now let's find the <code>yaml_utf8</code> option in your master salt configuration file, for me it was in <code>/etc/salt/master.d/00_global.conf</code>, and set it to True. Then restart the master and test again:</p>
+
+<pre><code>#$ service salt-master restart
+salt-master stop/waiting
+salt-master start/running, process 5471
+#$ salt-call state.sls testchar
+local:
+----------
+          ID: test-characters
+    Function: cmd.run
+        Name: echo "¿Me pones un café, por favor?"
+      Result: True
+     Comment: Command "echo "¿Me pones un café, por favor?"" run
+     Changes:   
+              ----------
+              pid:
+                  5053
+              retcode:
+                  0
+              stderr:
+
+              stdout:
+                  ¿Me pones un café, por favor?
+
+Summary
+------------
+Succeeded: 1
+Failed:    0
+------------
+Total:     1
+</code></pre>
+
+<p>Great.</p>
+
+<p>Note that the main problem here, in the first example, was that special characters were used on the state <strong>name</strong>. But it could also happen with harmless attributes. Let's try with a <strong>text</strong> attribute, and without the <code>yaml_utf8</code> option set:</p>
+
+<pre><code># -*- coding: utf-8 -*-
+test-characters1:
+  file.touch:
+    - name: /tmp/foobar
+test-characters2:
+  file.append:
+    - name: /tmp/foobar
+    - text: "¿Me pones un café, por favor?"
+    - require:
+      - file: test-characters1
+</code></pre>
+
+<p>It will also fail:</p>
+
+<pre><code>#$ salt-call state.sls testch
+local:
+----------
+          ID: test-characters1
+    Function: file.touch
+        Name: /tmp/foobar
+      Result: True
+     Comment: Updated times on file /tmp/foobar
+     Changes:   
+----------
+          ID: test-characters2
+    Function: file.append
+        Name: /tmp/foobar
+      Result: False
+     Comment: An exception occurred in this state: Traceback (most recent call last):
+                File "/usr/local/salt/state.py", line 1370, in call
+                  **cdata['kwargs'])
+                File "/usr/local/salt/states/file.py", line 2519, in append
+                  name, salt.utils.build_whitespace_split_regex(chunk)):
+                File "/usr/local/salt/utils/__init__.py", line 772, in     build_whitespace_split_regex
+                  parts = [re.escape(s) for s in __build_parts(line)]
+                File "/usr/local/salt/utils/__init__.py", line 761, in     __build_parts
+                  lexer = shlex.shlex(text)
+                File "/usr/lib/python2.7/shlex.py", line 25, in __init__
+                  instream = StringIO(instream)
+              UnicodeEncodeError: 'ascii' codec can't encode character u'\xbf' in position 0: ordinal not in range(128)
+     Changes:   
+
+Summary
+------------
+Succeeded: 1
+Failed:    1
+------------
+Total:     2
+</code></pre>
+
+<p>But here, at least, you have a catched exception.</p>
+
+<p>Obviously, after using the <code>yaml_utf8</code> option this state will work.</p>
+
+<pre><code>local:
+----------
+          ID: test-characters1
+    Function: file.touch
+        Name: /tmp/foobar
+      Result: True
+     Comment: Updated times on file /tmp/foobar
+     Changes:   
+----------
+          ID: test-characters2
+    Function: file.append
+        Name: /tmp/foobar
+      Result: True
+     Comment: Appended 1 lines
+     Changes:   
+              ----------
+              diff:
+                  --- 
+                  +++ 
+                  @@ -0,0 +1 @@
+                  +¿Me pones un café, por favor?
+Summary
+------------
+Succeeded: 2
+Failed:    0
+------------
+Total:     2
+</code></pre>
+
+<h1>What happened exactly?</h1>
+
+<p>If you want to understand this better I'll give some details. You do not need to understand the details, but it could be useful, especially if you are american (or part of the subset of humanity using pounds, miles and ascii7).</p>
+
+<p>The error was there:</p>
+
+<pre><code>  File "/usr/local/salt/state.py", line 920, in &lt;lambda&gt;
+    chunks.sort(key=lambda k: (k['order'], '{0[state]}{0[name]}{0[fun]}'.format(k)))
+UnicodeEncodeError: 'ascii' codec can't encode character u'\xbf' in position 6: ordinal not in range(128)
+</code></pre>
+
+<p>Salt is ordering the states and the states' name are used to do the sorting. Here we have special characters on these names and the sort method emits an uncatched exception.</p>
+
+<p>A fix would be replacing <code>'{0[state]}{0[name]}{0[fun]}'</code> with <code>u'{0[state]}{0[name]}{0[fun]}'</code>. But you would need this sort of fix in a thousand places. You would have to fix pretty much every string in salt :-(</p>
+
+<p>By default, with python 2.x, there are two types of string objects:</p>
+
+<ul>
+<li>str : the default string object, allow utf-8 encoded strings (a byte string)</li>
+<li>unicode : an unicode string</li>
+</ul>
+
+
+<p>An example is worth a thousand words:</p>
+
+<pre><code>#$ python
+&gt;&gt;&gt; foo="foo"
+&gt;&gt;&gt; foo
+'foo'
+&gt;&gt;&gt; type(foo)
+&lt;type 'str'&gt;
+&gt;&gt;&gt; bar="準"
+&gt;&gt;&gt; bar
+'\xe6\xba\x96'
+&gt;&gt;&gt; type(bar)
+&lt;type 'str'&gt;
+&gt;&gt;&gt; baz=u"準"
+&gt;&gt;&gt; baz
+u'\u6e96'
+&gt;&gt;&gt; type(baz)
+&lt;type 'unicode'&gt;
+</code></pre>
+
+<p>So the special character <code>準</code> is <code>\xe6\xba\x96</code> in utf-8 encoding and <code>\u6e96</code> in unicode encoding. Unicode and utf-8 are not the same things. And by default string objects are utf-8 encoded strings.</p>
+
+<p>The funny thing is that this is not the case in python 3.</p>
+
+<pre><code>#$ /usr/bin/python3.2
+&gt;&gt;&gt; foo="foo"
+&gt;&gt;&gt; foo
+'foo'
+&gt;&gt;&gt; type(foo)
+&lt;class 'str'&gt;
+&gt;&gt;&gt; bar="準"
+&gt;&gt;&gt; bar
+'準'
+&gt;&gt;&gt; type(bar)
+&lt;class 'str'&gt;
+&gt;&gt;&gt; baz=bar.encode('utf-8')
+&gt;&gt;&gt; baz
+b'\xe6\xba\x96'
+&gt;&gt;&gt; type(baz)
+&lt;class 'bytes'&gt;
+</code></pre>
+
+<p>In python3 the default string class will be unicode (as if you had prefixed all your python2 string with <code>u</code>), and the old python default str type will be the byte string class. You will need to prefix with <code>b</code> to get that sort of utf-8 encoded strings.</p>
+
+<p>You can find a very detailled explanation on <a href="http://docs.python.org/3.3/howto/unicode.html">python's unicode documentation</a> and on <a href="http://wolfprojects.altervista.org/talks/unicode-and-python-3/">this slide explaining the difference of string encoding in python2 and 3</a>.</p>
+
+<p>Talking about <strong><a href="http://www.saltstack.com/">Salt-stack</a></strong> we are working in a python2 world. And in pretty every string usage inside salt-stack default strings are used, so byte strings, allowing utf-8 encoding but not unicode. This should allow every special character, if they are well transformed to an utf-8 encoded string. If our special string is managed in this form:</p>
+
+<pre><code>'\xc2\xbfMe pones un caf\xc3\xa9, por favor?'
+</code></pre>
+
+<p>Everything should be fine.</p>
+
+<p>The problem comes from the sls yaml transcription. Salt works with low states, highstates, etc. This is generated from the sls files with a yaml transcription. And this task is made by a yaml library.</p>
+
+<p>This <strong>yaml parser library</strong> is python3-ready, and the result of the yaml parsing is always <strong>unicode strings</strong> if special characters are encountered, not str default strings. So as soon as you have a special character in the sls salt receive unicode u'foo' strings while everything is made to handle utf-8 encoded strings. This yaml_utf8 option is there to ensure that after the yaml load is made, every unicode string is decoded to utf-8, you can see it in the code <a href="https://github.com/saltstack/salt/blob/2014.1/salt/renderers/yaml.py#L70-92">right here</a>.</p>
+
+<ul>
+<li><a href="https://twitter.com/regilero">Stay tuned on twitter, @regilero</a>, <a href="https://twitter.com/makinacorpus">@makinacorpus</a></li>
+</ul>
+
+
+        </div>
+        <div class="tag"><i class="icon-tag"></i><a href="/tag/SaltStack/">SaltStack</a>, <i class="icon-tag"></i><a href="/tag/jinja/">jinja</a></div>
+</article>
+<hr/>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: * * */
+    var disqus_shortname = "regilero";
+    var disqus_identifier = '21a85098-8e55-11e3-baa8-0800200c9a66';
+    var disqus_title = "SaltStack, Use more than ascii7 on sls files with yaml_utf8 option";
+    var disqus_url = 'http://regilero.github.io/SaltStack/English/2014/02/05/saltstack-use-more-than-ascii7-on-sls-files-with-yaml_utf8-option/';
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+
+    
+    
+         </div>
+         <div id="sideBar" class="column span-8 last">
+            <div id="deco">
+              <div class="parallax-viewport">
+                 <!-- Seven image layers, each layer slightly bigger than the one behind, making 'closer' layers move faster. -->
+                 <img class="parallax-layer" src="/theme/img/parallax/0.gif" alt="" style="width:310px; height:825px;"/>
+                 <img class="parallax-layer" src="/theme/img/parallax/1.gif" alt="" style="width:320px; height:850px;"/>
+                 <img class="parallax-layer" src="/theme/img/parallax/2.gif" alt="" style="width:350px; height:900px;"/>
+                 <img class="parallax-layer" src="/theme/img/parallax/4.gif" alt="" style="width:360px; height:950px;"/>
+                 <img class="parallax-layer" src="/theme/img/parallax/6.gif" alt="" style="width:400px; height:1000px;"/>
+               </div>
+             </div>
+            <div id="sideBarContent"> 
+              
+              <div class="sideBarListBox">
+                <h3>Related posts</h3>
+                <ul>
+                  
+                     <li><a href="/SaltStack/English/2014/01/28/saltstack_merge_dictionaries_of_settings_with_grains_filter_by/">SaltStack, Merge dictionaries of settings with grains.filter_by</a></li>
+                  
+                     <li><a href="/SaltStack/English/2014/01/27/saltstack_use_file_accumulated_accumulators_with_file_managed_and_file_blockreplace/">SaltStack, Use file.accumulated accumulators with file.managed and file.blockreplace</a></li>
+                  
+                     <li><a href="/SaltStack/English/2014/01/20/saltstack_step_by_step_file_blockreplace/">SaltStack, Manage entries in unmanaged files with File Blockreplace</a></li>
+                  
+                </ul>
+              </div>
+              
+      
+            <div class="sideBarListBox">
+              <h3>Latest posts</h3>
+              <ul>
+                  
+                     <li><a href="/SaltStack/English/2014/02/05/saltstack-use-more-than-ascii7-on-sls-files-with-yaml_utf8-option/">SaltStack, Use more than ascii7 on sls files with yaml_utf8 option</a></li>
+                  
+                     <li><a href="/SaltStack/English/2014/01/28/saltstack_merge_dictionaries_of_settings_with_grains_filter_by/">SaltStack, Merge dictionaries of settings with grains.filter_by</a></li>
+                  
+                     <li><a href="/SaltStack/English/2014/01/27/saltstack_use_file_accumulated_accumulators_with_file_managed_and_file_blockreplace/">SaltStack, Use file.accumulated accumulators with file.managed and file.blockreplace</a></li>
+                  
+                     <li><a href="/SaltStack/English/2014/01/20/saltstack_step_by_step_file_blockreplace/">SaltStack, Manage entries in unmanaged files with File Blockreplace</a></li>
+                  
+                     <li><a href="/Drupal/English/2013/05/16/Warning_chrooted_php_fpm_and_apc/">Warning Chrooted php-fpm and Apc with multiple pools</a></li>
+                  
+              </ul>
+            </div>
+            
+            <div class="sideBarListBox">
+              <h3>Tags</h3>
+              <div class="tagcloud">
+              <a style='font-size: 30px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 30px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 23px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 19px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 19px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 19px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 19px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 29px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 19px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 19px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 19px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 26px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 19px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 23px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 26px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 30px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+
+              </div>
+            </div>
+          </div> <!-- end sideBarContent -->
+            
+            <div class="sideBarMore">
+              <h3>More</h3>
+                <a href="https://twitter.com/regilero" target="_blank"><img src="/theme/img/twitter_thumb.png" width="48" height="48" alt="Twitter regilero" title="Twitter regilero"></a>
+                <a href="https://github.com/regilero" target="_blank"><img src="/theme/img/github_thumb.png" width="48" height="48" alt="Github regilero" title="Github regilero"></a>
+                <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
+                <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
+                <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
+                <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+            </div>
+            <div class="sideBarItem">
+              <h3>Friends</h3>
+                <ul>
+                  <li><a class="effect" target="_blank" href="http://makina-corpus.com/blog/metier/actu-metier">Blogs Makina Corpus<div class="cover-right"><img src="/theme/img/makinaorg.png" height="30" width="30"><img src="/theme/img/makinaorg_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://www.makina-corpus.com">Makina Corpus<div class="cover-right"><img src="/theme/img/makinacom.png" height="30" width="30"><img src="/theme/img/makinacom_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://www.processus.org/">Pounard, processus.org<div class="cover-right"><img src="/theme/img/pounard.png" height="30" width="30"><img src="/theme/img/pounard_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://toutpt.makina-corpus.org/" >Toupt<div class="cover-right"><img src="/theme/img/toupt.png" height="30" width="30"><img src="/theme/img/toupt_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://francoisgaudin.com/">François Gaudin<div class="cover-right"><img src="/theme/img/gaudin.png" height="30" width="30"><img src="/theme/img/gaudin_banner.png" height="30" width="117"></div></a></li>
+                </ul>
+                <div class="clear"></div>
+            </div>
+         </div> <!-- end sidebar -->
+        
+       </div><!-- end content -->
+         
+       <div id="footer" class="column span-24 last">
+          <hr />
+          <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/"><img alt="Licence Creative Commons" style="border-width:0" src="http://i.creativecommons.org/l/by-sa/3.0/fr/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/Text" property="dct:title" rel="dct:type">regilero's blog</span> est mis à disposition selon les termes de la <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/">licence Creative Commons Attribution -  Partage dans les Mêmes Conditions 3.0 France</a>.<br />Fondé(e) sur une œuvre à <a xmlns:dct="http://purl.org/dc/terms/" href="http://regilero.github.io" rel="dct:source">http://regilero.github.io</a>.
+       </div>
+
+      </div><!-- end container -->
+    </body>
+</html>

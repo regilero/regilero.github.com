@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
+      <loc>http://regilero.github.io/SaltStack/English/2014/02/05/saltstack-use-more-than-ascii7-on-sls-files-with-yaml_utf8-option/</loc>
+      <lastmod>2014-02-05</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
       <loc>http://regilero.github.io/SaltStack/English/2014/01/28/saltstack_merge_dictionaries_of_settings_with_grains_filter_by/</loc>
       <lastmod>2014-01-28</lastmod>
       <changefreq>never</changefreq>
