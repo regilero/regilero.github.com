@@ -3,6 +3,6 @@
 "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
                                                                                 
 "features": [
-{ "type": "Feature", "properties": { "FOO": "&#x202e;BAR\"zob&#x202c;","LICENSE": "ABRA-080135&#x022+alert(/XSS/.source)+&#x022;Bar", "TRADE_NAME": "Little Ethiopia Restaurant<img src=x onerror=alert(/XSS/.source)>", "APPLICANT": "Feker Sound, Inc.", "CLASS": "C", "ENDORSEMEN": "Entertainment,", "ADDRESS": "1924 9TH STREET NW", "ADDRID": 239490.0, "X": 397902.36, "Y": 138713.95, "DESCRIPTIO": "Restaurant" }, "geometry": { "type": "Point", "coordinates": [ -77.024187522329569, 38.91629042772842 ] } }
+{ "type": "Feature", "properties": { "FOO": "&#x202e;BAR\"zob&#x202c;","LICENSE": "ABRA-080135&#x022;+alert(/XSS/.source)+&#x022;Bar", "TRADE_NAME": "Little Ethiopia Restaurant<img src=x onerror=alert(/XSS/.source)>", "APPLICANT": "Feker Sound, Inc.", "CLASS": "C", "ENDORSEMEN": "Entertainment,", "ADDRESS": "1924 9TH STREET NW", "ADDRID": 239490.0, "X": 397902.36, "Y": 138713.95, "DESCRIPTIO": "Restaurant" }, "geometry": { "type": "Point", "coordinates": [ -77.024187522329569, 38.91629042772842 ] } }
 ]
 }
