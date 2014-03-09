@@ -3,6 +3,6 @@
 "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
                                                                                 
 "features": [
-
+{ "type": "Feature", "properties": { "FOO": "BAR","ADDRESS": "1924 9TH STREET NW", "ADDRID": 239490.0 }, "geometry": { "type": "Point", "coordinates": [ -77.024187522329569, 38.91629042772842 ] } }
 ]
 }
