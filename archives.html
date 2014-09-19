@@ -1,0 +1,28 @@
+---
+layout: page
+title: Archives
+top: Archives
+---
+
+    <section>
+        <div class="panel panel-default">
+          <div class="panel-heading">Full content of all things posted there, almost.</div>
+          <table  class="archive table">
+            <tr>
+              <th width="20%">Date</th>
+              <th width="40%">Title</th>
+              <th>Categories</th>
+              <th>Tags</th>
+            </tr>
+            {% for post in site.posts %}
+            <tr>
+                <td width="20%" class="time"><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="{{post.date|date:"%F"}}">{{post.date|date:"%b %d, %Y"}}</time></td>  
+                <td width="40%" class="title"><a href="{{site.baseurl}}{{ post.url }}" data-toggle="tooltip" title="{{ post.excerpt }}">{{ post.title }}</a></td>
+                <td class="category"><span class="category"><i class="glyphicon glyphicon-list"></i>&nbsp;{{post.categories | category_links}}</span></td>
+                <td class="tag"><span class="tag"><i class="glyphicon glyphicon-list"></i>&nbsp;{{post.tags  | tags_links}}</span></td>
+            </tr>
+            {% endfor %}
+          </table>
+        </div>
+    </section>
+
