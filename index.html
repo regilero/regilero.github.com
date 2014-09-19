@@ -4,32 +4,33 @@ title: Home
 top: Home
 ---
 
-<!-- Show last 5 posts here -->
-{% for post in site.posts limit: 6  %}
-  <div class="home-article column span-7 {% cycle '', 'preprend-1 last' %}">
-  	<article>
-
-        <header>
-            <h2 class="home-header"><a href="{{site.baseurl}}{{post.url}}">{{ post.title }}</a></h2>
-        </header>
+<div class="container-fluid">
+<!-- Show last 6 posts here -->
+{% for post in site.posts limit: 8  %}
+  {% cycle '<div class="row">', '' %}
+  <div class="home-article col-md-6">
+    <article class="panel panel-default">
+      <header>
+          <h2 class="home-header"><a href="{{site.baseurl}}{{post.url}}">{{ post.title }}</a></h2>
+      </header>
           
-      <div class="effect">
-    		<div class="entry">
-    		  <a href="{{site.baseurl}}{{post.url}}"><img src="/theme/img/pix/{{ post.pic }}" width="260" alt="{{post.title}}"/></a>
-    		</div>
-        <div class="cover cover-bottom">
-          <span class="date"><i class="icon-clock"></i><time datetime="{{post.date|date:"%F"}}">{{post.date|date:"%b %d, %Y"}}</time></span><br/>
-          <span class="category"><i class="icon-list"></i>{{ post.categories | category_links }}</span><br/>
-          <hr/>
+      <div class="post-pict">
+        <div class="post-excerpt">
           <a href="{{site.baseurl}}{{post.url}}">
-          {{ post.excerpt }}</a><br/>
-          <hr/>
-          <span class="tag">{{ post.tags | tags_links }}</span><br/>
+            {{ post.excerpt }}</a><br/>
         </div>
+        <div class="entry">
+            <a href="{{site.baseurl}}{{post.url}}"><img src="/theme/img/pix/{{ post.pic }}" alt="{{post.title}}"/></a>
+        </div>
+        <div class="post-details">
+            <span class="date"><i class="glyphicon glyphicon-time"></i>&nbsp;<time datetime="{{post.date|date:"%F"}}">{{post.date|date:"%b %d, %Y"}}</time></span><br/>
+            <span class="category"><i class="glyphicon glyphicon-list"></i>&nbsp;{{ post.categories | category_links }}</span><br/>
+        </div>
+        <div class="tag panel-footer">{{ post.tags | tags_links }}</div>
       </div>
-  	</article>
+    </article>
   </div>
-  {% cycle '', '<div class="clear"></div>' %}
+  {% cycle '', '</div>' %}
 {% endfor %}
-<div class="clear"></div>
+</div>
 

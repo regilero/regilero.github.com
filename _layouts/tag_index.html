@@ -1,16 +1,25 @@
 ---
 layout: page
-top: Archive
+top: Archives
 ---
 
     <section>
-        <table  class="archive">
+        <div class="panel panel-default">
+          <div class="panel-heading">Posts tagged with this word.</div>
+          <table  class="archive table">
+            <tr>
+              <th width="20%">Date</th>
+              <th width="50%">Title</th>
+              <th>Tags</th>
+            </tr>
             {% for post in site.tags[page.tag] %}
             <tr>
-                <td width=20% class="time"><i class="icon-clock"></i><time datetime="{{post.date|date:"%F"}}">{{post.date|date:"%b %d, %Y"}}</time></td>  
-                <td width=50% class="title"><a href="{{site.baseurl}}{{ post.url }}">{{ post.title }}</a></td>
-                <td class="tag"><span class="tag">{{post.tags  | tags_links}}</span></td>
+                <td width="20%" class="time"><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="{{post.date|date:"%F"}}">{{post.date|date:"%b %d, %Y"}}</time></td>  
+                <td width="50%" class="title"><a href="{{site.baseurl}}{{ post.url }}" data-toggle="tooltip" title="{{ post.excerpt }}">{{ post.title }}</a></td>
+                <td class="tag"><span class="tag"><i class="glyphicon glyphicon-list"></i>&nbsp;{{post.tags  | tags_links}}</span></td>
             </tr>
             {% endfor %}
-        </table>
+          </table>
+        </div>
     </section>
+

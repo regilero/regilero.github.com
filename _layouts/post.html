@@ -1,20 +1,38 @@
 ---
 layout: default
+top: Archives
 ---
 
 <article>
         <header>
+            <div class="page-header">
             <h1>{{ page.title }}
-            <br/><span><i class="icon-clock"></i><time datetime="{{page.date|date:"%F"}}">{{page.date|date:"%b %d, %Y"}}</time></span>
-            <span class="category"><i class="icon-list"></i> {{ page.categories | category_links }}</span>
+            <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="{{page.date|date:"%F"}}">{{page.date|date:"%b %d, %Y"}}</time></span>
+            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> {{ page.categories | category_links }}</span>
             </h1>
+            </div>
         </header>
 
         <div class="entry">
-          <img class="right" src="/theme/img/pic/{{ page.pic }}" width="260" alt="{{page.excerpt}}" title="{{page.excerpt}}" />
+         <div class="col-md-6">
+          <div class="post-excerpt-full">
+          {{ page.excerpt }}
+          </div>
+          <div id="post-toc">
+          </div>
+         </div>
+         <div class="col-md-6">
+          <img class="topimg" src="/theme/img/pic/{{ page.pic }}" alt="{{page.excerpt}}" title="{{page.excerpt}}" />
+         </div>
+         <div class="row">
+          <div class="col-md-12" id="post-full">
+       
           {{ content }}
+
+          </div>
+         </div>
         </div>
-        <div class="tag">{{page.tags  | tags_links}}</div>
+        <div class="tag">Tags:&nbsp;{{page.tags  | tags_links}}</div>
 </article>
 <hr/>
 <div id="disqus_thread"></div>
