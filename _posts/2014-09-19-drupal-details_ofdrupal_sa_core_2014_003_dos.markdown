@@ -8,7 +8,7 @@ pic: long_name.jpg
 excerpt: Analysis of the new DRUPAL_SA_CORE_2014_003 DOS vulnerability (CVE-2014-5019)
 ---
 
-**English version** (**Version Française** disponible sur [makina corpus][FRENCH].)
+<small>**English version** (**Version Française** disponible sur [makina corpus][FRENCH].)</small>
 
 ## SA_CORE_2014_003
 
