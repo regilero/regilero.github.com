@@ -4,7 +4,7 @@ uuid: d1451e02-926f-432e-8657-ebc323b8ab22
 title: Requêtes récursives avec PostgreSQL 8.4 (WITH RECURSIVE)
 categories: [PostgreSQL, Francais]
 tags: [PostgreSQL, Bash]
-pic: spider2.png
+pic: old8.jpg
 excerpt: Obtenir directement un résultat arborescent avec du SQL est un graal qui est désormais accessible sur PostgreSQL, et un exemple détaillé vaut mieux qu'un long discours. 
 
 ---

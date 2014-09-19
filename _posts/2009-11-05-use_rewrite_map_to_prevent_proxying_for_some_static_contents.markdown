@@ -4,7 +4,7 @@ uuid: ff991376-0032-4614-a639-834b26e26b9f
 title: Use RewriteMap to prevent proxying for some static contents
 categories: [Apache, English]
 tags: [HTTP, Plone, Performance, Proxy, mod_rewrite, RewriteMap]
-pic: alienflower.png
+pic: old6.jpg
 excerpt: How to use the not well known RewriteMap Apache feature to proxy static resources on a web app without clean url separation between static and dynamic content (here Plone).  
 next: 2009-11-06-more_on_static_file_redirector
 

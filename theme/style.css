@@ -176,6 +176,7 @@ div.tag {
 
 .list-group-item h4 {
   color: #2f2f2f;
+  font-style: italic;
 }
 .page-header {
   margin-top: 21px;
@@ -350,7 +351,7 @@ a.effect img {
 }
 
 #left-content h2.home-header {
-  background-color:#333;
+  background-color:#555;
   margin-top: 0px;
   margin-bottom: 0px;
   box-shadow: none;

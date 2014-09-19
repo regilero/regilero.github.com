@@ -4,7 +4,7 @@ uuid: ec38203a-66d6-4da0-b9c9-061ead8d136b
 title: Relative/Absolute URL and Proxies
 categories: [Apache, English]
 tags: [HTTP, Apache, Proxy, Web, PHP]
-pic: flower3.png
+pic: old5.jpg
 excerpt: Let's explore FillFactor, Returning inserts, TOAST, table inheritance, table partitionning and Notify/listen features. 
 
 ---

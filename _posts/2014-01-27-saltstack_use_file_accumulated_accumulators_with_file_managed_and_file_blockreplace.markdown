@@ -4,7 +4,7 @@ uuid: 671fb11a-8778-11e3-b2e4-d231feb1dc81
 title: SaltStack, Use file.accumulated accumulators with file.managed and file.blockreplace
 categories: [SaltStack, English]
 tags: [SaltStack, BlockReplace, Managed, Accumulated]
-pic: whiteflower2.png
+pic: replaceblock2.jpg
 excerpt: This is a detailled example of salt-stack's file.accumulated usage.
 ---
 
@@ -26,6 +26,7 @@ States ordering
 
 As I said before states ordering is very important here. The final step must be final. And used states may be split upon several sls files. You can use the order ``order`` keyword to ensure the final order, this way:
 
+{% highlight yaml linenos %}
     # first.sls
     STATEID1:
       cmd.run:
@@ -43,12 +44,15 @@ As I said before states ordering is very important here. The final step must be 
       cmd.run
         name: echo STATEID3
         order: 200
+{% endhighlight %}
 
 This will make a final execution order of:
 
+{% highlight yaml linenos %}
     echo STATEID1
     echo STATEID3
     echo last
+{% endhighlight %}
 
 But to do that you need an ordering schema for all you states. I do not find that very useful when you have a lot of states.
 
@@ -56,6 +60,7 @@ The second way of ordering states is using [``requisites``][REQUISITES]. Using t
 
 So using ``require_in`` the previous example would be:
 
+{% highlight yaml linenos %}
     # first.sls
     STATEID1:
       cmd.run:
@@ -74,16 +79,21 @@ So using ``require_in`` the previous example would be:
         name: echo STATEID3
         require_in:
           - cmd: STATEID2
+{% endhighlight %}
 
 **Be careful:** the syntax for a requisite is:
 
+{% highlight yaml linenos %}
     <requisite>:
       - <module>: <state id>
+{% endhighlight %}
 
 It is not:
 
+{% highlight yaml linenos %}
     <requisite>:
       - <module>.<function>: <state id>
+{% endhighlight %}
 
 So it is not ``cmd.run:`` here but only ``cmd:``. And as soon as you start using requisites you see that using meaningfull states ids and not names shortcuts to declare states is quite important, for clarity at least.
 
@@ -94,6 +104,7 @@ All [examples are available on github here][GITHUBEXAMPLES].
 
 In this first example we'll use several states, the last state will install a [managed file][FILEMANAGED] in ``/etc/apache2/sites-available/100-foo.example.com``, it's an apache virtualhost file, in the debian way. The jinja template associated with this file will contain the basic rules, but we want to allow some other states to add instructions on this virtualhost. We'll see theses states later. We start by the end, with this state building a virtualhost file in a ``example_com_apache_virtualhost.sls`` file:
 
+{% highlight yaml linenos %}
     apache-install:
       pkg.installed:
         - pkgs:
@@ -112,9 +123,11 @@ In this first example we'll use several states, the last state will install a [m
             - servername: example.com
         - require:
             - pkg: apache-install
+{% endhighlight %}
 
 This file should be put somewhere on your state tree, in this example I will make the function calls as if it were on the root of this tree (like the top.sls file). But there's also a *source* template for the managed file, which is called ``salt://files/apache_vhost``, this file should be present under the salt master tree, in the directory ``files`` (or alter the used path). This is this very simple basic virtualhost example template content:
 
+{% highlight apache linenos %}
 {% raw  %}
     # Main Virtualhost for {{ servername }}
     <VirtualHost *:80>
@@ -141,16 +154,20 @@ This file should be put somewhere on your state tree, in this example I will mak
     
     </VirtualHost>
 {% endraw %}
+{% endhighlight %}
 
 Let's test this simple state:
 
+{% highlight bash linenos %}
     $# salt-call -linfo state.sls example_com_apache_virtualhost
+{% endhighlight %}
 
 You should en up with two states in success and a ``/etc/apache2/sites-available/100-example.com`` file created.
 Now let's say we want other states, an infinite list of other states, to be able to alter this file and add content either in the main Directory section or at the end of the file. This way other states could add some apache configuration (this is an example, another way of doing it could be apache's include directive).
 
 Here comes the **accumulator** jinja variable. It's a dictionnary, with several keys. Each key of this dictionary is the result of **one or more** [``file.accumulated``][FILEACCUMULATED] states. So you may have this variable (or not) and it may contain some keys with text data inside. Let's see how to use this on the jinja template (and at first, we known it's empty, we did not used any accumulated state yet).
 
+{% highlight jinja linenos %}
 {% raw  %}
     # Main Virtualhost for {{ servername }}
     <VirtualHost *:80>
@@ -196,11 +213,13 @@ Here comes the **accumulator** jinja variable. It's a dictionnary, with several 
   
     </VirtualHost>
 {% endraw %}
+{% endhighlight %}
 
 If you run the state nothing should move, except maybe the two comments lines. The thing we need to do now is to feed this accumulator variable with [``file.accumulated``][FILEACCUMULATED] states. On theses states the ``name`` of the state will match the accumulator key.
 
 So, for this example, we will use a second sls file ``more-things-for-virtualhost.sls`` :
 
+{% highlight yaml linenos %}
     {# Include dependencies #}
     include:
       - example_com_apache_virtualhost
@@ -254,13 +273,17 @@ So, for this example, we will use a second sls file ``more-things-for-virtualhos
             </FilesMatch>
         - require_in:
             - file: 100_example_com_virtualhost
+{% endhighlight %}
 
 Now let's run this new sls:
 
+{% highlight bash linenos %}
     $# salt-call -linfo state.sls more-things-for-virtualhost
+{% endhighlight %}
 
 You should get a nice diff showing you that all theses states added content on the right place:
 
+{% highlight apache linenos %}
     +++ 
     @@ -21,9 +21,41 @@
          Allow from all
@@ -304,9 +327,11 @@ You should get a nice diff showing you that all theses states added content on t
     +
     +
      </VirtualHost>
+{% endhighlight %}
 
 You can see that some extra spaces were added by my jinja control commands. We can strip down those whitespaces with jinja's``-``. Instead of:
 
+{% highlight jinja linenos %}
 {% raw  %}
     {% if accumulator|default(False) %}
     {%   if 'extra-settings-example-virtualhost-maindir' in accumulator %}
@@ -316,9 +341,11 @@ You can see that some extra spaces were added by my jinja control commands. We c
     {%   endif %}
     {% endif %}
 {% endraw %}
+{% endhighlight %}
 
 Use:
 
+{% highlight jinja linenos %}
 {% raw  %}
     {% if accumulator|default(False) -%}
     {%   if 'extra-settings-example-virtualhost-maindir' in accumulator -%}
@@ -328,12 +355,15 @@ Use:
     {%-   endif %}
     {%- endif %}
 {% endraw %}
+{% endhighlight %}
 
 And to get the right number of spaces on the resulting file use the indent filter:
 
+{% highlight jinja linenos %}
 {% raw  %}
     {{ line|indent(4) }}
 {% endraw %}
+{% endhighlight %}
 
 file.blockreplace using file.accumulated
 -----------------------------------------
@@ -349,6 +379,7 @@ This last sentence is maybe weird. We'll make an example to see it, but another 
 
 So in this example we'll reuse the last example of managing entries in an ``/etc/hosts`` file. But we will manage two blocks of edition. So we have theses two states in an ``hostsedit_acc.sls`` file:
 
+{% highlight yaml linenos %}
     test-etc-hosts-blockreplace-services-local:
       file.blockreplace:
         - name: /etc/hosts
@@ -364,6 +395,7 @@ So in this example we'll reuse the last example of managing entries in an ``/etc
         - marker_end: "# BLOCK BOTTOM : central : end of salt managed zone --"
         - show_changes: True
         - append_if_not_found: True
+{% endhighlight %}
 
 Same blocks as in the [previous guide]({% post_url 2014-01-20-saltstack_step_by_step_file_blockreplace %}) on blockreplace. But there I removed the content attribute (it *could* work with a content attribute adding more static stuff, but I do not need it).
 
@@ -376,6 +408,7 @@ Quite simple, but here we have **two** managed blocks, my accumulated content wi
 
 Let's try it in a second sls file: ``hosts_data.sls``, but you could split that on more files if everything gets included at the end:
 
+{% highlight yaml linenos %}
     {# Include dependencies #}
     include:
         - hostsedit_acc
@@ -412,15 +445,19 @@ Let's try it in a second sls file: ``hosts_data.sls``, but you could split that 
             127.0.0.1 foobar
         - require_in:
             - file: test-etc-hosts-blockreplace-services-local
+{% endhighlight %}
 
 Note that I did not use the ``name`` attribute in theses states. Using name I could name the dictionary key, or we could say I would set the accumulator name. I could use names, but using the same accumulator name with the four states, strange things would happen, data from all theses accumulators would be merged in the same accumulator name. So, either avoid name attributes or use it with different names if the targeted blockedit is different. And test your recipes :-)
 
 Now run it with:
 
+{% highlight bash linenos %}
     $# salt-call -linfo state.sls hosts_data
+{% endhighlight %}
 
 You should get theses two managed blocks in ``/etc/hosts``, filled from several states:
 
+{% highlight bash linenos %}
     # BLOCK TOP : salt managed zone : local services : please do not edit
     127.0.0.1 foo bar foo.local.net bar.local.net
     127.0.0.1 db.local.net
@@ -434,6 +471,7 @@ You should get theses two managed blocks in ``/etc/hosts``, filled from several 
     8.8.8.4 ns2.google.com
     
     # BLOCK BOTTOM : central : end of salt managed zone --
+{% endhighlight %}
 
 Last words
 ------------

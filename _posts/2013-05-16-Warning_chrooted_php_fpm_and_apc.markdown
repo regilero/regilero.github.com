@@ -4,21 +4,21 @@ uuid: b6b551cb-c3f9-49a7-b9c7-2f76b12b662d
 title: Warning Chrooted php-fpm and Apc with multiple pools
 categories: [Drupal, English]
 tags: [Drupal, Performance, PHP-fpm, APC]
-pic: ladybird.png
+pic: reboot.jpg
 excerpt: Using several chrooted php-fpm pools with APC opcode may break all your websites (and chroot jails). Step by step of cloning php-fpm daemons.
 
 ---
 
-PHP-fpm used as a fastgi backend for nginx or Apache is a very nice tool.  
+PHP-fpm used as a fastgi backend for nginx or Apache is a very nice tool.
 And the ability to chroot the php-fpm pool use a nice way to enforce projects separations.
 I once wrote a detailled exemple for Apache (but I really prefer nginx),
 with details on `open_basedir` and temporary files
-separation for each PHP project.  
+separation for each PHP project.
 You should really use your PHP projets in such way to avoid having the least secure project
 on your host used to attack other projects.
 
 But recently I discovered that using several projects on the same host, all using **APC** opcode and **php-fpm chroot** I ended up
-with sources files from one project used on the others.. source code **mix** .. and then really bad things happened...  
+with sources files from one project used on the others.. source code **mix** .. and then really bad things happened...
 
 ##WTF: Why are the conf files mixed between projects?##
 
@@ -36,8 +36,8 @@ same buggy files on each hosts.
 
 The problem is easy (well, it took me long minutes to find it the fist time),
 APC is storing a compiled version of each file in his opcode cache, and
-**the cache key of this file is  the file name (full path)**.  
-If two chrooted projects **share the same file names, only one version of this file is stored in APC!**  
+**the cache key of this file is  the file name (full path)**.
+If two chrooted projects **share the same file names, only one version of this file is stored in APC!**
 Without the chroot this never happens on a regular filesystem. But, by definition, using
 a chroot your projects are using a shorter relative path to files, seing it as the real full path.
 
@@ -54,7 +54,7 @@ Whereas the real filesystem paths are:
 
 As of course the chroots are `var/www/app/production` and `/var/www/app/test`.
 
-Quite easy te see on projects where key files like configuration files gets the same name.  
+Quite easy te see on projects where key files like configuration files gets the same name.
 But it could also happen with several projects having a lot of differences in file naming,
 and where just one or two file names would conflict. It would make the bug harder to detect.
 
@@ -89,7 +89,7 @@ include=/etc/php5/fpm/pool.d/*.conf
 {% endhighlight %}
 
 We alter the configuration file to only include one pool. Then we make the copy and alter this name in the second file,
-we also alter the pid setting reference.  
+we also alter the pid setting reference.
 After that a diff should give something like that:
 
 {% highlight bash %}
@@ -113,7 +113,7 @@ $ diff -bBNaur /etc/php5/fpm/php-fpm.conf /etc/php5/fpm/php-fpm-test.conf
 +include=/etc/php5/fpm/pool.d/my-pool-test.conf
 {% endhighlight %}
 
-Now we need an init script starting a new php-fpm daemon using this `php-fpm-test.conf` file.  
+Now we need an init script starting a new php-fpm daemon using this `php-fpm-test.conf` file.
 Copy the main startup script on a new one with test extension and alter it so that at least you obtain this diff:
 
 {% highlight bash %}
@@ -175,7 +175,7 @@ Test it with this  `ps` command, you sholuld see the two daemons and the childr
  root     17906  0.0  0.1 667208  5236 ?        Ss   May07   0:13 php-fpm: master process (/etc/php5/fpm/php-fpm-test.conf)
  1005      9753  0.0  3.0 733316 122300 ?       S    04:13   0:06  \_ php-fpm: pool my-pool-test
  1005      9754  0.0  1.9 691336 81188 ?        S    04:13   0:04  \_ php-fpm: pool my-pool-test
- 1005     17920  0.0  3.0 733316 123152 ?       S    05:41   0:05  \_ php-fpm: pool my-pool-test                                     
+ 1005     17920  0.0  3.0 733316 123152 ?       S    05:41   0:05  \_ php-fpm: pool my-pool-test
  root     19130  0.0  0.1 667908  5940 ?        Ss   May07   0:14 php-fpm: master process (/etc/php5/fpm/php-fpm.conf)
  1005     10731  0.1  2.7 699296 110940 ?       S    May14   1:30  \_ php-fpm: pool my-pool
  1005     10816  0.1  2.4 688676 99048 ?        S    May14   1:35  \_ php-fpm: pool my-pool
@@ -185,9 +185,9 @@ Test it with this  `ps` command, you sholuld see the two daemons and the childr
 
 ###Watch the nice crash on start/stop###
 
-It's not the end!  
+It's not the end!
 
-If you try to stop one of the 2 daemons you will have a long running stop, and then after 30s the 2 daemons will be down.  
+If you try to stop one of the 2 daemons you will have a long running stop, and then after 30s the 2 daemons will be down.
 Redo the ps to see it.
 
 Problem is coming fom the `do_stop` function in the init script:
@@ -239,7 +239,7 @@ lrwxrwxrwx 1 root root 0 15 mai   13:30 /proc/1246/exe -> /usr/sbin/php5-fpm
 {% endhighlight %}
 
 So this second stop is waiting for **any** process whose executable is `/usr/sbin/php5-fpm`,
-and if it do not stop after 30 seconds, a SIGTERM and then a SIGKILL is launched.  
+and if it do not stop after 30 seconds, a SIGTERM and then a SIGKILL is launched.
 When stopping the php-fpm-test version every other parallel php-daemon running will finally get killed.
 Same for the first daemon.
 

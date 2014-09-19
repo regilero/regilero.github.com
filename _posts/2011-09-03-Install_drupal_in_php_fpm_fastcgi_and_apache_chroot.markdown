@@ -4,7 +4,7 @@ uuid: 039d0a71-89a0-41dd-a6ad-5c03f4b2911a
 title: Install Drupal in php-fpm (fastcgi) with Apache and a chroot php-fpm
 categories: [Drupal, English]
 tags: [Drupal, Apache, PHP, PHP-fpm, Security]
-pic: blackbee.png
+pic: old11.jpg
 excerpt: Step by step Apache+php-fpm installation of Drupal with some explanations on how to use php-fpm chroot while still not having mod_proxy_fcgi.
 
 ---

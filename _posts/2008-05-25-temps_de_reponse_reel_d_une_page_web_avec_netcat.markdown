@@ -4,7 +4,7 @@ uuid: f2b47778-a8de-4cec-9c9e-75f9ae93c696
 title: Temps de réponse réél d'une page web avec ... netcat
 categories: [Monitoring, Francais]
 tags: [Linux, HTTP, Monitoring, Apache, Nginx]
-pic: whiteflower2.png
+pic: old1.jpg
 excerpt: Comment obtenir le temps de réponse d'un site avec une ligne de commande concise, sans wget et sans telnet (mais avec netcat) 
 
 ---

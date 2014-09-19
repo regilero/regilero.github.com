@@ -4,7 +4,7 @@ uuid: 7440e951-58a7-468a-9cfe-b6dd5335a524
 title: SaltStack, Merge dictionaries of settings with grains.filter_by
 categories: [SaltStack, English]
 tags: [SaltStack, jinja]
-pic: whiteflower.png
+pic: old1.jpg
 excerpt: Useful in formulas and macros, and now featuring a default attribute.
 ---
 

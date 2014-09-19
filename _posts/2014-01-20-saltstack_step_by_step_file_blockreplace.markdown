@@ -4,7 +4,7 @@ uuid: 013a442e-81e0-11e3-baa7-0800200c9a66
 title: SaltStack, Manage entries in unmanaged files with File Blockreplace
 categories: [SaltStack, English]
 tags: [SaltStack, BlockReplace]
-pic: spider2.png
+pic: replaceblock1.jpg
 excerpt: This is a presentation on how to use the saltstack's core file.blockreplace
 ---
 

@@ -4,7 +4,7 @@ uuid: 21a85098-8e55-11e3-baa8-0800200c9a66
 title: SaltStack, Use more than ascii7 on sls files with yaml_utf8 option
 categories: [SaltStack, English]
 tags: [SaltStack, jinja]
-pic: bee3.png
+pic: u202e.png
 excerpt: If using special characters breaks your salt execution, the yaml_utf8 new option should be enabled.
 ---
 
@@ -28,7 +28,7 @@ The [new yaml_utf8 option][DOC_YAMLUTF8] should be enabled on your salt-stack in
 Let's see why you need it and what this option is really doing.
 
 See it in action
-=================
+-------------------
 
 What happens if my yaml sls file contains some utf-8 characters? Well, bad things :-).
 
@@ -186,7 +186,7 @@ Obviously, after using the ``yaml_utf8`` option this state will work.
     Total:     2
 
 What happened exactly?
-========================
+-------------------
 
 If you want to understand this better I'll give some details. You do not need to understand the details, but it could be useful, especially if you are american (or part of the subset of humanity using pounds, miles and ascii7).
 
