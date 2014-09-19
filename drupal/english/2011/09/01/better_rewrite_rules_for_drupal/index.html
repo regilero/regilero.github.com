@@ -1,0 +1,627 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title> Better rewriteRules for Drupal |  RBleug</title>
+    <meta name="description" content="Regilero's blog; Mostly tech things about web stuff."/>
+    <meta name="author" content="regilero"/>
+    <link rel="author" href="/contact/" title="who am I?" type="text/html" />
+    <link rel="icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/feed.xml" />
+    <link rel="stylesheet" href="/theme/bootstrap/css/bootstrap.min.css" type="text/css">
+    <link rel="stylesheet" href="/theme/bootstrap/css/bootstrap-theme.min.css" type="text/css">
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+<!--
+    <link rel="stylesheet" href="/theme/blueprint/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/blueprint/print.css" type="text/css" media="print">
+    <link rel="stylesheet" href="/theme/syntax.css" type="text/css" />
+    <!--[if lt IE 8]>
+      <link rel="stylesheet" href="/theme/blueprint/ie.css" type="text/css" media="screen, projection">
+    <![endif]-->
+<!--
+    <link rel="stylesheet" href="/theme/blueprint/plugins/link-icons/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/fontello/css/fontello.css">
+    <!--[if IE 7]><link rel="stylesheet" href="/theme/fontello/css/fontello-ie7.css"><![endif]-->
+    <link href="/theme/syntax.css" rel="stylesheet" type="text/css" />
+    <link href="/theme/style.css" rel="stylesheet" type="text/css" />
+
+  </head>
+  <body>
+    <div class="topNav navbar navbar-inverse navbar-static-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand visible-xs-inline" href="#">Navigation</a>
+        </div>
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li ><a href="/" class="glyphicon glyphicon-home">&nbsp;Home</a></li>
+            <li class="active"><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
+            <li ><a href="/contact/" class="glyphicon glyphicon-earphone">&nbsp;Contact</a></li>
+            <li><a class="glyphicon glyphicon-eye-open" href="/feed.xml">&nbsp;RSS Feed</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </div>
+
+  <div class="container" role="main">
+  
+    <div class="jumbotron">
+      <div class="container">
+         <div id="branding">
+           <h1 class="logo"><a href="/">RBleug</a></h1>
+           <hr/>
+           <h2 class="alt">Regilero's blog; Mostly tech things about web stuff.</h2>
+         </div>
+       </div>
+     </div>
+
+    <div class="row">
+      <div class="col-md-8" id="left-content">
+
+          <article>
+        <header>
+            <div class="page-header">
+            <h1>Better rewriteRules for Drupal
+            <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="2011-09-01">Sep 01, 2011</time></span>
+            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/drupal/">drupal</a> and <a href="/english/">english</a></span>
+            </h1>
+            </div>
+        </header>
+
+        <div class="entry">
+         <div class="col-md-6">
+          <div class="post-excerpt-full">
+          A big re-think of rewrite rules for Drupal, preventing acess from index.php?q=foo default url, no .htaccess, and some other security stuff
+          </div>
+          <div id="post-toc">
+          </div>
+         </div>
+         <div class="col-md-6">
+          <img class="topimg" src="/theme/img/pic/old9.jpg" alt="A big re-think of rewrite rules for Drupal, preventing acess from index.php?q=foo default url, no .htaccess, and some other security stuff" title="A big re-think of rewrite rules for Drupal, preventing acess from index.php?q=foo default url, no .htaccess, and some other security stuff" />
+         </div>
+         <div class="row">
+          <div class="col-md-12" id="post-full">
+       
+          <p>Drupal comes with a default set of <code>Rewrite Rules</code> in the <code>.htaccess</code> file given by the project.</p>
+
+<p>In this article I'll try to provides some recipes for an enhanced mod-rewrite set.</p>
+
+<ul>
+<li>getting rid of .htaccess</li>
+<li>forbid usage of direct requests to <code>index.php?q=foo</code> (when clean url is activated)</li>
+<li>forbid usage of 'new' unwanted PHP scripts appearing in the website (attackers?)</li>
+</ul>
+
+
+<h3>Oh my God, a .htaccess!</h3>
+
+<p>So this will be the first thing, a <strong>must-do</strong>. Drupal Apache configuration is on a <code>.htaccess</code> file, and there is a reason for that.
+On most places you wont be allowed to alter apache configuration, as <strong>you do not own the server</strong>, and the <code>.htaccess</code> file is the
+only way for this PHP application to set some apache Directives.<br/>
+But let's say this is <strong>your</strong> server, you have <strong>access to Apache configuration</strong>, then a <code>.htaccess</code> is the <strong>worst place to put
+some configurations details</strong>.<br/>
+For each received requests Apache must check existence of <code>.htaccess</code> files on the requested file directory and on all the parent
+directories, this means a lot of file access, so it's quite <strong>slow</strong>. If you own the server you do not need or want this slowdown.</p>
+
+<p>The rule is quite simple <strong>"Everything found in a <code>.htaccess</code> in directory <code>/this/is/my/dir</code> can be set in a <code>&lt;Directory /this/is/my/dir&gt;&lt;/Directory&gt;</code>
+section in an apache Virtualhost or global configuration."</strong>.<br/>
+So first create your <strong>VirtualHost</strong> for this Drupal website (please do not use global configuration,
+you do not need to share directives for all your websites). Then we'll make 2 things:</p>
+
+<ul>
+<li>prevent the read of any <code>.htaccess</code> from the filesystem root, so for all the descendant of <code>/</code></li>
+<li>transfer the <code>.htaccess</code> content in a <code>Directory</code> directive</li>
+</ul>
+
+
+<p>For the first thing simply add this (wel I've added the <code>.svn</code> and <code>.git</code> things as well):</p>
+
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;Directory</span>  <span class="s">/  </span><span class="nt">&gt;</span>
+    <span class="nb">Order</span> deny,allow
+    <span class="nb">deny</span> from <span class="k">all</span>
+    <span class="nb">Options</span> FollowSymLinks
+    <span class="c"># PREVENT .htaccess reading</span>
+    <span class="nb">AllowOverride</span> <span class="k">None</span>
+ 
+    <span class="c">#.svn &amp; .git directories must be avoided!!</span>
+    <span class="nb">RedirectMatch</span> <span class="m">404</span> /\.svn(/|$)
+    <span class="nb">RedirectMatch</span> <span class="m">404</span> /\.git(/|$)
+<span class="nt">&lt;/Directory&gt;</span></code></pre></div>
+
+
+<p>Notice that this does not concern the <code>'/'</code> url (that would be <code>&lt;Location /&gt;</code>) but the <code>'/'</code> <strong>directory on the server</strong>,
+means the <code>'C:\'</code> if you were a windows user.<br/>
+<code>Location</code> directives works on the url, <code>Directory</code> directives works on the <strong>filesystem tree</strong> (absolute path).</p>
+
+<p>Then add another <code>Directory</code> directive, with the absolute path of your project web root
+(this should be the same as the <code>DocumentRoot</code> directive of this Virtualhost). And put inside the <code>.htaccess</code> content.</p>
+
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;Directory</span> <span class="s">/var/www/mydrupalproject/www</span><span class="nt">&gt;</span>
+        <span class="c">#Order allow,deny</span>
+        <span class="nb">Allow</span> from <span class="k">all</span>
+ 
+        <span class="c"># Follow symbolic links in this directory.</span>
+        <span class="nb">Options</span> +FollowSymLinks -Indexes -Multiviews
+         
+        <span class="c"># Set the default handler.</span>
+        <span class="nb">DirectoryIndex</span> index.php
+ 
+        <span class="c"># Protect files and directories from prying eyes.</span>
+        <span class="nt">&lt;FilesMatch</span> <span class="s">&quot;\.(engine|inc|info|install|make|module|profile|test|po|sh|.*sql|theme|tpl(\.php)?|xtmpl)$|^(\..*|Entries.*|Repository|Root|Tag|Template)$&quot;</span><span class="nt">&gt;</span>
+          <span class="nb">Order</span> allow,deny
+        <span class="nt">&lt;/FilesMatch&gt;</span>
+         
+        <span class="c"># Force simple error message for requests for non-existent favicon.ico.</span>
+        <span class="nt">&lt;Files</span> <span class="s">favicon.ico</span><span class="nt">&gt;</span>
+          <span class="c"># There is no end quote below, for compatibility with Apache 1.3.</span>
+          <span class="nb">ErrorDocument</span> <span class="m">404</span> <span class="err">&quot;</span>The requested file favicon.ico was not found.
+        <span class="nt">&lt;/Files&gt;</span>
+
+        <span class="nb">etc</span>
+        (...)
+         
+<span class="nt">&lt;/Directory&gt;</span></code></pre></div>
+
+
+<p>What does this as to do with <strong>mod-rewrite</strong>? Well mod-rewrites behave quite the same in a <code>Directory</code> directive and in a <code>.htaccess</code>,
+but faster here, and without the need of any <code>rewriteBase</code> prefix.<br/>
+You could even use mod-rewrite in the VirtualHost, in a global way, not in the <code>Directory</code> section, that would even be faster.<br/>
+But for Drupal rules we need the <code>SCRIPT_FILENAME</code> and even using <code>LUA</code> hacks on mod-rewrite we would not get a big gain.
+So we'll keep the mod-rewrite rules in this Directory <code>/var/www/mydrupalproject/www</code> section.</p>
+
+<h3>Let's check what are the default rules</h3>
+
+<p>So, if we do not care about the final mod-rewrite rules about gzip contents the main rules defined by Drupal are:</p>
+
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># always activate modRewrite on this directory</span>
+<span class="c"># (do not forget it, even if you activated it on the Virtualhost)</span>
+<span class="nb">RewriteEngine</span> <span class="k">on</span>
+ 
+<span class="c"># test the requested document is not a real file (like a css or js or even index.php or update.php)</span>
+<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !-f
+ 
+<span class="c"># test the requested document is not a real directory</span>
+<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !-d
+ 
+<span class="c"># test the requested document is not the favicon.ico (if you do not have one,</span>
+<span class="c"># else it would have been catched by the first test). As we do not want to launch</span>
+<span class="c"># the whole Drupal environment to imply return a 404 for the favicon.</span>
+<span class="c"># you could see other apache rules for this with the File directive</span>
+<span class="nb">RewriteCond</span> %{REQUEST_URI} !=/favicon.ico
+ 
+<span class="c"># still there, ok so take the whole request things (without the hostname) and give it to</span>
+<span class="c"># the index.php file in the &#39;q&#39; GET argument. Then stop the rewriting process (L) and add any</span>
+<span class="c"># GET argument after a ? in the request after this q argument (QSA)</span>
+<span class="nb">RewriteRule</span> ^(.*)$ index.php?q=$1 [L,QSA]</code></pre></div>
+
+
+<p>in Drupal 6. And Drupal7 added a new rule before this one which is:</p>
+
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># catch anything starting with a dot and return a 403 Forbidden</span>
+<span class="nb">RewriteRule</span> <span class="s2">&quot;(^|/)\.&quot;</span> - [F]</code></pre></div>
+
+
+<p>The only goal of this rule is to avoid access on directory with a dot in the name (such as .git or .svn).<br/>
+So if you used the <code>Redirect</code> instructions on the root directory section as I did you do not need to activate this rule.
+Always remember that simple <code>Redirect</code>, <code>RedirectMatch</code>, <code>Alias</code>, <code>File</code>, <code>FileMatch</code> directives in Apache may perform really
+faster than a <code>rewriteRule</code>, check this official <a href="http://httpd.apache.org/docs/current/rewrite/avoid.html">"when not to use mod-rewrite" section</a> in mod-rewrite documentation.</p>
+
+<p>So, this default <strong>'everything not existing to index.php'</strong> rule does the job, of course.<br/>
+When <strong>clean url</strong> is not activated all your url are already in the <code>index.php?q=foo</code> form and when clean url is activated
+this rule make the transformation.</p>
+
+<p>But we still have some things to make better:</p>
+
+<h2>We have clean url, we want to force usage of clean urls</h2>
+
+<p>Now that you have activated clean url in Drupal (or you should, really).<br/>
+Instead of requesting <code>http://example.com/index.php?q=/admin</code> you can request <code>http://example.com/admin</code>.<br/>
+That's cool, and you could apply some url-based settings with your proxy or directly in apache,
+let's say everything in <code>/admin</code> or <code>/user</code> is restricted to some IP only, etc.</p>
+
+<p>But <strong>nothings prevents a malicious user to use the direct <code>?q=foo</code> form of the url</strong>.
+And if we're talking about security, access to <code>/admin</code> could be done via several urls:</p>
+
+<ul>
+<li>http://example.com/index.php?q=/admin</li>
+<li>http://example.com/index.php?q=/////admin</li>
+<li>http://example.com/index.php? %71=/////%61dmin</li>
+<li>http://example.com/index.php?q=titi&amp; %71=/////%61dmin</li>
+<li>...</li>
+</ul>
+
+
+<p>Benoit once tried to prevent all theses access with mod-rewrite in this <a href="http://www.makina-corpus.org/blog/how-prevent-access-drupal-admin-url-apache-and-mod-rewrite">article</a>.
+But a condition filtering theses requests, only on <code>/admin</code>, would be (AFAIK):</p>
+
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">RewriteCond</span> %{QUERY_STRING} (^|&amp;|%26|%20)(q|Q|%71|%51)(=|%3D)(/|%2F)+?(a|A|%61|%41)(d|D|%64|%44)(m|M|%6D|%4D)(i|I|%69|%49)(n|N|%6E|%4E)(/|%2F|&amp;|%26|$) [NC]</code></pre></div>
+
+
+<p>Which is pretty <strong>awfull</strong>.</p>
+
+<p>The <strong>real solution</strong> is <strong>to prevent any direct via the <code>q=xxx</code> argument</strong>.<br/>
+But that mean as well without restricting the real final Drupal request on <code>index.php</code> with this <code>q=xxx</code> argument. This is the way to do it:</p>
+
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># always activate modRewrite on this directory</span>
+<span class="c"># (do not forget it, even if you activated it on the Virtualhost)</span>
+<span class="nb">RewriteEngine</span> <span class="k">on</span>
+<span class="c">######### START RULE 1 ##################################</span>
+<span class="c"># clean url is activated so ALL urls</span>
+<span class="c"># MUST be accessed on /too/titi and MUSN&#39;T be accessed on index.php?q=/toto/titi</span>
+<span class="c"># main reason is that applying url rules (like restricting /admin access is far easier</span>
+<span class="c"># in the clean url form than in parameter form</span>
+<span class="c"># WARNING: need to alter any &#39;q&#39; parameter that could be present</span>
+<span class="c"># on original QUERY_STRING (part after the ?), or something</span>
+<span class="c"># like /toto?q=admin could become a q=toto&amp;q=admin</span>
+<span class="c"># which is finally a q=admin, so we do not restrict</span>
+<span class="c"># this rule to index.php</span>
+<span class="c">#########################################################</span>
+<span class="c"># WARNING: must prevent real internal redirect of :</span>
+<span class="c"># /toto/titi to q=/toto/titi (done in rule 2)</span>
+<span class="c"># to be forbidden, so the rule apply only</span>
+<span class="c"># if the rewriting process is starting</span>
+<span class="nb">RewriteCond</span> %{ENV:REDIRECT_STATUS} ^$
+ 
+<span class="c">#detect non-blank QUERY_STRING (some parameters are present after the ?)</span>
+<span class="c"># else we have nothing to fear about blank queries</span>
+<span class="nb">RewriteCond</span> %{QUERY_STRING} . [NC]
+ 
+<span class="c"># we prevent any query with a q= parameter</span>
+<span class="nb">RewriteCond</span> %{QUERY_STRING} (^|&amp;|%26|%20)(q|Q|%71|%51)(=|%3D). [NC]
+ 
+<span class="c"># 403 FORBIDDEN !</span>
+<span class="nb">RewriteRule</span> .* - [F,L]
+<span class="c">########## END RULE 1 ###################</span>
+ 
+<span class="c">########## START RULE 2 ###################</span>
+<span class="c"># Clean url handling</span>
+<span class="c"># for things which aren&#39;t real files or dir then</span>
+<span class="c"># take the given url and giv it to index.php?q=...</span>
+<span class="c">###########################################</span>
+<span class="c"># all url that didn&#39;t match ALL previous rewriteCond are still there</span>
+<span class="c"># squeeze real files or directories, if they really exists</span>
+<span class="c"># then Drupal won&#39;t be called</span>
+<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !-f
+<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !-d
+ 
+<span class="c"># do not handle the favicon with Drupal bootstrap</span>
+<span class="nb">RewriteCond</span> %{REQUEST_URI} !=/favicon.ico
+ 
+<span class="c"># put everything still there to Drupal index.php</span>
+<span class="c"># [L]= stop rewriting here for matching rules</span>
+<span class="c"># [QSA]=Appends any query string created in the rewrite target</span>
+<span class="c"># to any query string that was in the original request URL</span>
+<span class="nb">RewriteRule</span> ^(.*)$ index.php?q=$1 [L,QSA]
+<span class="c">########## END RULE 2 ###################</span></code></pre></div>
+
+
+<p>Without the comments, for reference:</p>
+
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">RewriteEngine</span> <span class="k">on</span>
+ 
+<span class="nb">RewriteCond</span> %{ENV:REDIRECT_STATUS} ^$
+<span class="nb">RewriteCond</span> %{QUERY_STRING} . [NC]
+<span class="nb">RewriteCond</span> %{QUERY_STRING} (^|&amp;|%26|%20)(q|Q|%71|%51)(=|%3D). [NC]
+<span class="nb">RewriteRule</span> .* - [F,L]
+ 
+<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !-f
+<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !-d
+<span class="nb">RewriteCond</span> %{REQUEST_URI} !=/favicon.ico
+<span class="nb">RewriteRule</span> ^(.*)$ index.php?q=$1 [L,QSA]</code></pre></div>
+
+
+<h3>WTF: what is this hackme.php file in this javascript library?</h3>
+
+<p>So, Drupal needs only direct access to the index.php file, usually.<br/>
+We could see as well some other php files that could be used to bootstrap Drupal:</p>
+
+<ul>
+<li>cron.php</li>
+<li>xmlrpc.php</li>
+<li>install.php</li>
+<li>update.php</li>
+</ul>
+
+
+<p>Remember the Condition <code>RewriteCond %{REQUEST_FILENAME} !-f</code>?<br/>
+That means any request done directly on one of these 4 files will be allowed.<br/>
+You should really use some Location directives to restrict access to <code>cron.php</code> to <code>127.0.0.1</code>,
+and maybe filter <code>update.php</code> and <code>install.php</code> to some IP as well.<br/>
+And do you need <code>xmlrpc.php</code>? I'm not saying these files have known security issues, but if someone
+someday fond one ... And for the <code>cron.php</code> file, this is a good script to request to perform a
+nice <code>DOS</code> with a few requests. This is an example of restrictions for cron.php:</p>
+
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># Limit cron.php access to localhost only</span>
+<span class="nt">&lt;Location</span> <span class="s">/cron.php</span><span class="nt">&gt;</span>
+    <span class="nb">Order</span> deny,allow
+    <span class="nb">deny</span> from <span class="k">all</span>
+    <span class="nb">allow</span> from <span class="m">127.0.0.1</span>
+<span class="nt">&lt;/Location&gt;</span></code></pre></div>
+
+
+<p>But if you think you'll never need to access the other files (or that you will alter apache configuation when needed),
+you can also add in the VirtualHost (see, no need of mod-rewrite for simple redirects):</p>
+
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">Redirect</span> temp <span class="sx">/update.php</span> http://www.example.com/index.php
+ <span class="nb">Redirect</span> temp <span class="sx">/install.php</span> http://www.example.com/index.php
+ <span class="nb">Redirect</span> temp <span class="sx">/xmlrpc.php</span> http://www.example.com/index.php</code></pre></div>
+
+
+<p>But now, let's perform a little find on your Drupal project to see if some other php files aren't there in the web directory
+root (so allowing direct access):</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">find /var/www/mydrupalproject/www -name <span class="se">\*</span>.php</code></pre></div>
+
+
+<p>Ouch, at least <strong>62 files</strong>, from a basic <strong>nude</strong> Drupal.<br/>
+We're not in a Zend Framework project here (result would be 1), every library is on the document root, like in the 90's !<br/>
+So... well each of these files can be requested, but the code is clean and they will not hurt you.
+But now you should check very carefully this list, are all these PHP files done by Drupal coders?<br/>
+The bad news is that you can sometime find php file with javascript libraries, containg 10 or 20 lines of PHP to make some demos
+in the <code>/example</code> subdirectory of the js lib. And things in these files can be very awfull in term of security.<br/>
+On a production server you may also find some new php files, coming from an infected FTP software, that's really bad,
+in a short time google will prevent any browser access to your website!</p>
+
+<p>So the solution? <strong>prevent any access to a php file which is not one of index.php, cron.php, update.php and install.php (and maybe xmlrpc.php)</strong><br/>
+Just add this last rule:</p>
+
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c">########## START RULE 3 ###################</span>
+<span class="c"># deny direct access to php files which aren&#39;t</span>
+<span class="c"># index.php or update.php or install.php or xmlrpc.php or cron.php</span>
+<span class="c"># (like an injected phpinfo.php)</span>
+<span class="c">###########################################</span>
+<span class="nb">RewriteCond</span> %{ENV:REDIRECT_STATUS} ^$
+<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} -f
+<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} .*\.php
+<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !(update\.php|index\.php|install\.php|xmlrpc\.php|cron\.php)
+<span class="nb">RewriteRule</span> .* - [F,L]
+<span class="c">########## END RULE 3 ###################</span></code></pre></div>
+
+
+<h3>Need to debug? Questions?</h3>
+
+<p>First, notice that you should <strong>not</strong> use <strong>Rule1</strong> while clean url is not activated
+(as it forbid direct usage of Drupal without clean url urls).<br/>
+If you want to make some more rules, or debug what mod-rewrite is doing for one request add theses settings in the VirtualHost
+(<strong>not</strong> on the <code>Directory</code> section like the rules):</p>
+
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">RewriteEngine</span> <span class="k">on</span>
+<span class="c"># debug mod_rewrite</span>
+<span class="nb">RewriteLogLevel</span> <span class="m">9</span>
+<span class="nb">RewriteLog</span> <span class="sx">/tmp/rewritelog.log</span></code></pre></div>
+
+
+<p>Then a <code>"tail -f /tmp/rewritelog.log"</code> will show you a lot of things.
+Do not do that on a production server.<br/>
+You may get too much informations when using a classical browser, you'll get the gzipped content, extra rules applied,
+and all static file requests.<br/>
+Check <a href="/apache/english/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/">this previous article</a> on how to perform a single request for a single page with a one-liner.</p>
+
+<p>For any other help check theses links (or comment, or send me an email)</p>
+
+<ul>
+<li><a href="http://httpd.apache.org/docs/current/rewrite/">Mod rewrites pages (all languages)</a></li>
+<li><a href="http://serverfault.com/">Server Fault (en)</a></li>
+<li><a href="http://stackoverflow.com/">Stack Overflow (en)</a></li>
+<li><a href="http://drupal.stackexchange.com/">Drupal Answers (en)</a></li>
+</ul>
+
+
+<h3>Closely Related articles</h3>
+
+<ul>
+<li><a href="/drupal/english/2011/09/02/Tune_your_php_settings_for_drupal/">Tune your php settings for Drupal</a></li>
+<li><a href="/drupal/english/2011/09/03/Install_drupal_in_php_fpm_fastcgi_and_apache_chroot/">Drupal with Apache &amp; chrooted php-fpm</a></li>
+</ul>
+
+
+
+          </div>
+         </div>
+        </div>
+        <div class="tag">Tags:&nbsp;<i class="glyphicon glyphicon-tag"></i><a href="/tag/Apache/">Apache</a>, <i class="glyphicon glyphicon-tag"></i><a href="/tag/Drupal/">Drupal</a>, <i class="glyphicon glyphicon-tag"></i><a href="/tag/PHP/">PHP</a>, <i class="glyphicon glyphicon-tag"></i><a href="/tag/Performance/">Performance</a>, <i class="glyphicon glyphicon-tag"></i><a href="/tag/Security/">Security</a>, <i class="glyphicon glyphicon-tag"></i><a href="/tag/mod_rewrite/">mod_rewrite</a></div>
+</article>
+<hr/>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: * * */
+    var disqus_shortname = "regilero";
+    var disqus_identifier = '4323720b-b870-4f95-8938-ef0c2dc355d6';
+    var disqus_title = "Better rewriteRules for Drupal";
+    var disqus_url = 'http://regilero.github.io/drupal/english/2011/09/01/better_rewrite_rules_for_drupal/';
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+
+    
+
+      </div>
+      <div class="col-md-4" id="sideBar">
+
+            <div id="sideBarContent"> 
+              
+              <div class="sideBarListBox">
+                <div class="page-header">
+                <h3>Related posts</h3>
+                </div>
+                <div class="list-group" role="navigation">
+                  
+                     <a class="list-group-item" href="/apache/english/2009/11/06/more_on_static_file_redirector/">
+                     <h4>More on Static file redirector</h4>
+                     <p>Complements on the previous article. hash the file map, use a /static url, and avoid security problems with tis new mode.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/security/english/2014/09/19/drupal-details_ofdrupal_sa_core_2014_003_dos/">
+                     <h4>Details of DRUPAL_SA_CORE_2014_003 Deny Of Service</h4>
+                     <p>Analysis of the new DRUPAL_SA_CORE_2014_003 DOS vulnerability (CVE-2014-5019)</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/drupal/english/2011/09/03/Install_drupal_in_php_fpm_fastcgi_and_apache_chroot/">
+                     <h4>Install Drupal in php-fpm (fastcgi) with Apache and a chroot php-fpm</h4>
+                     <p>Step by step Apache+php-fpm installation of Drupal with some explanations on how to use php-fpm chroot while still not having mod_proxy_fcgi.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/drupal/english/2011/09/02/Tune_your_php_settings_for_drupal/">
+                     <h4>Tune your php settings for Drupal</h4>
+                     <p>How to make a clean Apache Virtualhost for each drupal project, with PHP settings altered for each project</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/apache/english/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/">
+                     <h4>Use RewriteMap to prevent proxying for some static contents</h4>
+                     <p>How to use the not well known RewriteMap Apache feature to proxy static resources on a web app without clean url separation between static and dynamic content (here Plone).</p>
+                     </a>
+                  
+                </div>
+              </div>
+              
+      
+              <div class="sideBarListBox">
+                <div class="page-header">
+                <h3>Latest posts</h3>
+                </div>
+                <div class="list-group" role="navigation">
+                  
+                     <a class="list-group-item" href="/security/english/2014/09/19/drupal-details_ofdrupal_sa_core_2014_003_dos/">
+                     Details of DRUPAL_SA_CORE_2014_003 Deny Of Service
+                     </a>
+                  
+                     <a class="list-group-item" href="/saltstack/english/2014/02/05/saltstack-use-more-than-ascii7-on-sls-files-with-yaml_utf8-option/">
+                     SaltStack, Use more than ascii7 on sls files with yaml_utf8 option
+                     </a>
+                  
+                     <a class="list-group-item" href="/saltstack/english/2014/01/28/saltstack_merge_dictionaries_of_settings_with_grains_filter_by/">
+                     SaltStack, Merge dictionaries of settings with grains.filter_by
+                     </a>
+                  
+                     <a class="list-group-item" href="/saltstack/english/2014/01/27/saltstack_use_file_accumulated_accumulators_with_file_managed_and_file_blockreplace/">
+                     SaltStack, Use file.accumulated accumulators with file.managed and file.blockreplace
+                     </a>
+                  
+                     <a class="list-group-item" href="/saltstack/english/2014/01/20/saltstack_step_by_step_file_blockreplace/">
+                     SaltStack, Manage entries in unmanaged files with File Blockreplace
+                     </a>
+                  
+                </div>
+              </div>
+            
+              <div class="sideBarListBox">
+                <div class="page-header">
+                <h3>Tags</h3>
+                </div>
+
+                <div class="tagcloud">
+                <a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 19px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 19px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 23px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 19px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 19px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 19px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 19px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 29px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 27px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 19px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 27px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 19px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 23px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 25px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+
+                </div>
+              </div>
+          </div> <!-- end sideBarContent -->
+            
+            <div class="sideBarMore">
+              <div class="page-header">
+              <h3>About</h3>
+              </div>
+                <a href="https://twitter.com/regilero" target="_blank"><img src="/theme/img/twitter_thumb.png" width="48" height="48" alt="Twitter regilero" title="Twitter regilero"></a>
+                <a href="https://github.com/regilero" target="_blank"><img src="/theme/img/github_thumb.png" width="48" height="48" alt="Github regilero" title="Github regilero"></a>
+                <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
+                <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
+                <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
+                <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+            </div>
+            <div class="sideBarItem">
+              <h3>Some Friends</h3>
+                <ul>
+                  <li><a class="effect" target="_blank" href="http://makina-corpus.com/blog/metier/actu-metier">Blogs Makina Corpus<div class="cover-right"><img src="/theme/img/makinaorg.png" height="30" width="30"><img src="/theme/img/makinaorg_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://www.makina-corpus.com">Makina Corpus<div class="cover-right"><img src="/theme/img/makinacom.png" height="30" width="30"><img src="/theme/img/makinacom_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://blog.processus.org/">Pounard, processus.org<div class="cover-right"><img src="/theme/img/pounard.png" height="30" width="30"><img src="/theme/img/pounard_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://toutpt.github.io/" >Toupt<div class="cover-right"><img src="/theme/img/toupt.png" height="30" width="30"><img src="/theme/img/toupt_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://francoisgaudin.com/">François Gaudin<div class="cover-right"><img src="/theme/img/gaudin.png" height="30" width="30"><img src="/theme/img/gaudin_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://fle.github.io/">Florent Lebreton<div class="cover-right"><img src="/theme/img/fle.png" height="30" width="30"><img src="/theme/img/fle_banner.png" height="30" width="117"></div></a></li>
+                </ul>
+                <div class="clear"></div>
+            </div>
+         </div> <!-- end sidebar -->
+        
+       </div><!-- end row -->
+       <div class="row">
+         <div class="col-md-12" id="footer">
+           <div class="panel panel-default">
+             <div class=panel-footer">
+          <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/"><img alt="Licence Creative Commons" style="border-width:0" src="http://i.creativecommons.org/l/by-sa/3.0/fr/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/Text" property="dct:title" rel="dct:type">regilero's blog</span> est mis à disposition selon les termes de la <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/">licence Creative Commons Attribution -  Partage dans les Mêmes Conditions 3.0 France</a>.<br />Fondé(e) sur une œuvre à <a xmlns:dct="http://purl.org/dc/terms/" href="http://regilero.github.io" rel="dct:source">http://regilero.github.io</a>.
+              </div>
+            </div>
+         </div>
+       </div><!-- end row -->
+  </div>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<!--    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script> -->
+    <script src="/theme/js/toc.min.js" ></script>
+    <script src="/theme/js/effects.js" ></script>
+   <script src="/theme/js/jquery.parallax.min.js"></script>
+    <script src="/theme/bootstrap/js/bootstrap.min.js"></script>
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-40859893-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+    </body>
+</html>
