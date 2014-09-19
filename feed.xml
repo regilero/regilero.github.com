@@ -7,11 +7,13 @@
 		
 			<item>
 				<title>Details of DRUPAL_SA_CORE_2014_003 Deny Of Service</title>
-				<description>&lt;h2&gt;SA_CORE_2014_003&lt;/h2&gt;
+				<description>&lt;p&gt;&lt;small&gt;&lt;strong&gt;English version&lt;/strong&gt; (&lt;strong&gt;Version Française&lt;/strong&gt; disponible sur &lt;a href=&quot;http://makina-corpus.com/blog/metier/2014/details-of-drupal_sa_core_2014_003&quot;&gt;makina corpus&lt;/a&gt;.)&lt;/small&gt;&lt;/p&gt;
+
+&lt;h2&gt;SA_CORE_2014_003&lt;/h2&gt;
 
 &lt;p&gt;This summer Drupal versions &lt;a href=&quot;https://www.drupal.org/drupal-6.32-release-notes&quot;&gt;6.x&lt;/a&gt; and &lt;a href=&quot;https://www.drupal.org/drupal-7.29-release-notes&quot;&gt;7.29&lt;/a&gt; &amp;amp; &lt;a href=&quot;https://www.drupal.org/drupal-7.31-release-notes&quot;&gt;7.31&lt;/a&gt; have been released with some critical security fixs. Enough time as passed, so I will give some details one of the issues from &lt;a href=&quot;https://www.drupal.org/SA-CORE-2014-003&quot;&gt;SA-CORE-2014-003 - Drupal core - Multiple vulnerabilities&lt;/a&gt;. It contains 3 issues. The one we will study here is the Core &lt;strong&gt;Deny of Service&lt;/strong&gt; (DOS) issue which is also available in the CVE database as &lt;a href=&quot;http://www.cvedetails.com/cve/CVE-2014-5019/&quot;&gt;CVE-2014-5019&lt;/a&gt;. This post is a detailled explanation of how drupal is using the Host header of the http request to find the configuration file, and why this was usable in a deny of service attack even for websites not using the multisite feature. It contains some not very well known things on Host header manipulations, so I hope this will help other projects from avoiding theses issues.&lt;/p&gt;
 
-&lt;p&gt;Note that there were a regression Drupal 7.29, with images and files attached to taxonomy terms which has been fixed on the next release 7.30 (the regression was not about the patch discussed here).&lt;/p&gt;
+&lt;p&gt;Note that there were a regression in Drupal 7.29, with images and files attached to taxonomy terms which has been fixed on the next release 7.30 (the regression was not about the patch discussed here).&lt;/p&gt;
 
 &lt;p&gt;Note also that another core security issue has been fixed right after this one (&lt;a href=&quot;https://www.drupal.org/SA-CORE-2014-004&quot;&gt;SA-CORE-2014-004 - Drupal core - Multiple vulnerabilities&lt;/a&gt;, which was another DOS issue coming from &lt;code&gt;xmlrpc.php&lt;/code&gt;, so if you do not have something preventing remote access to this php file you should really upgrade your drupal code version to version &lt;code&gt;7.31&lt;/code&gt;. My own advice is to alter your Apache/Nginx configuration to only allow one PHP file, &lt;code&gt;index.php&lt;/code&gt;, this will prevent a loooot of problems.&lt;/p&gt;
 
@@ -82,7 +84,7 @@ Host: www.example.com
 
 &lt;p&gt;So far so good, no real problems.&lt;/p&gt;
 
-&lt;h3&gt;conf_path settings file search&lt;/h3&gt;
+&lt;h3&gt;conf_path() settings file search&lt;/h3&gt;
 
 &lt;p&gt;Drupal already had a &lt;code&gt;drupal_valid_http_host&lt;/code&gt; function ensuring the hostnames did not contain bad characters like &lt;code&gt;/&lt;/code&gt;,&lt;code&gt;\&lt;/code&gt;,&lt;code&gt;%&lt;/code&gt;,&lt;code&gt;&lt;/code&gt; or &lt;code&gt;&amp;amp;&lt;/code&gt;. Only letters, digits, dots and &lt;code&gt;:&lt;/code&gt;. Not relying on the HTTP server to ensure a really clean Hostname, always good to add some security layers in the application.&lt;/p&gt;
 
@@ -106,7 +108,7 @@ Host: www.example.com
       &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 
-&lt;p&gt;So here we see that the settings path depends on the &lt;code&gt;conf_path()&lt;/code&gt; call. This function is quite short, there's a &lt;code&gt;drupal_static&lt;/code&gt; thing which is simply a way to avoid re-doing stuff after the first call (in the same HTTP request), it's basically a lazy-loading-run-only-once shortcut.&lt;/p&gt;
+&lt;p&gt;Here we see that the settings path depends on the &lt;code&gt;conf_path()&lt;/code&gt; call. This function is quite short, there's a &lt;code&gt;drupal_static&lt;/code&gt; thing which is simply a way to avoid re-doing stuff after the first call (in the same HTTP request), it's basically a lazy-loading-run-only-once shortcut.&lt;/p&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
     &lt;span class=&quot;k&quot;&gt;function&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;conf_path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$require_settings&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TRUE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$reset&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FALSE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
@@ -182,7 +184,7 @@ Host: www.example.com
 
 &lt;p&gt;As you can see using the &lt;code&gt;sites/sites.php&lt;/code&gt; to set your hostname-to-directory mapping is quite certainly a good thing to do in terms of performances (this search loop is avoided). Remember that theses file checks are done for &lt;strong&gt;every&lt;/strong&gt; HTTP requests received by Drupal.&lt;/p&gt;
 
-&lt;p&gt;So now re-read the patch, before this patch very long hostnames could be used, and you could use a very big number of subdomains... and for each subdomain you add several locations to check for a setting file...&lt;/p&gt;
+&lt;p&gt;Now re-read the patch, before this patch very long hostnames could be used, and you could use a very big number of subdomains... and for each subdomain you add several locations to check for a setting file...&lt;/p&gt;
 
 &lt;p&gt;This is where I came and then I made some evil tests to see how this multisite code would react with bad hostnames. Working only with the allowed characters (alphabetical letters, digits, dots, &lt;code&gt;:&lt;/code&gt;) we can at least play with this deep settings files search. And the &lt;code&gt;sites.php&lt;/code&gt; map shortcuts won't be used for bad hostnames.&lt;/p&gt;
 
@@ -190,7 +192,7 @@ Host: www.example.com
 
 &lt;p&gt;So, you may think the issue is on the &lt;code&gt;file_exists&lt;/code&gt; calls, as we will run several thousands of file_exists, searching for the first match if we set a hostname with a lot of subdomains. Strangely this is usually quite fast.&lt;/p&gt;
 
-&lt;p&gt;The real issue is on &lt;code&gt;array_slice&lt;/code&gt;, performing several thousands of inverted array_slice is &lt;em&gt;really very very slow&lt;/em&gt;. the first ones are quite fast but the last steps are longer, and we will make several thousands of array_slice operations.&lt;/p&gt;
+&lt;p&gt;The real issue is on &lt;code&gt;array_slice&lt;/code&gt;, performing several thousands of inverted array_slice is &lt;em&gt;really very very slow&lt;/em&gt;. The first ones are quite fast but the last steps are longer, and we will make several thousands of array_slice operations.&lt;/p&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
     &lt;span class=&quot;k&quot;&gt;function&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;test_array_slice&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$server&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$j&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
@@ -313,7 +315,7 @@ Host: something.else
 
 &lt;p&gt;And the RFC 2616 says this request should be managed by the &lt;code&gt;www.example.com&lt;/code&gt; virtualhost, that's OK. And it also states that the Host Header should then be &lt;strong&gt;ignored&lt;/strong&gt;. Cool. But in both Apache and Nginx this does not means the used Host headers will not be sent to the final application (here PHP).&lt;/p&gt;
 
-&lt;p&gt;So at the end Drupal receive the Host header (here &lt;code&gt;something.else&lt;/code&gt;). I think this is an issue on the HTTP server side. This header should be overwritten and should look like &lt;code&gt;www.example.com&lt;/code&gt;. What's worse is that classical bad characters that are usually detected in the Host headers are not checked in Apache when you use the Abolute-URI trick. On the drupal side we have the regex cleanup on the Host header, that's a very good thing (&lt;a href=&quot;http://en.wikipedia.org/wiki/Defense_in_depth_%28computing%29&quot;&gt;defense in depth&lt;/a&gt; applied). On the drupal side using the absolute-URI trick will produce a 404 page, the URL does not match any known Drupal path, but this 404 is not a problem for the DOS attack which occurs on the settings file search, very early.&lt;/p&gt;
+&lt;p&gt;At the end Drupal receive the Host header (here &lt;code&gt;something.else&lt;/code&gt;). I think this is an issue on the HTTP server side. This header should be overwritten and should look like &lt;code&gt;www.example.com&lt;/code&gt;. What's worse is that classical bad characters that are usually detected in the Host headers are not checked in Apache when you use the Abolute-URI trick. On the drupal side we have the regex cleanup on the Host header, that's a very good thing (&lt;a href=&quot;http://en.wikipedia.org/wiki/Defense_in_depth_%28computing%29&quot;&gt;defense in depth&lt;/a&gt; applied). On the drupal side using the absolute-URI trick will produce a 404 page, the URL does not match any known Drupal path, but this 404 is not a problem for the DOS attack which occurs on the settings file search, very early.&lt;/p&gt;
 
 &lt;p&gt;If you think this is an Apache issue please vote for this &lt;a href=&quot;https://issues.apache.org/bugzilla/show_bug.cgi?id=56718&quot;&gt;Apache patch&lt;/a&gt; on the httpd bugtracker, which overwrite the HTTP_HOST with the absolute-uri host :&lt;/p&gt;
 

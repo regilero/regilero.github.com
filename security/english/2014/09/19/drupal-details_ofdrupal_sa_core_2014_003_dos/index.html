@@ -96,11 +96,13 @@
          <div class="row">
           <div class="col-md-12" id="post-full">
        
-          <h2>SA_CORE_2014_003</h2>
+          <p><small><strong>English version</strong> (<strong>Version Française</strong> disponible sur <a href="http://makina-corpus.com/blog/metier/2014/details-of-drupal_sa_core_2014_003">makina corpus</a>.)</small></p>
+
+<h2>SA_CORE_2014_003</h2>
 
 <p>This summer Drupal versions <a href="https://www.drupal.org/drupal-6.32-release-notes">6.x</a> and <a href="https://www.drupal.org/drupal-7.29-release-notes">7.29</a> &amp; <a href="https://www.drupal.org/drupal-7.31-release-notes">7.31</a> have been released with some critical security fixs. Enough time as passed, so I will give some details one of the issues from <a href="https://www.drupal.org/SA-CORE-2014-003">SA-CORE-2014-003 - Drupal core - Multiple vulnerabilities</a>. It contains 3 issues. The one we will study here is the Core <strong>Deny of Service</strong> (DOS) issue which is also available in the CVE database as <a href="http://www.cvedetails.com/cve/CVE-2014-5019/">CVE-2014-5019</a>. This post is a detailled explanation of how drupal is using the Host header of the http request to find the configuration file, and why this was usable in a deny of service attack even for websites not using the multisite feature. It contains some not very well known things on Host header manipulations, so I hope this will help other projects from avoiding theses issues.</p>
 
-<p>Note that there were a regression Drupal 7.29, with images and files attached to taxonomy terms which has been fixed on the next release 7.30 (the regression was not about the patch discussed here).</p>
+<p>Note that there were a regression in Drupal 7.29, with images and files attached to taxonomy terms which has been fixed on the next release 7.30 (the regression was not about the patch discussed here).</p>
 
 <p>Note also that another core security issue has been fixed right after this one (<a href="https://www.drupal.org/SA-CORE-2014-004">SA-CORE-2014-004 - Drupal core - Multiple vulnerabilities</a>, which was another DOS issue coming from <code>xmlrpc.php</code>, so if you do not have something preventing remote access to this php file you should really upgrade your drupal code version to version <code>7.31</code>. My own advice is to alter your Apache/Nginx configuration to only allow one PHP file, <code>index.php</code>, this will prevent a loooot of problems.</p>
 
@@ -171,7 +173,7 @@ Host: www.example.com
 
 <p>So far so good, no real problems.</p>
 
-<h3>conf_path settings file search</h3>
+<h3>conf_path() settings file search</h3>
 
 <p>Drupal already had a <code>drupal_valid_http_host</code> function ensuring the hostnames did not contain bad characters like <code>/</code>,<code>\</code>,<code>%</code>,<code></code> or <code>&amp;</code>. Only letters, digits, dots and <code>:</code>. Not relying on the HTTP server to ensure a really clean Hostname, always good to add some security layers in the application.</p>
 
@@ -195,7 +197,7 @@ Host: www.example.com
       <span class="p">}</span></code></pre></div>
 
 
-<p>So here we see that the settings path depends on the <code>conf_path()</code> call. This function is quite short, there's a <code>drupal_static</code> thing which is simply a way to avoid re-doing stuff after the first call (in the same HTTP request), it's basically a lazy-loading-run-only-once shortcut.</p>
+<p>Here we see that the settings path depends on the <code>conf_path()</code> call. This function is quite short, there's a <code>drupal_static</code> thing which is simply a way to avoid re-doing stuff after the first call (in the same HTTP request), it's basically a lazy-loading-run-only-once shortcut.</p>
 
 <div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
     <span class="k">function</span> <span class="nf">conf_path</span><span class="p">(</span><span class="nv">$require_settings</span> <span class="o">=</span> <span class="k">TRUE</span><span class="p">,</span> <span class="nv">$reset</span> <span class="o">=</span> <span class="k">FALSE</span><span class="p">)</span> <span class="p">{</span>
@@ -271,7 +273,7 @@ Host: www.example.com
 
 <p>As you can see using the <code>sites/sites.php</code> to set your hostname-to-directory mapping is quite certainly a good thing to do in terms of performances (this search loop is avoided). Remember that theses file checks are done for <strong>every</strong> HTTP requests received by Drupal.</p>
 
-<p>So now re-read the patch, before this patch very long hostnames could be used, and you could use a very big number of subdomains... and for each subdomain you add several locations to check for a setting file...</p>
+<p>Now re-read the patch, before this patch very long hostnames could be used, and you could use a very big number of subdomains... and for each subdomain you add several locations to check for a setting file...</p>
 
 <p>This is where I came and then I made some evil tests to see how this multisite code would react with bad hostnames. Working only with the allowed characters (alphabetical letters, digits, dots, <code>:</code>) we can at least play with this deep settings files search. And the <code>sites.php</code> map shortcuts won't be used for bad hostnames.</p>
 
@@ -279,7 +281,7 @@ Host: www.example.com
 
 <p>So, you may think the issue is on the <code>file_exists</code> calls, as we will run several thousands of file_exists, searching for the first match if we set a hostname with a lot of subdomains. Strangely this is usually quite fast.</p>
 
-<p>The real issue is on <code>array_slice</code>, performing several thousands of inverted array_slice is <em>really very very slow</em>. the first ones are quite fast but the last steps are longer, and we will make several thousands of array_slice operations.</p>
+<p>The real issue is on <code>array_slice</code>, performing several thousands of inverted array_slice is <em>really very very slow</em>. The first ones are quite fast but the last steps are longer, and we will make several thousands of array_slice operations.</p>
 
 <div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
     <span class="k">function</span> <span class="nf">test_array_slice</span><span class="p">(</span><span class="nv">$server</span><span class="p">,</span><span class="nv">$j</span><span class="p">)</span> <span class="p">{</span>
@@ -402,7 +404,7 @@ Host: something.else
 
 <p>And the RFC 2616 says this request should be managed by the <code>www.example.com</code> virtualhost, that's OK. And it also states that the Host Header should then be <strong>ignored</strong>. Cool. But in both Apache and Nginx this does not means the used Host headers will not be sent to the final application (here PHP).</p>
 
-<p>So at the end Drupal receive the Host header (here <code>something.else</code>). I think this is an issue on the HTTP server side. This header should be overwritten and should look like <code>www.example.com</code>. What's worse is that classical bad characters that are usually detected in the Host headers are not checked in Apache when you use the Abolute-URI trick. On the drupal side we have the regex cleanup on the Host header, that's a very good thing (<a href="http://en.wikipedia.org/wiki/Defense_in_depth_%28computing%29">defense in depth</a> applied). On the drupal side using the absolute-URI trick will produce a 404 page, the URL does not match any known Drupal path, but this 404 is not a problem for the DOS attack which occurs on the settings file search, very early.</p>
+<p>At the end Drupal receive the Host header (here <code>something.else</code>). I think this is an issue on the HTTP server side. This header should be overwritten and should look like <code>www.example.com</code>. What's worse is that classical bad characters that are usually detected in the Host headers are not checked in Apache when you use the Abolute-URI trick. On the drupal side we have the regex cleanup on the Host header, that's a very good thing (<a href="http://en.wikipedia.org/wiki/Defense_in_depth_%28computing%29">defense in depth</a> applied). On the drupal side using the absolute-URI trick will produce a 404 page, the URL does not match any known Drupal path, but this 404 is not a problem for the DOS attack which occurs on the settings file search, very early.</p>
 
 <p>If you think this is an Apache issue please vote for this <a href="https://issues.apache.org/bugzilla/show_bug.cgi?id=56718">Apache patch</a> on the httpd bugtracker, which overwrite the HTTP_HOST with the absolute-uri host :</p>
 
@@ -543,39 +545,39 @@ Host: something.else
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 27px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 19px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 19px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 23px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 29px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 19px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 19px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 19px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 19px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+                <a style='font-size: 23px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Nginx/'>Nginx</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
 <a style='font-size: 23px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
 <a style='font-size: 27px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
 <a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 19px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 29px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 25px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 19px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 19px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 27px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 19px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 19px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
 <a style='font-size: 19px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
 <a style='font-size: 31px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 19px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 19px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 25px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 19px' class='taglink' href='/tag/jinja/'>jinja</a>
 
                 </div>
               </div>
