@@ -229,9 +229,9 @@ module Jekyll
       when 0
         ""
       when 1
-        "<i class=\"icon-tag\"></i>#{tags[0]}"
+        "<i class=\"glyphicon glyphicon-tag\"></i>#{tags[0]}"
       else
-        "<i class=\"icon-tag\"></i>#{tags.join(', <i class="icon-tag"></i>')}"
+        "<i class=\"glyphicon glyphicon-tag\"></i>#{tags.join(', <i class="glyphicon glyphicon-tag"></i>')}"
       end
     end
     

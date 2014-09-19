@@ -6,12 +6,15 @@ category_dir: /
 tag_dir: tag
 url: http://regilero.github.io
 markdown: rdiscount
-auto: true
+#markdown: kramdown
+#kramdown:
+#  # use Github Flavored Markdown
+#  input: GFM
+#  # do not replace newlines by <br>s
+#  hard_wrap: false
+
 permalink: pretty
 # this willprevent default github usage
 safe: false
 lsi: false
-pygments: true
-server: false
-auto: false
-watch: false
+#highlighter: pygments
