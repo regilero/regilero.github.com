@@ -8,11 +8,13 @@ pic: long_name.jpg
 excerpt: Analysis of the new DRUPAL_SA_CORE_2014_003 DOS vulnerability (CVE-2014-5019)
 ---
 
+**English version** (**Version Française** disponible sur [makina corpus][FRENCH].)
+
 ## SA_CORE_2014_003
 
 This summer Drupal versions [6.x][DRUPAL_6] and [7.29][DRUPAL_7_29] & [7.31][DRUPAL_7_31] have been released with some critical security fixs. Enough time as passed, so I will give some details one of the issues from [SA-CORE-2014-003 - Drupal core - Multiple vulnerabilities][SA_CORE_2014_003]. It contains 3 issues. The one we will study here is the Core **Deny of Service** (DOS) issue which is also available in the CVE database as [CVE-2014-5019][CVE_DOS]. This post is a detailled explanation of how drupal is using the Host header of the http request to find the configuration file, and why this was usable in a deny of service attack even for websites not using the multisite feature. It contains some not very well known things on Host header manipulations, so I hope this will help other projects from avoiding theses issues.
 
-Note that there were a regression Drupal 7.29, with images and files attached to taxonomy terms which has been fixed on the next release 7.30 (the regression was not about the patch discussed here).
+Note that there were a regression in Drupal 7.29, with images and files attached to taxonomy terms which has been fixed on the next release 7.30 (the regression was not about the patch discussed here).
 
 Note also that another core security issue has been fixed right after this one ([SA-CORE-2014-004 - Drupal core - Multiple vulnerabilities][SA_CORE_2014_004], which was another DOS issue coming from `xmlrpc.php`, so if you do not have something preventing remote access to this php file you should really upgrade your drupal code version to version `7.31`. My own advice is to alter your Apache/Nginx configuration to only allow one PHP file, `index.php`, this will prevent a loooot of problems.
 
@@ -72,7 +74,7 @@ This paper was studied by the drupal security team, [you can check the discussio
 
 So far so good, no real problems.
 
-### conf_path settings file search
+### conf_path() settings file search
 
 Drupal already had a `drupal_valid_http_host` function ensuring the hostnames did not contain bad characters like `/`,`\`,`%`,` ` or `&`. Only letters, digits, dots and `:`. Not relying on the HTTP server to ensure a really clean Hostname, always good to add some security layers in the application.
 
@@ -97,7 +99,7 @@ One of the early step done while bootstraping Drupal is to load the configuratio
       }
 {% endhighlight %}
 
-So here we see that the settings path depends on the `conf_path()` call. This function is quite short, there's a `drupal_static` thing which is simply a way to avoid re-doing stuff after the first call (in the same HTTP request), it's basically a lazy-loading-run-only-once shortcut.
+Here we see that the settings path depends on the `conf_path()` call. This function is quite short, there's a `drupal_static` thing which is simply a way to avoid re-doing stuff after the first call (in the same HTTP request), it's basically a lazy-loading-run-only-once shortcut.
 
 {% highlight php %}
     <?php
@@ -168,7 +170,7 @@ If one file is found before the default one, then it is used, you can alter sett
 
 As you can see using the `sites/sites.php` to set your hostname-to-directory mapping is quite certainly a good thing to do in terms of performances (this search loop is avoided). Remember that theses file checks are done for **every** HTTP requests received by Drupal.
 
-So now re-read the patch, before this patch very long hostnames could be used, and you could use a very big number of subdomains... and for each subdomain you add several locations to check for a setting file...
+Now re-read the patch, before this patch very long hostnames could be used, and you could use a very big number of subdomains... and for each subdomain you add several locations to check for a setting file...
 
 This is where I came and then I made some evil tests to see how this multisite code would react with bad hostnames. Working only with the allowed characters (alphabetical letters, digits, dots, `:`) we can at least play with this deep settings files search. And the `sites.php` map shortcuts won't be used for bad hostnames.
 
@@ -176,7 +178,7 @@ This is where I came and then I made some evil tests to see how this multisite c
 
 So, you may think the issue is on the `file_exists` calls, as we will run several thousands of file_exists, searching for the first match if we set a hostname with a lot of subdomains. Strangely this is usually quite fast.
 
-The real issue is on `array_slice`, performing several thousands of inverted array_slice is *really very very slow*. the first ones are quite fast but the last steps are longer, and we will make several thousands of array_slice operations.
+The real issue is on `array_slice`, performing several thousands of inverted array_slice is *really very very slow*. The first ones are quite fast but the last steps are longer, and we will make several thousands of array_slice operations.
 
 {% highlight php %}
     <?php
@@ -291,7 +293,7 @@ You do:
 
 And the RFC 2616 says this request should be managed by the `www.example.com` virtualhost, that's OK. And it also states that the Host Header should then be **ignored**. Cool. But in both Apache and Nginx this does not means the used Host headers will not be sent to the final application (here PHP).
 
-So at the end Drupal receive the Host header (here `something.else`). I think this is an issue on the HTTP server side. This header should be overwritten and should look like `www.example.com`. What's worse is that classical bad characters that are usually detected in the Host headers are not checked in Apache when you use the Abolute-URI trick. On the drupal side we have the regex cleanup on the Host header, that's a very good thing ([defense in depth][DEFENSE_IN_DEPTH] applied). On the drupal side using the absolute-URI trick will produce a 404 page, the URL does not match any known Drupal path, but this 404 is not a problem for the DOS attack which occurs on the settings file search, very early.
+At the end Drupal receive the Host header (here `something.else`). I think this is an issue on the HTTP server side. This header should be overwritten and should look like `www.example.com`. What's worse is that classical bad characters that are usually detected in the Host headers are not checked in Apache when you use the Abolute-URI trick. On the drupal side we have the regex cleanup on the Host header, that's a very good thing ([defense in depth][DEFENSE_IN_DEPTH] applied). On the drupal side using the absolute-URI trick will produce a 404 page, the URL does not match any known Drupal path, but this 404 is not a problem for the DOS attack which occurs on the settings file search, very early.
 
 If you think this is an Apache issue please vote for this [Apache patch][APACHE_HTTPD_PATCH] on the httpd bugtracker, which overwrite the HTTP_HOST with the absolute-uri host :
 
@@ -326,6 +328,7 @@ Nginx may also need a fix one day.
 
  * [Stay tuned on twitter, @regilero][TWITTER], [@makinacorpus][TWITTERMAK]
 
+[FRENCH]: http://makina-corpus.com/blog/metier/2014/details-of-drupal_sa_core_2014_003
 [KETTLE]: https://plus.google.com/+JamesKettle/about
 [APACHE_HTTPD_PATCH]: https://issues.apache.org/bugzilla/show_bug.cgi?id=56718
 [PRACTICAL_HOSTNAME_ATTACKS]: http://www.skeletonscribe.net/2013/05/practical-http-host-header-attacks.html
