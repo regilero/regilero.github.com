@@ -1,0 +1,95 @@
+@font-face {
+    font-family: 'helveticaneuelight';
+    src: url('theme_extra/fonts/helvetica-neue-light-1361522102-webfont.eot');
+    src: url('theme_extra/fonts/helvetica-neue-light-1361522102-webfont.eot?#iefix') format('embedded-opentype'),
+         url('theme_extra/fonts/helvetica-neue-light-1361522102-webfont.woff') format('woff'),
+         url('theme_extra/fonts/helvetica-neue-light-1361522102-webfont.ttf') format('truetype'),
+         url('theme_extra/fonts/helvetica-neue-light-1361522102-webfont.svg#helveticaneuelight') format('svg');
+    font-weight: normal;
+    font-style: normal;
+
+}
+
+a, a:visited {
+  color: #A9A9FF;
+}
+a:hover {
+  color: #C5C9F3;
+}
+body {
+    font-size: 22px;
+    font-family: "helveticaneuelight", Verdana, sans-serif;
+    color: #efefef;
+    background-color: #262626; /* Colour outside of slide */
+}
+
+div.presentation, div.slide {
+  background-color: #191919; /* colour of the slide */
+}
+
+div.slide h1, div.slide h2 {
+  color: #4677a1;
+  font-weight: normal;
+}
+
+div.slide h3, div.slide h4, div.slide h5, div.slide h6  {
+  color: #fff;
+}
+
+div.presentation, div.slide {
+  border-radius: 20px;
+}
+
+pre, tt, code, kbd, samp {
+  font-size: 100%;
+}
+
+/* A title slide is a single header */
+.slide header:only-child h1 {
+  font-weight: normal;
+}
+
+blockquote {
+  text-indent: 0
+}
+
+blockquote p { 
+  font-style: italic;
+}
+
+/* Override pygments */
+
+.highlight {
+  border-radius: 5px;
+}
+
+/* ----- First slide ----- */
+/*
+.slides .slide-wrapper:first-child .slide {
+  background: url(../logo.png) 283px 375px no-repeat;
+}
+
+.slides .slide-wrapper:first-child .slide header:only-child h1 {
+  height: 550px;
+}
+*/
+/* ----- Slide with only a quote ----- */
+
+div.slide.quoteslide blockquote {
+    display: table-cell;
+    width: 800px;
+    height: 600px;
+    vertical-align: middle;
+    text-align: center;
+}
+
+div.slide.quoteslide blockquote p {
+  font-size: 170%;
+  line-height: 170%;
+  font-style: italic;
+}
+
+div.slide.quoteslide cite {
+  float: right;
+  font-style: normal;
+}
