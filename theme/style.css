@@ -324,7 +324,7 @@ a.effect img {
 
 #post-toc a {
     text-decoration: none;
-    display: block;
+ /*FF fix   display: block;*/
 }
 
 #post-toc .h2 {

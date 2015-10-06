@@ -4,9 +4,11 @@ uuid: 91ecd42e-adc8-4dqq-a2ff80deaa8d000ff
 title: Checking HTTP Smuggling issues in 2015 - Part1
 categories: [Security, English]
 tags: [Security, Apache, Varnish, Nginx, HAProxy, Smuggling]
-pic: long_name2.jpg
+pic: wookie1.jpg
 excerpt: First part of the 2015 HTTP Smuggling articles. Injecting HTTP in HTTP, the theory.
 ---
+
+<small> **English version** (**Version Française** disponible sur [makina corpus][FRENCH].)</small>
 
 The goal of this serie of articles is to explain clearly what are HTTP smuggling
 issues and why I think this sort of security issues are critically important and
@@ -29,7 +31,7 @@ Most of the links provided in this article should be easier to understand
 *after* reading this first part. This is gonna be a long serie, starting from
 simple HTTP requests to very strange ones, with details about recently fixed
 flaws on  several tools (and some CVE also). On this first article there is
-nothing **new**, just another way of explaining the problems. i hope this will
+nothing **new**, just another way of explaining the problems. I hope this will
 at least help refreshing memories on the problems.
 
 If you use HTTP servers, and especially if you use several HTTP agents (Reverse
@@ -373,12 +375,12 @@ The HTTP agent reading the query or parsing the responses MUST know where this
 list of strings ends, so that what comes after is another query (or response if
 it's a backend stream).
 
-the tools used by the HTTP reader is either the **chunks mecanism** or the
+The tools used by the HTTP reader is either the **chunks mecanism** or the
 **Content-Length** header.
 
 And if something goes wrong **here** you can start hiding some queries or
 responses. One of the actor will parse the stream and will not understand the
-characters as new requests but as the previous request body, or will not
+incoming characters as new requests but as the previous request body, or will not
 understand the stream as the first request response but as a new one.
 
 That's the key of HTTP Smuggling.
@@ -552,7 +554,7 @@ And this valid session was needed for Walter query success.
 Credentials used in Ivan query are stolen (**hijacked**) for a `Walter` query.
 
 Damages of such issues are very high (you can make user perform unwanted POST
-actions, using other user's credentials). Keep alive and pipelines are not used
+actions, using his own credentials and rights). Keep alive and pipelines are not used
 in most proxies while communicating with backends.  
 Implementing shared backends connections or pools is a dangerous thing.
 
@@ -564,16 +566,19 @@ differently on some HTTP protocol issues.
 On the first part you need **transmitters*.
 
 A transmitter is an HTTP agent, a proxy, which receive an altered HTTP query and
-transmits the alteration to an HTTP backend. When testing HTTP proxy you will
-encounter a lot of proxy which are cleaning up strange queries (like you were
-using tabluations as space separators, but the proxy is replacing tabulations
+transmits the alteration to an HTTP backend. When testing HTTP proxies you will
+encounter a lot of proxies which are cleaning up strange queries (like you were
+using tabulations as space separators, but the proxy is replacing tabulations
 with spaces when talking to the backend). Here the transmitters, by definition,
 is not cleaning up the *strange part* of the request. The transmitters, also,
 see the altered HTTP request as an unique query.
 
-The second part of the attack is a **splitter**. When the altered HTTP request
-encounters the splitter this HTTP agent will send more than one HTTP response.
-Sending 2 responses for one query is enough, but it may also be one hundred.
+The second actor of the attack is a **splitter**, an involuntary accomplice.
+This agent receive the evil request from the **transmitter**.
+For the splitter this transmitted request is not unique, it's a multiple request
+(a pipeline) and this actor will emit several HTTP responses. This agent is 
+**splitting** the request.  
+Sending 2 responses for one query is enough, but it may also be one hundred.  
 The splitter made a parsing error and detects a pipeline of queries (or the
 transmitters made this error, not detecting it was really a pipeline).
 
@@ -589,13 +594,13 @@ We'll use a typology for the next schemas:
 
 The basic schema is:
 
-        [Origin]        [transmitter]     [Splitter]
-            |                |                |
-            >-----qA+(qB)--->|                |
-            |                >-----qA+(qB)--->| [*RS*]
-            |                |<-------rAqA----<
-            |<-------rAqA----<                |
-            |                |<-------rBqB----<
+        [Origin]            [transmitter]         [Splitter]
+            |                    |                    |
+            >-----qA+(qB)------->|                    |
+            |                    >-----qA+(qB)------->| [*RS*]
+            |                    |<-----------rAqA----<
+            |<-----------rAqA----<                    |
+            |                    |<-----------rBqB----<
 
 Here we have a security issue in `[*RS*]` where a request splitting occurs.
 
@@ -609,29 +614,29 @@ issues (let's hope this attitude will change in the future).
 The transmitter **could** detect the smuggling tentative and **should** clean up
 the query before transmitting, but that's usually not considered a security
 issue, unless every other actor implementing the HTTP RFC would see 2 queries
-when the transmitter is only seing one (something like an inverted splitter).
+when the transmitter is only seing one (something like an *inverted splitter*).
 
 Using this sort of schema attack of type 1 (filters bypass) is already achieved
 with the simple case.
 
-Attack of type 2 (defacement) needs a pipeline of queries and requires the
-transmitter to apply some sort of caching. it also need a third actor, a 
-**target**. The target is something like a cache which will be the final victim.  
+Attack of type 2 (defacement) needs a pipeline of queries. It also need a third
+actor, a  **target**. The target is something like a cache which will be the
+final victim.  
 The target is usually also the transmitter.
 
 Here is a type2 issue:
 
-        [Origin]    [transmitter-target]     [Splitter]
-            |                |                |
-            >-----qA+(qB)--->|                |
-            >-----qC-------->|                |
-            |                >-----qA+(qB)--->| [*RS*]
-            |                |<-------rAqA----<
-            |<-------rAqA----<                |
-            |                >-----qC-------->|
-            |         [*CP*] |<-------rBqB----<
-            |<-------*rBqC*--<                |
-            |                |<-X-----rCqC----<
+        [Origin]        [transmitter-target]         [Splitter]
+            |                    |                    |
+            >-----qA+(qB)------->|                    |
+            >-----qC------------>|                    |
+            |                    >-----qA+(qB)------->| [*RS*]
+            |                    |<-----------rAqA----<
+            |<-----------rAqA----<                    |
+            |                    >-----qC------------>|
+            |             [*CP*] |<-----------rBqB----<
+            |<-----------*rBqC*--<                    |
+            |                    |<-X---------rCqC----<
 
 This sort of behavior can also go wrong without caching (no `[*CP*]`) if you can
 make the `<--*rBqC*--<` response redirected to another user than the original
@@ -664,20 +669,19 @@ precise level.
 
 **Encapsulation**, is the ability to hide your HTTP query in several layers of
 HTTP smuggling issues. Usually the first layers are applying some strict rules
-on the HTTP headers or location, but if you find a trasmitter issue in the layer
+on the HTTP headers or location, but if you find a transmitter issue in the layer
 you can carry in the request Body another type of smuggling issue (one that 
 would be detected if used directly on this layer). The encapsulation is
 available because usually the Proxy will not filter the request body (and
 against a filter trying to decode the request body you would use several layers
-of content-Transfer encoding).
+of Content-Transfer encoding).
 
 In this example Middleware1 is a transmitter to a first type of smuggling noted
 "()" but would prevent any smuggling of a second type "{}".
  We could say for example that the "()" smuggling issue is using a chunked 
-encoding issue and that the "{}" one is based on double Content-Length headers
-injection.  
-Middleware2 has is a transmitter of the second type "{}" of smuggling (double
-`Content-Length` headers ignored).  
+encoding issue and that the "{}" one is based on doubling Content-Length headers.  
+Middleware2 is a transmitter of the second type "{}" of smuggling (double
+`Content-Length` headers).  
 The End server is very sensible to the "{}" issue and is splitting the query.  
 
 Goal of the attack is cache poisonning in Middleware2 with a `W` query response
@@ -706,11 +710,11 @@ on a `I` request. `W` is **forbidden** on Middleware 1 and also on Middleware 2.
         |                   |                >--qB-->(...)
 
 Just to add one step of complexity you can also imagine a system where an HTTP
-response is forged (via a flaw in an application or via a stored attack, and
-his HTTP response could contain a **response splitting** attack, 
+response is forged (via a flaw in an application or via a stored attack), and
+this HTTP response could contain a **response splitting** attack, 
 something like `<--*rAqA(+rWqX)*--<`. Securities are always stronger in request
 filters than in response filters on proxies, and most project would reject
-theses issues ("we have to trust the backend responses, you see, that's a
+theses issues as securty problems ("we have to trust the backend responses, you see, that's a
 backend issue").
 
 If the attackers can guess the servers and versions at each step of the
@@ -837,9 +841,10 @@ Which becomes hard to read (and here we have only the strict minimum headers).
 Next step is to build your own tool. For my extensive tests I've build my tools
 with **python**, using the `socket` library you have a very nice low level HTTP
 client where all the strange things are allowed, and you have an high level
-language to compute sizes. Because we'll see later that **sizes matters**.
+language to compute sizes (hiding queries in chunks, counting bytes, etc),
+ or to add SSL support.
 
-And if you really want to study smuggling you will have to use **tcpdump** or
+If you really want to study smuggling you will have to use **tcpdump** or
 **wireshark** to study the transmission of the signal between the actors, who is
 cleaning up the messages, what is not cleaned up, how does timers and size
 thresholds alter the behaviors, etc.
@@ -863,18 +868,19 @@ Smuggling issues are real, some have been fixed in 2015, avoid keeping old
 versions in production.
 
 But I know this can be a hard task. So my second advice is to add an HTTP
-cleaner in front of your infrastructure. Something like HAProxy[HAPROXY]. This
+cleaner in front of your infrastructure. Something like [HAProxy][HAPROXY]. This
 tool is a very strong protection against smugglers (but take recent versions, of
  course). Simply reading the [configuration documentation][HACONF] of this
 product you can find an excellent introduction to the HTTP protocol, with common
 pitfalls documented.
 
- [2005WATCHFIRE]: http://www.cgisecurity.com/lib/HTTP-Request-Smuggling.pdf "HTTP Request Smuggling - watchfire (pdf)"
- [RFC_REQUEST_SMUGGLING_1]: https://tools.ietf.org/html/rfc7230#section-9.5 "9.5. Request Smuggling"
- [RFC_REQUEST_SMUGGLING_2]: https://tools.ietf.org/html/rfc7230#section-3.3.3 "3.3.3. Message Body Length"
- [PREVIOUS_NGINX_SMUGGLING]: http://regilero.github.io/security/english/2015/03/25/nginx-integer_truncation "Nginx Integer Truncation"
- [HPP]: https://www.owasp.org/images/b/ba/AppsecEU09_CarettoniDiPaola_v0.8.pdf "HTTP Parameter Pollution"
- [RESPONSE_SPLITTING]: https://www.owasp.org/index.php/HTTP_Response_Splitting "HTTP Response Splitting"
- [HAPROXY]: http://www.haproxy.org "HAProxy"
- [HACONF]: http://www.haproxy.org/download/1.6/doc/configuration.txt "HAProxy configuration"
- [WIKI_CHUNK]: https://en.wikipedia.org/wiki/Chunked_transfer_encoding "Chunked transfer encoding"
+  [2005WATCHFIRE]: http://www.cgisecurity.com/lib/HTTP-Request-Smuggling.pdf "HTTP Request Smuggling - watchfire (pdf)"
+  [RFC_REQUEST_SMUGGLING_1]: https://tools.ietf.org/html/rfc7230#section-9.5 "9.5. Request Smuggling"
+  [RFC_REQUEST_SMUGGLING_2]: https://tools.ietf.org/html/rfc7230#section-3.3.3 "3.3.3. Message Body Length"
+  [PREVIOUS_NGINX_SMUGGLING]: http://regilero.github.io/security/english/2015/03/25/nginx-integer_truncation "Nginx Integer Truncation"
+  [HPP]: https://www.owasp.org/images/b/ba/AppsecEU09_CarettoniDiPaola_v0.8.pdf "HTTP Parameter Pollution"
+  [RESPONSE_SPLITTING]: https://www.owasp.org/index.php/HTTP_Response_Splitting "HTTP Response Splitting"
+  [HAPROXY]: http://www.haproxy.org "HAProxy"
+  [HACONF]: http://www.haproxy.org/download/1.6/doc/configuration.txt "HAProxy configuration"
+  [WIKI_CHUNK]: https://en.wikipedia.org/wiki/Chunked_transfer_encoding "Chunked transfer encoding"
+  [FRENCH]: http://makina-corpus.com/blog/metier/2015/problemes-de-http-smuggling-contrebandede-http-en-2015-partie-1
