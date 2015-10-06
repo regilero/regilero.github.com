@@ -106,53 +106,57 @@
 
 <p>Take your Drupal Database and check what are the cache tables used, here I'll use a quite basic default Drupal installation on Drupal6:</p>
 
-<div class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">show</span> <span class="n">tables</span> <span class="k">like</span> <span class="s1">&#39;cache%&#39;</span><span class="p">;</span>
-<span class="o">+</span><span class="c1">---------------------------+</span>
-<span class="o">|</span> <span class="n">Tables_in_expat6</span> <span class="p">(</span><span class="k">cache</span><span class="o">%</span><span class="p">)</span> <span class="o">|</span>
-<span class="o">+</span><span class="c1">---------------------------+</span>
-<span class="o">|</span> <span class="k">cache</span>                     <span class="o">|</span>
-<span class="o">|</span> <span class="n">cache_block</span>               <span class="o">|</span>
-<span class="o">|</span> <span class="n">cache_content</span>             <span class="o">|</span>
-<span class="o">|</span> <span class="n">cache_filter</span>              <span class="o">|</span>
-<span class="o">|</span> <span class="n">cache_form</span>                <span class="o">|</span>
-<span class="o">|</span> <span class="n">cache_menu</span>                <span class="o">|</span>
-<span class="o">|</span> <span class="n">cache_page</span>                <span class="o">|</span>
-<span class="o">|</span> <span class="n">cache_update</span>              <span class="o">|</span>
-<span class="o">|</span> <span class="n">cache_views</span>               <span class="o">|</span>
-<span class="o">|</span> <span class="n">cache_views_data</span>          <span class="o">|</span>
-<span class="o">|</span> <span class="n">cache_admin_menu</span>          <span class="o">|</span>
-<span class="o">+</span><span class="c1">---------------------------+</span></code></pre></div>
+<div>
+  <pre><code class='sql'>mysql&gt; show tables like 'cache%';
++---------------------------+
+| Tables_in_expat6 (cache%) |
++---------------------------+
+| cache                     |
+| cache_block               |
+| cache_content             |
+| cache_filter              |
+| cache_form                |
+| cache_menu                |
+| cache_page                |
+| cache_update              |
+| cache_views               |
+| cache_views_data          |
+| cache_admin_menu          |
++---------------------------+</code></pre>
+</div>
 
 
 <p>Let's try to get more informations on theses tables with a query on the INFORMATION_SCHEMA of MySQL, here a database named mydrupal</p>
 
-<div class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">SELECT</span> 
-    <span class="o">-&gt;</span>  <span class="n">concat</span><span class="p">(</span><span class="n">table_schema</span><span class="p">,</span><span class="s1">&#39;.&#39;</span><span class="p">,</span><span class="k">table_name</span><span class="p">)</span> <span class="n">dbtable</span><span class="p">,</span>
-    <span class="o">-&gt;</span>  <span class="n">concat</span><span class="p">(</span><span class="n">round</span><span class="p">(</span><span class="n">table_rows</span><span class="o">/</span><span class="mi">1000</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span><span class="s1">&#39;K&#39;</span><span class="p">)</span> <span class="k">rows</span><span class="p">,</span>
-    <span class="o">-&gt;</span>  <span class="n">concat</span><span class="p">(</span><span class="n">round</span><span class="p">(</span><span class="n">data_length</span><span class="o">/</span><span class="p">(</span><span class="mi">1024</span><span class="o">*</span><span class="mi">1024</span><span class="p">),</span><span class="mi">2</span><span class="p">),</span><span class="s1">&#39;M&#39;</span><span class="p">)</span> <span class="k">DATA</span><span class="p">,</span>
-    <span class="o">-&gt;</span>  <span class="n">concat</span><span class="p">(</span><span class="n">round</span><span class="p">(</span><span class="n">index_length</span><span class="o">/</span><span class="p">(</span><span class="mi">1024</span><span class="o">*</span><span class="mi">1024</span><span class="p">),</span><span class="mi">2</span><span class="p">),</span><span class="s1">&#39;M&#39;</span><span class="p">)</span> <span class="n">indexes</span><span class="p">,</span>
-    <span class="o">-&gt;</span>  <span class="n">concat</span><span class="p">(</span><span class="n">round</span><span class="p">((</span><span class="n">data_length</span><span class="o">+</span><span class="n">index_length</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mi">1024</span><span class="o">*</span><span class="mi">1024</span><span class="p">),</span><span class="mi">2</span><span class="p">),</span><span class="s1">&#39;M&#39;</span><span class="p">)</span> <span class="n">total_size</span><span class="p">,</span>
-    <span class="o">-&gt;</span>  <span class="n">round</span><span class="p">(</span><span class="n">index_length</span><span class="o">/</span><span class="n">data_length</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span> <span class="n">idxfrac</span> 
-    <span class="o">-&gt;</span>  <span class="k">FROM</span> <span class="n">information_schema</span><span class="p">.</span><span class="n">TABLES</span> 
-    <span class="o">-&gt;</span>  <span class="k">WHERE</span> <span class="k">table_name</span> <span class="k">LIKE</span> <span class="s1">&#39;cache%&#39;</span>
-    <span class="o">-&gt;</span>  <span class="k">AND</span> <span class="n">table_schema</span><span class="o">=</span><span class="ss">&quot;mydrupal&quot;</span>
-    <span class="o">-&gt;</span>  <span class="k">ORDER</span> <span class="k">BY</span> <span class="n">data_length</span><span class="o">+</span><span class="n">index_length</span> <span class="k">DESC</span><span class="p">;</span>
-<span class="o">+</span><span class="c1">---------------------------+-------+-------+---------+------------+---------+</span>
-<span class="o">|</span> <span class="n">dbtable</span>                   <span class="o">|</span> <span class="k">rows</span>  <span class="o">|</span> <span class="k">DATA</span>  <span class="o">|</span> <span class="n">indexes</span> <span class="o">|</span> <span class="n">total_size</span> <span class="o">|</span> <span class="n">idxfrac</span> <span class="o">|</span>
-<span class="o">+</span><span class="c1">---------------------------+-------+-------+---------+------------+---------+</span>
-<span class="o">|</span> <span class="n">mydrupal</span><span class="p">.</span><span class="n">cache_menu</span>       <span class="o">|</span> <span class="mi">1</span><span class="p">.</span><span class="mi">02</span><span class="n">K</span> <span class="o">|</span> <span class="mi">7</span><span class="p">.</span><span class="mi">19</span><span class="n">M</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">06</span><span class="n">M</span>   <span class="o">|</span> <span class="mi">7</span><span class="p">.</span><span class="mi">26</span><span class="n">M</span>      <span class="o">|</span>    <span class="mi">0</span><span class="p">.</span><span class="mi">01</span> <span class="o">|</span> 
-<span class="o">|</span> <span class="n">mydrupal</span><span class="p">.</span><span class="n">cache_form</span>       <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">01</span><span class="n">K</span> <span class="o">|</span> <span class="mi">4</span><span class="p">.</span><span class="mi">99</span><span class="n">M</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">01</span><span class="n">M</span>   <span class="o">|</span> <span class="mi">5</span><span class="p">.</span><span class="mi">00</span><span class="n">M</span>      <span class="o">|</span>    <span class="mi">0</span><span class="p">.</span><span class="mi">00</span> <span class="o">|</span> 
-<span class="o">|</span> <span class="n">mydrupal</span><span class="p">.</span><span class="n">cache_update</span>     <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">00</span><span class="n">K</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">86</span><span class="n">M</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">01</span><span class="n">M</span>   <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">86</span><span class="n">M</span>      <span class="o">|</span>    <span class="mi">0</span><span class="p">.</span><span class="mi">01</span> <span class="o">|</span> 
-<span class="o">|</span> <span class="n">mydrupal</span><span class="p">.</span><span class="n">cache_filter</span>     <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">22</span><span class="n">K</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">49</span><span class="n">M</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">03</span><span class="n">M</span>   <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">52</span><span class="n">M</span>      <span class="o">|</span>    <span class="mi">0</span><span class="p">.</span><span class="mi">06</span> <span class="o">|</span> 
-<span class="o">|</span> <span class="n">mydrupal</span><span class="p">.</span><span class="k">cache</span>            <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">01</span><span class="n">K</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">46</span><span class="n">M</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">01</span><span class="n">M</span>   <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">46</span><span class="n">M</span>      <span class="o">|</span>    <span class="mi">0</span><span class="p">.</span><span class="mi">01</span> <span class="o">|</span> 
-<span class="o">|</span> <span class="n">mydrupal</span><span class="p">.</span><span class="n">cache_content</span>    <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">17</span><span class="n">K</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">35</span><span class="n">M</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">01</span><span class="n">M</span>   <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">36</span><span class="n">M</span>      <span class="o">|</span>    <span class="mi">0</span><span class="p">.</span><span class="mi">03</span> <span class="o">|</span> 
-<span class="o">|</span> <span class="n">mydrupal</span><span class="p">.</span><span class="n">cache_views</span>      <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">01</span><span class="n">K</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">23</span><span class="n">M</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">01</span><span class="n">M</span>   <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">23</span><span class="n">M</span>      <span class="o">|</span>    <span class="mi">0</span><span class="p">.</span><span class="mi">03</span> <span class="o">|</span> 
-<span class="o">|</span> <span class="n">mydrupal</span><span class="p">.</span><span class="n">cache_admin_menu</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">00</span><span class="n">K</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">00</span><span class="n">M</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">01</span><span class="n">M</span>   <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">01</span><span class="n">M</span>      <span class="o">|</span>   <span class="mi">96</span><span class="p">.</span><span class="mi">00</span> <span class="o">|</span> 
-<span class="o">|</span> <span class="n">mydrupal</span><span class="p">.</span><span class="n">cache_page</span>       <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">00</span><span class="n">K</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">00</span><span class="n">M</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">00</span><span class="n">M</span>   <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">00</span><span class="n">M</span>      <span class="o">|</span>    <span class="k">NULL</span> <span class="o">|</span> 
-<span class="o">|</span> <span class="n">mydrupal</span><span class="p">.</span><span class="n">cache_views_data</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">00</span><span class="n">K</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">00</span><span class="n">M</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">00</span><span class="n">M</span>   <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">00</span><span class="n">M</span>      <span class="o">|</span>    <span class="k">NULL</span> <span class="o">|</span> 
-<span class="o">|</span> <span class="n">mydrupal</span><span class="p">.</span><span class="n">cache_block</span>      <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">00</span><span class="n">K</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">00</span><span class="n">M</span> <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">00</span><span class="n">M</span>   <span class="o">|</span> <span class="mi">0</span><span class="p">.</span><span class="mi">00</span><span class="n">M</span>      <span class="o">|</span>    <span class="k">NULL</span> <span class="o">|</span> 
-<span class="o">+</span><span class="c1">---------------------------+-------+-------+---------+------------+---------+</span>
-<span class="mi">11</span> <span class="k">rows</span> <span class="k">in</span> <span class="k">set</span> <span class="p">(</span><span class="mi">0</span><span class="p">.</span><span class="mi">00</span> <span class="n">sec</span><span class="p">)</span></code></pre></div>
+<div>
+  <pre><code class='sql'>mysql&gt; SELECT 
+    -&gt;  concat(table_schema,'.',table_name) dbtable,
+    -&gt;  concat(round(table_rows/1000,2),'K') rows,
+    -&gt;  concat(round(data_length/(1024*1024),2),'M') DATA,
+    -&gt;  concat(round(index_length/(1024*1024),2),'M') indexes,
+    -&gt;  concat(round((data_length+index_length)/(1024*1024),2),'M') total_size,
+    -&gt;  round(index_length/data_length,2) idxfrac 
+    -&gt;  FROM information_schema.TABLES 
+    -&gt;  WHERE table_name LIKE 'cache%'
+    -&gt;  AND table_schema=&quot;mydrupal&quot;
+    -&gt;  ORDER BY data_length+index_length DESC;
++---------------------------+-------+-------+---------+------------+---------+
+| dbtable                   | rows  | DATA  | indexes | total_size | idxfrac |
++---------------------------+-------+-------+---------+------------+---------+
+| mydrupal.cache_menu       | 1.02K | 7.19M | 0.06M   | 7.26M      |    0.01 | 
+| mydrupal.cache_form       | 0.01K | 4.99M | 0.01M   | 5.00M      |    0.00 | 
+| mydrupal.cache_update     | 0.00K | 0.86M | 0.01M   | 0.86M      |    0.01 | 
+| mydrupal.cache_filter     | 0.22K | 0.49M | 0.03M   | 0.52M      |    0.06 | 
+| mydrupal.cache            | 0.01K | 0.46M | 0.01M   | 0.46M      |    0.01 | 
+| mydrupal.cache_content    | 0.17K | 0.35M | 0.01M   | 0.36M      |    0.03 | 
+| mydrupal.cache_views      | 0.01K | 0.23M | 0.01M   | 0.23M      |    0.03 | 
+| mydrupal.cache_admin_menu | 0.00K | 0.00M | 0.01M   | 0.01M      |   96.00 | 
+| mydrupal.cache_page       | 0.00K | 0.00M | 0.00M   | 0.00M      |    NULL | 
+| mydrupal.cache_views_data | 0.00K | 0.00M | 0.00M   | 0.00M      |    NULL | 
+| mydrupal.cache_block      | 0.00K | 0.00M | 0.00M   | 0.00M      |    NULL | 
++---------------------------+-------+-------+---------+------------+---------+
+11 rows in set (0.00 sec)</code></pre>
+</div>
 
 
 <p>So, well, here my example is a quite little website. Cache tables are small and not heavily used.
@@ -232,126 +236,130 @@ Keep in mind that you should never make a server swap.</p>
 
 <p>Let's look at a complete configuration, for Drupal6 the cache backport module would require these lines:</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">// Load the cache backport replacement for cache.inc:</span>
-<span class="x">  $conf[&#39;cache_inc&#39;] = &#39;sites/all/modules/cache_backport/cache.inc&#39;;</span></code></pre></div>
+<div>
+  <pre><code class='php'>// Load the cache backport replacement for cache.inc:
+  $conf['cache_inc'] = 'sites/all/modules/cache_backport/cache.inc';</code></pre>
+</div>
 
 
 <p>And now for Drupal7 or Drupal6 we would have (of course it depends of the bins available on your installation, check the table created in MySQL to see what bin are requested by the modules):</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">// Define cache engines:</span>
-<span class="x">  // Database : &#39;DrupalDatabaseCache&#39;</span>
-<span class="x">  $conf[&#39;cache_backends&#39;][] = &#39;sites/all/modules/cache_backport/database.inc&#39;;</span>
-<span class="x">  // FileCache : &#39;DrupalFileCache&#39;</span>
-<span class="x">  $conf[&#39;cache_backends&#39;][] = &#39;sites/all/modules/filecache/filecache.inc&#39;;</span>
-<span class="x">  // APC : &#39;DrupalAPCCache&#39;</span>
-<span class="x">  $conf[&#39;cache_backends&#39;][] = &#39;sites/all/modules/apc/drupal_apc_cache.inc&#39;;</span>
-<span class="x">  // Memcache from drupal 7 : &#39;MemCacheDrupal&#39;</span>
-<span class="x">  $conf[&#39;cache_backends&#39;][] = &#39;sites/all/modules/memcache/memcache.inc&#39;;</span>
-<span class="x">  </span>
-<span class="x">  // Define cache bins, here&#39;s the magic, deporting several cache on the</span>
-<span class="x">  // appropriate place depending on usage frequency, size, and others:</span>
-<span class="x">  // Please consider seriously doing brainstorming and benchmarking on your own</span>
-<span class="x">  // since this is only an example, and sites performance may vary depending</span>
-<span class="x">  // on modules and usage.</span>
-<span class="x">  // Cache name |  Usage/frequency/size</span>
-<span class="x">  // default    |  any/any/any          select memcache, apc, file or db</span>
-<span class="x">  $conf[&#39;cache_default_class&#39;]          = &#39;DrupalDatabaseCache&#39;;</span>
-<span class="x">  // WARNING: this one is &#39;cache_class_cache&#39; and not &#39;cache_class_cache_cache&#39;</span>
-<span class="x">  // general    |  all/every/medium     select memcache &gt; file &gt; apc &gt; db</span>
-<span class="x">  $conf[&#39;cache_class_cache&#39;]            = &#39;MemCacheDrupal&#39;;</span>
-<span class="x">  // bootstrap  |  all/every/medium     select apc &gt; db</span>
-<span class="x">  $conf[&#39;cache_class_cache_bootstrap&#39;]  = &#39;DrupalAPCCache&#39;;</span>
-<span class="x">  // block      |  any/often/small      select memcache &gt; db &gt; file</span>
-<span class="x">  $conf[&#39;cache_class_cache_block&#39;]      = &#39;MemCacheDrupal&#39;;</span>
-<span class="x">  // field      |  page/some/large      select file &gt; memcache &gt; db</span>
-<span class="x">  $conf[&#39;cache_class_cache_content&#39;]    = &#39;DrupalFileCache&#39;;</span>
-<span class="x">  // filter     |  page/some/large      select file &gt; memcache &gt; db</span>
-<span class="x">  $conf[&#39;cache_class_cache_filter&#39;]     = &#39;DrupalFileCache&#39;;</span>
-<span class="x">  // form       |  edit/rare/medium     select file &gt; memcache &gt; db</span>
-<span class="x">  $conf[&#39;cache_class_cache_form&#39;]       = &#39;DrupalFileCache&#39;;</span>
-<span class="x">  // menu       |  any/often/large      select memcache &gt; db &gt; file</span>
-<span class="x">  $conf[&#39;cache_class_cache_menu&#39;]       = &#39;MemCacheDrupal&#39;;</span>
-<span class="x">  // page       |  page/often/large     select memcache &gt; file &gt; db</span>
-<span class="x">  $conf[&#39;cache_class_cache_page&#39;]       = &#39;MemCacheDrupal&#39;;</span>
-<span class="x">  // pathdst    |  any/some/medium      select memcache &gt; db &gt; file</span>
-<span class="x">  $conf[&#39;cache_class_cache_pathdst&#39;]    = &#39;MemCacheDrupal&#39;;</span>
-<span class="x">  // pathsrc    |  any/some/medium      select memcache &gt; db &gt; file</span>
-<span class="x">  $conf[&#39;cache_class_cache_pathsrc&#39;]    = &#39;MemCacheDrupal&#39;;</span>
-<span class="x">  // multiprice |  any/often/medium     select memcache &gt; db &gt; file</span>
-<span class="x">  $conf[&#39;cache_class_cache_uc_price&#39;]   = &#39;MemCacheDrupal&#39;;</span>
-<span class="x">  // update     |  system/rare/large,   select file &gt; db</span>
-<span class="x">  $conf[&#39;cache_class_cache_update&#39;]     = &#39;DrupalFileCache&#39;;</span>
-<span class="x">  // users      |  any/some/large       select memcache &gt; file &gt; db</span>
-<span class="x">  $conf[&#39;cache_class_cache_users&#39;]      = &#39;MemCacheDrupal&#39;;</span>
-<span class="x">  // views      |  any/some/large       select memcache &gt; file &gt; db</span>
-<span class="x">  $conf[&#39;cache_class_cache_views&#39;]      = &#39;MemCacheDrupal&#39;;</span>
-<span class="x">  // views data |  any/often/small      select apc &gt; db</span>
-<span class="x">  $conf[&#39;cache_class_cache_views_data&#39;] = &#39;DrupalAPCCache&#39;;</span>
-<span class="x">  </span>
-<span class="x">  // Define File Cache settings:</span>
-<span class="x">  // See README.TXT in FileCache directory for configuration details.</span>
-<span class="x">  $conf[&#39;filecache_fast_pagecache&#39;] = TRUE; // set TRUE to enable fast page serving</span>
-<span class="x">  // you will need to define your $conf[&#39;file_directory_temp&#39;] = &#39;/something/tmp&#39;;</span>
-<span class="x">  // before using this line. Put the directory in a place where drupal can write</span>
-<span class="x">  // (tmp, or files subdirectory) but that is not available via direct web</span>
-<span class="x">  // access, default Drupal conf protects .ht* directories, so default name is</span>
-<span class="x">  // .ht.filecache in the files directory if you provide no value for this setting</span>
-<span class="x">  $conf[&#39;filecache_directory&#39;] = $conf[&#39;file_directory_temp&#39;] . DIRECTORY_SEPARATOR . &#39;filecache&#39;;</span>
-<span class="x">  </span>
-<span class="x">  // Define APC settings.</span>
-<span class="x">  $conf[&#39;apc_show_debug&#39;] = FALSE; // set TRUE to enable debug mode</span>
-<span class="x">  // TODO In order to use multiple Drupal instance on the same physical box,</span>
-<span class="x">  // each site settings.php file should provide a bin name prefix for APC and</span>
-<span class="x">  // most other bin. Currently APC is managing it internally with request&#39;s</span>
-<span class="x">  // $_SERVER[&#39;PHP_HOST&#39;]. </span>
-<span class="x">  </span>
-<span class="x">  // Define Memcache settings.</span>
-<span class="x">  /* in case you use php-memcached and not php-memcache (for this one use php.ini settings)</span>
-<span class="x">  $conf[&#39;memcache_options&#39;] = array(</span>
-<span class="x">    Memcached::OPT_BINARY_PROTOCOL =&gt; FALSE, // set TRUE to enable binary protocol when using memcached &gt;= 1.4</span>
-<span class="x">    Memcached::OPT_COMPRESSION =&gt; FALSE, // set FALSE to disable compression for improved performance</span>
-<span class="x">    Memcached::OPT_DISTRIBUTION =&gt; Memcached::DISTRIBUTION_CONSISTENT, // set consistent distribution</span>
-<span class="x">    Memcached::OPT_HASH =&gt; Memcached::HASH_CRC, // set CRC32 hash method</span>
-<span class="x">    Memcached::OPT_CONNECT_TIMEOUT =&gt; 1000, // connection timeout in milliseconds</span>
-<span class="x">    Memcached::OPT_SERVER_FAILURE_LIMIT =&gt; 5, // failure limit for server connection attempts</span>
-<span class="x">  );*/</span>
-<span class="x">  // This is not necessary if you have only 1 memcached server on default port</span>
-<span class="x">  // (11211) but could be used to map &amp; replicate bins between several servers</span>
-<span class="x">  // (see memcached module documentation).</span>
-<span class="x">  $conf[&#39;memcache_servers&#39;] = array(</span>
-<span class="x">    &#39;127.0.0.1:11211&#39; =&gt; &#39;default&#39;,</span>
-<span class="x">  );</span>
-<span class="x">  // comment cache bins not used with memcached</span>
-<span class="x">  $conf[&#39;memcache_bins&#39;] = array(</span>
-<span class="x">    &#39;cache&#39;            =&gt; &#39;default&#39;,</span>
-<span class="x">    //&#39;cache_bootstrap&#39;  =&gt; &#39;default&#39;,</span>
-<span class="x">    &#39;cache_block&#39;      =&gt; &#39;default&#39;,</span>
-<span class="x">    //&#39;cache_content&#39;    =&gt; &#39;default&#39;,</span>
-<span class="x">    //&#39;cache_filter&#39;     =&gt; &#39;default&#39;,</span>
-<span class="x">    //&#39;cache_form&#39;       =&gt; &#39;default&#39;,</span>
-<span class="x">    &#39;cache_menu&#39;       =&gt; &#39;default&#39;,</span>
-<span class="x">    &#39;cache_page&#39;       =&gt; &#39;default&#39;,</span>
-<span class="x">    &#39;cache_pathdst&#39;    =&gt; &#39;default&#39;,</span>
-<span class="x">    &#39;cache_pathsrc&#39;    =&gt; &#39;default&#39;,</span>
-<span class="x">    &#39;cache_uc_price&#39;   =&gt; &#39;default&#39;,</span>
-<span class="x">    //&#39;cache_update&#39;     =&gt; &#39;default&#39;,</span>
-<span class="x">    &#39;cache_users&#39;      =&gt; &#39;default&#39;,</span>
-<span class="x">    &#39;cache_views&#39;      =&gt; &#39;default&#39;,</span>
-<span class="x">    //&#39;cache_views_data&#39; =&gt; &#39;default&#39;,    </span>
-<span class="x">  );</span>
-<span class="x">  </span>
-<span class="x">  // Define Drupal cache settings:</span>
-<span class="x">  // Inactivate database connection if the cache backend doesn&#39;t need it (for</span>
-<span class="x">  // cache_page bin only). If the page is not cached the db connection will be</span>
-<span class="x">  // made later.</span>
-<span class="x">  $conf[&#39;page_cache_without_database&#39;] = TRUE;</span>
-<span class="x">  // Avoid executing very early hooks in case of page cached (like hook_boot).</span>
-<span class="x">  $conf[&#39;page_cache_invoke_hooks&#39;]     = TRUE;</span>
-<span class="x">  // Cached page lifetime.</span>
-<span class="x">  $conf[&#39;page_cache_maximum_age&#39;]      = 3600;</span>
-<span class="x">  // Default lifetime for all cache entries (except form and page), if no</span>
-<span class="x">  // lifetime is specified by the module.</span>
-<span class="x">  $conf[&#39;cache_lifetime&#39;]              = 0;</span></code></pre></div>
+<div>
+  <pre><code class='php'>// Define cache engines:
+  // Database : 'DrupalDatabaseCache'
+  $conf['cache_backends'][] = 'sites/all/modules/cache_backport/database.inc';
+  // FileCache : 'DrupalFileCache'
+  $conf['cache_backends'][] = 'sites/all/modules/filecache/filecache.inc';
+  // APC : 'DrupalAPCCache'
+  $conf['cache_backends'][] = 'sites/all/modules/apc/drupal_apc_cache.inc';
+  // Memcache from drupal 7 : 'MemCacheDrupal'
+  $conf['cache_backends'][] = 'sites/all/modules/memcache/memcache.inc';
+  
+  // Define cache bins, here's the magic, deporting several cache on the
+  // appropriate place depending on usage frequency, size, and others:
+  // Please consider seriously doing brainstorming and benchmarking on your own
+  // since this is only an example, and sites performance may vary depending
+  // on modules and usage.
+  // Cache name |  Usage/frequency/size
+  // default    |  any/any/any          select memcache, apc, file or db
+  $conf['cache_default_class']          = 'DrupalDatabaseCache';
+  // WARNING: this one is 'cache_class_cache' and not 'cache_class_cache_cache'
+  // general    |  all/every/medium     select memcache &gt; file &gt; apc &gt; db
+  $conf['cache_class_cache']            = 'MemCacheDrupal';
+  // bootstrap  |  all/every/medium     select apc &gt; db
+  $conf['cache_class_cache_bootstrap']  = 'DrupalAPCCache';
+  // block      |  any/often/small      select memcache &gt; db &gt; file
+  $conf['cache_class_cache_block']      = 'MemCacheDrupal';
+  // field      |  page/some/large      select file &gt; memcache &gt; db
+  $conf['cache_class_cache_content']    = 'DrupalFileCache';
+  // filter     |  page/some/large      select file &gt; memcache &gt; db
+  $conf['cache_class_cache_filter']     = 'DrupalFileCache';
+  // form       |  edit/rare/medium     select file &gt; memcache &gt; db
+  $conf['cache_class_cache_form']       = 'DrupalFileCache';
+  // menu       |  any/often/large      select memcache &gt; db &gt; file
+  $conf['cache_class_cache_menu']       = 'MemCacheDrupal';
+  // page       |  page/often/large     select memcache &gt; file &gt; db
+  $conf['cache_class_cache_page']       = 'MemCacheDrupal';
+  // pathdst    |  any/some/medium      select memcache &gt; db &gt; file
+  $conf['cache_class_cache_pathdst']    = 'MemCacheDrupal';
+  // pathsrc    |  any/some/medium      select memcache &gt; db &gt; file
+  $conf['cache_class_cache_pathsrc']    = 'MemCacheDrupal';
+  // multiprice |  any/often/medium     select memcache &gt; db &gt; file
+  $conf['cache_class_cache_uc_price']   = 'MemCacheDrupal';
+  // update     |  system/rare/large,   select file &gt; db
+  $conf['cache_class_cache_update']     = 'DrupalFileCache';
+  // users      |  any/some/large       select memcache &gt; file &gt; db
+  $conf['cache_class_cache_users']      = 'MemCacheDrupal';
+  // views      |  any/some/large       select memcache &gt; file &gt; db
+  $conf['cache_class_cache_views']      = 'MemCacheDrupal';
+  // views data |  any/often/small      select apc &gt; db
+  $conf['cache_class_cache_views_data'] = 'DrupalAPCCache';
+  
+  // Define File Cache settings:
+  // See README.TXT in FileCache directory for configuration details.
+  $conf['filecache_fast_pagecache'] = TRUE; // set TRUE to enable fast page serving
+  // you will need to define your $conf['file_directory_temp'] = '/something/tmp';
+  // before using this line. Put the directory in a place where drupal can write
+  // (tmp, or files subdirectory) but that is not available via direct web
+  // access, default Drupal conf protects .ht* directories, so default name is
+  // .ht.filecache in the files directory if you provide no value for this setting
+  $conf['filecache_directory'] = $conf['file_directory_temp'] . DIRECTORY_SEPARATOR . 'filecache';
+  
+  // Define APC settings.
+  $conf['apc_show_debug'] = FALSE; // set TRUE to enable debug mode
+  // TODO In order to use multiple Drupal instance on the same physical box,
+  // each site settings.php file should provide a bin name prefix for APC and
+  // most other bin. Currently APC is managing it internally with request's
+  // $_SERVER['PHP_HOST']. 
+  
+  // Define Memcache settings.
+  /* in case you use php-memcached and not php-memcache (for this one use php.ini settings)
+  $conf['memcache_options'] = array(
+    Memcached::OPT_BINARY_PROTOCOL =&gt; FALSE, // set TRUE to enable binary protocol when using memcached &gt;= 1.4
+    Memcached::OPT_COMPRESSION =&gt; FALSE, // set FALSE to disable compression for improved performance
+    Memcached::OPT_DISTRIBUTION =&gt; Memcached::DISTRIBUTION_CONSISTENT, // set consistent distribution
+    Memcached::OPT_HASH =&gt; Memcached::HASH_CRC, // set CRC32 hash method
+    Memcached::OPT_CONNECT_TIMEOUT =&gt; 1000, // connection timeout in milliseconds
+    Memcached::OPT_SERVER_FAILURE_LIMIT =&gt; 5, // failure limit for server connection attempts
+  );*/
+  // This is not necessary if you have only 1 memcached server on default port
+  // (11211) but could be used to map &amp; replicate bins between several servers
+  // (see memcached module documentation).
+  $conf['memcache_servers'] = array(
+    '127.0.0.1:11211' =&gt; 'default',
+  );
+  // comment cache bins not used with memcached
+  $conf['memcache_bins'] = array(
+    'cache'            =&gt; 'default',
+    //'cache_bootstrap'  =&gt; 'default',
+    'cache_block'      =&gt; 'default',
+    //'cache_content'    =&gt; 'default',
+    //'cache_filter'     =&gt; 'default',
+    //'cache_form'       =&gt; 'default',
+    'cache_menu'       =&gt; 'default',
+    'cache_page'       =&gt; 'default',
+    'cache_pathdst'    =&gt; 'default',
+    'cache_pathsrc'    =&gt; 'default',
+    'cache_uc_price'   =&gt; 'default',
+    //'cache_update'     =&gt; 'default',
+    'cache_users'      =&gt; 'default',
+    'cache_views'      =&gt; 'default',
+    //'cache_views_data' =&gt; 'default',    
+  );
+  
+  // Define Drupal cache settings:
+  // Inactivate database connection if the cache backend doesn't need it (for
+  // cache_page bin only). If the page is not cached the db connection will be
+  // made later.
+  $conf['page_cache_without_database'] = TRUE;
+  // Avoid executing very early hooks in case of page cached (like hook_boot).
+  $conf['page_cache_invoke_hooks']     = TRUE;
+  // Cached page lifetime.
+  $conf['page_cache_maximum_age']      = 3600;
+  // Default lifetime for all cache entries (except form and page), if no
+  // lifetime is specified by the module.
+  $conf['cache_lifetime']              = 0;</code></pre>
+</div>
 
 
 <h3>And the sessions?</h3>
@@ -447,6 +455,10 @@ Some modules provides lock alternatives which are faster (like the Redis module)
                 </div>
                 <div class="list-group" role="navigation">
                   
+                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     Checking HTTP Smuggling issues in 2015 - Part1
+                     </a>
+                  
                      <a class="list-group-item" href="/security/english/2015/03/25/nginx-integer_truncation/">
                      Nginx Integer Truncation
                      </a>
@@ -463,10 +475,6 @@ Some modules provides lock alternatives which are faster (like the Redis module)
                      SaltStack, Use more than ascii7 on sls files with yaml_utf8 option
                      </a>
                   
-                     <a class="list-group-item" href="/saltstack/english/2014/01/28/saltstack_merge_dictionaries_of_settings_with_grains_filter_by/">
-                     SaltStack, Merge dictionaries of settings with grains.filter_by
-                     </a>
-                  
                 </div>
               </div>
             
@@ -476,39 +484,42 @@ Some modules provides lock alternatives which are faster (like the Redis module)
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+                <a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 29px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
 <a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
 
                 </div>
               </div>

@@ -181,57 +181,61 @@ Host: www.example.com
 
 <p>One of the early step done while bootstraping Drupal is to load the configuration file. This file will give you, for example, access to the database, or the <code>$base_url</code> enforced setting.</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
-    <span class="sd">/**</span>
-<span class="sd">     * Sets the base URL, cookie domain, and session name from configuration.</span>
-<span class="sd">     */</span>
-    <span class="k">function</span> <span class="nf">drupal_settings_initialize</span><span class="p">()</span> <span class="p">{</span>
-      <span class="k">global</span> <span class="nv">$base_url</span><span class="p">,</span> <span class="nv">$base_path</span><span class="p">,</span> <span class="nv">$base_root</span><span class="p">;</span>
+<div>
+  <pre><code class='php'>&lt;?php
+    /**
+     * Sets the base URL, cookie domain, and session name from configuration.
+     */
+    function drupal_settings_initialize() {
+      global $base_url, $base_path, $base_root;
     
-      <span class="c1">// Export these settings.php variables to the global namespace.</span>
-      <span class="k">global</span> <span class="nv">$databases</span><span class="p">,</span> <span class="nv">$cookie_domain</span><span class="p">,</span> <span class="nv">$conf</span><span class="p">,</span> <span class="nv">$installed_profile</span><span class="p">,</span>     <span class="nv">$update_free_access</span><span class="p">,</span> <span class="nv">$db_url</span><span class="p">,</span> <span class="nv">$db_prefix</span><span class="p">,</span> <span class="nv">$drupal_hash_salt</span><span class="p">,</span> <span class="nv">$is_https</span><span class="p">,</span> <span class="nv">$base_secure_url</span><span class="p">,</span> <span class="nv">$base_insecure_url</span><span class="p">;</span>
-      <span class="nv">$conf</span> <span class="o">=</span> <span class="k">array</span><span class="p">();</span>
+      // Export these settings.php variables to the global namespace.
+      global $databases, $cookie_domain, $conf, $installed_profile,     $update_free_access, $db_url, $db_prefix, $drupal_hash_salt, $is_https, $base_secure_url, $base_insecure_url;
+      $conf = array();
     
-      <span class="k">if</span> <span class="p">(</span><span class="nb">file_exists</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nx">conf_path</span><span class="p">()</span> <span class="o">.</span> <span class="s1">&#39;/settings.php&#39;</span><span class="p">))</span> <span class="p">{</span>
-        <span class="k">include_once</span> <span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nx">conf_path</span><span class="p">()</span> <span class="o">.</span> <span class="s1">&#39;/settings.php&#39;</span><span class="p">;</span>
-      <span class="p">}</span></code></pre></div>
+      if (file_exists(DRUPAL_ROOT . '/' . conf_path() . '/settings.php')) {
+        include_once DRUPAL_ROOT . '/' . conf_path() . '/settings.php';
+      }</code></pre>
+</div>
 
 
 <p>Here we see that the settings path depends on the <code>conf_path()</code> call. This function is quite short, there's a <code>drupal_static</code> thing which is simply a way to avoid re-doing stuff after the first call (in the same HTTP request), it's basically a lazy-loading-run-only-once shortcut.</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
-    <span class="k">function</span> <span class="nf">conf_path</span><span class="p">(</span><span class="nv">$require_settings</span> <span class="o">=</span> <span class="k">TRUE</span><span class="p">,</span> <span class="nv">$reset</span> <span class="o">=</span> <span class="k">FALSE</span><span class="p">)</span> <span class="p">{</span>
-      <span class="nv">$conf</span> <span class="o">=</span> <span class="o">&amp;</span><span class="nx">drupal_static</span><span class="p">(</span><span class="nx">__FUNCTION__</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">);</span>
+<div>
+  <pre><code class='php'>&lt;?php
+    function conf_path($require_settings = TRUE, $reset = FALSE) {
+      $conf = &amp;drupal_static(__FUNCTION__, '');
     
-      <span class="k">if</span> <span class="p">(</span><span class="nv">$conf</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nv">$reset</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">return</span> <span class="nv">$conf</span><span class="p">;</span> <span class="c1">//&lt;-- here is the run-only-once thing I was talking about</span>
-      <span class="p">}</span>
+      if ($conf &amp;&amp; !$reset) {
+        return $conf; //&lt;-- here is the run-only-once thing I was talking about
+      }
     
-      <span class="nv">$confdir</span> <span class="o">=</span> <span class="s1">&#39;sites&#39;</span><span class="p">;</span>
+      $confdir = 'sites';
     
-      <span class="nv">$sites</span> <span class="o">=</span> <span class="k">array</span><span class="p">();</span>
-      <span class="k">if</span> <span class="p">(</span><span class="nb">file_exists</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$confdir</span> <span class="o">.</span> <span class="s1">&#39;/sites.php&#39;</span><span class="p">))</span> <span class="p">{</span>
-        <span class="c1">// This will overwrite $sites with the desired mappings.</span>
-        <span class="k">include</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$confdir</span> <span class="o">.</span> <span class="s1">&#39;/sites.php&#39;</span><span class="p">);</span>
-      <span class="p">}</span>
+      $sites = array();
+      if (file_exists(DRUPAL_ROOT . '/' . $confdir . '/sites.php')) {
+        // This will overwrite $sites with the desired mappings.
+        include(DRUPAL_ROOT . '/' . $confdir . '/sites.php');
+      }
     
-      <span class="nv">$uri</span> <span class="o">=</span> <span class="nb">explode</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;SCRIPT_NAME&#39;</span><span class="p">]</span> <span class="o">?</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;SCRIPT_NAME&#39;</span><span class="p">]</span> <span class="o">:</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;SCRIPT_FILENAME&#39;</span><span class="p">]);</span>
-      <span class="nv">$server</span> <span class="o">=</span> <span class="nb">explode</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="nb">implode</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="nb">array_reverse</span><span class="p">(</span><span class="nb">explode</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="nb">rtrim</span><span class="p">(</span><span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;HTTP_HOST&#39;</span><span class="p">],</span> <span class="s1">&#39;.&#39;</span><span class="p">)))));</span>
-      <span class="k">for</span> <span class="p">(</span><span class="nv">$i</span> <span class="o">=</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$uri</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span> <span class="nv">$i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$i</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">for</span> <span class="p">(</span><span class="nv">$j</span> <span class="o">=</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$server</span><span class="p">);</span> <span class="nv">$j</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$j</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
-          <span class="nv">$dir</span> <span class="o">=</span> <span class="nb">implode</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="nb">array_slice</span><span class="p">(</span><span class="nv">$server</span><span class="p">,</span> <span class="o">-</span><span class="nv">$j</span><span class="p">))</span> <span class="o">.</span> <span class="nb">implode</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="nb">array_slice</span><span class="p">(</span><span class="nv">$uri</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nv">$i</span><span class="p">));</span>
-          <span class="k">if</span> <span class="p">(</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$sites</span><span class="p">[</span><span class="nv">$dir</span><span class="p">])</span> <span class="o">&amp;&amp;</span> <span class="nb">file_exists</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$confdir</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$sites</span><span class="p">[</span><span class="nv">$dir</span><span class="p">]))</span> <span class="p">{</span>
-            <span class="nv">$dir</span> <span class="o">=</span> <span class="nv">$sites</span><span class="p">[</span><span class="nv">$dir</span><span class="p">];</span>
-          <span class="p">}</span>
-          <span class="k">if</span> <span class="p">(</span><span class="nb">file_exists</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$confdir</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$dir</span> <span class="o">.</span> <span class="s1">&#39;/settings.php&#39;</span><span class="p">)</span> <span class="o">||</span> <span class="p">(</span><span class="o">!</span><span class="nv">$require_settings</span> <span class="o">&amp;&amp;</span> <span class="nb">file_exists</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$confdir</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$dir</span><span class="p">)))</span> <span class="p">{</span>
-            <span class="nv">$conf</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">$confdir</span><span class="s2">/</span><span class="si">$dir</span><span class="s2">&quot;</span><span class="p">;</span>
-            <span class="k">return</span> <span class="nv">$conf</span><span class="p">;</span>
-          <span class="p">}</span>
-        <span class="p">}</span>
-      <span class="p">}</span>
-      <span class="nv">$conf</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">$confdir</span><span class="s2">/default&quot;</span><span class="p">;</span>
-      <span class="k">return</span> <span class="nv">$conf</span><span class="p">;</span>
-    <span class="p">}</span></code></pre></div>
+      $uri = explode('/', $_SERVER['SCRIPT_NAME'] ? $_SERVER['SCRIPT_NAME'] : $_SERVER['SCRIPT_FILENAME']);
+      $server = explode('.', implode('.', array_reverse(explode(':', rtrim($_SERVER['HTTP_HOST'], '.')))));
+      for ($i = count($uri) - 1; $i &gt; 0; $i--) {
+        for ($j = count($server); $j &gt; 0; $j--) {
+          $dir = implode('.', array_slice($server, -$j)) . implode('.', array_slice($uri, 0, $i));
+          if (isset($sites[$dir]) &amp;&amp; file_exists(DRUPAL_ROOT . '/' . $confdir . '/' . $sites[$dir])) {
+            $dir = $sites[$dir];
+          }
+          if (file_exists(DRUPAL_ROOT . '/' . $confdir . '/' . $dir . '/settings.php') || (!$require_settings &amp;&amp; file_exists(DRUPAL_ROOT . '/' . $confdir . '/' . $dir))) {
+            $conf = &quot;$confdir/$dir&quot;;
+            return $conf;
+          }
+        }
+      }
+      $conf = &quot;$confdir/default&quot;;
+      return $conf;
+    }</code></pre>
+</div>
 
 
 <p>What this code does is testing the requested hostname to see if a specific settings directory exists for this Host; this is the <strong>core functionality of drupal multisites</strong>. By default you have the <em>default</em> settings in the directory <code>&lt;www&gt;/sites/default</code>, you can then use a <code>&lt;www&gt;/sites/sites.php</code> file to map hostnames with other settings files -- but this will only cover names that you <strong>do</strong> have, not the bad ones --, and you <em>can</em> also have some directories based on the hostname, or part of it, containing a <code>settings.php</code> file. Note that you <strong>cannot suspend this multisite feature</strong>, it's always there, no opt-in or opt-out until Drupal 8 release.</p>
@@ -283,26 +287,28 @@ Host: www.example.com
 
 <p>The real issue is on <code>array_slice</code>, performing several thousands of inverted array_slice is <em>really very very slow</em>. The first ones are quite fast but the last steps are longer, and we will make several thousands of array_slice operations.</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
-    <span class="k">function</span> <span class="nf">test_array_slice</span><span class="p">(</span><span class="nv">$server</span><span class="p">,</span><span class="nv">$j</span><span class="p">)</span> <span class="p">{</span>
-      <span class="k">print</span> <span class="s2">&quot;ARRAY_SLICE array of &quot;</span> <span class="o">.</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$server</span><span class="p">)</span> <span class="o">.</span> <span class="s2">&quot; elts =&gt; &quot;</span><span class="p">;</span>
-      <span class="nv">$time_start</span> <span class="o">=</span> <span class="nb">microtime</span><span class="p">(</span><span class="k">true</span><span class="p">);</span>
-      <span class="nb">array_slice</span><span class="p">(</span><span class="nv">$server</span><span class="p">,</span><span class="nv">$j</span><span class="p">);</span>
-      <span class="nv">$time_end</span> <span class="o">=</span> <span class="nb">microtime</span><span class="p">(</span><span class="k">true</span><span class="p">);</span>
-      <span class="nv">$time</span> <span class="o">=</span> <span class="nv">$time_end</span> <span class="o">-</span> <span class="nv">$time_start</span><span class="p">;</span>
-      <span class="k">print</span> <span class="s2">&quot;time for array_slice to </span><span class="si">$j</span><span class="s2"> : </span><span class="si">$time</span><span class="s2"> (s)</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">;</span>
-    <span class="p">}</span>
-    <span class="cm">/*</span>
-<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -10    : 0.0004069805 (s)</span>
-<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -100   : 0.0004091262 (s)</span>
-<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -500   : 0.0004727840 (s)</span>
-<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -1000  : 0.0005030632 (s)</span>
-<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -4000  : 0.0010337829 (s)</span>
-<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -8000  : 0.0016450881 (s)</span>
-<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -12000 : 0.0018289089 (s)</span>
-<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -14000 : 0.0025160312 (s)</span>
-<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -16000 : 0.0032360553 (s)</span>
-<span class="cm">    */</span></code></pre></div>
+<div>
+  <pre><code class='php'>&lt;?php
+    function test_array_slice($server,$j) {
+      print &quot;ARRAY_SLICE array of &quot; . count($server) . &quot; elts =&gt; &quot;;
+      $time_start = microtime(true);
+      array_slice($server,$j);
+      $time_end = microtime(true);
+      $time = $time_end - $time_start;
+      print &quot;time for array_slice to $j : $time (s)\n&quot;;
+    }
+    /*
+    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -10    : 0.0004069805 (s)
+    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -100   : 0.0004091262 (s)
+    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -500   : 0.0004727840 (s)
+    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -1000  : 0.0005030632 (s)
+    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -4000  : 0.0010337829 (s)
+    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -8000  : 0.0016450881 (s)
+    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -12000 : 0.0018289089 (s)
+    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -14000 : 0.0025160312 (s)
+    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -16000 : 0.0032360553 (s)
+    */</code></pre>
+</div>
 
 
 <p>0.003s seems quite fast, but that's already 7.5 times more than the first array_slices. I made a simple graph to show theses times growth.</p>
@@ -315,29 +321,31 @@ Host: www.example.com
 
 <p>My first fix used an <code>array_walk</code> call to prepare all names that should be checked, instead of rebuilding this name on the loop, this way:</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
-    <span class="sd">/**</span>
-<span class="sd">     * Apply this function with an array_walk to obtain an array with names that</span>
-<span class="sd">     * need to be tested.</span>
-<span class="sd">     */</span>
-    <span class="k">function</span> <span class="nf">prepare_name</span><span class="p">(</span><span class="o">&amp;</span><span class="nv">$val</span><span class="p">,</span> <span class="nv">$key</span><span class="p">,</span> <span class="o">&amp;</span><span class="nv">$current</span><span class="p">)</span> <span class="p">{</span>
-      <span class="k">if</span> <span class="p">(</span><span class="s1">&#39;&#39;</span><span class="o">!==</span><span class="nv">$current</span><span class="p">)</span> <span class="p">{</span>
-        <span class="nv">$val</span> <span class="o">=</span> <span class="nv">$val</span><span class="o">.</span><span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="nv">$current</span><span class="p">;</span>
-      <span class="p">}</span>
-      <span class="nv">$current</span> <span class="o">=</span> <span class="nv">$val</span><span class="p">;</span>
-    <span class="p">}</span>
-    <span class="p">(</span><span class="o">...</span><span class="p">)</span>
-    <span class="nv">$rev_server</span> <span class="o">=</span> <span class="nb">array_reverse</span><span class="p">(</span><span class="nv">$server</span><span class="p">);</span>
-    <span class="nv">$current</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">;</span>
-    <span class="nb">array_walk</span><span class="p">(</span><span class="nv">$rev_server</span><span class="p">,</span> <span class="s1">&#39;prepare_name&#39;</span><span class="p">,</span> <span class="nv">$current</span><span class="p">);</span>
-    <span class="nv">$work_server</span> <span class="o">=</span> <span class="nb">array_reverse</span><span class="p">(</span><span class="nv">$rev_server</span><span class="p">);</span>
-    <span class="c1">// --end new</span>
-    <span class="k">for</span> <span class="p">(</span><span class="nv">$i</span> <span class="o">=</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$uri</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span> <span class="nv">$i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$i</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
-      <span class="c1">// now the loop is a simple foreach name on first array</span>
-      <span class="k">foreach</span><span class="p">(</span><span class="nv">$work_server</span> <span class="k">as</span> <span class="nv">$k</span> <span class="o">=&gt;</span> <span class="nv">$name</span><span class="p">)</span> <span class="p">{</span>
-        <span class="nv">$dir</span> <span class="o">=</span> <span class="nv">$name</span> <span class="o">.</span> <span class="nb">implode</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="nb">array_slice</span><span class="p">(</span><span class="nv">$uri</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nv">$i</span><span class="p">));</span>
-      <span class="p">}</span>
-    <span class="p">}</span></code></pre></div>
+<div>
+  <pre><code class='php'>&lt;?php
+    /**
+     * Apply this function with an array_walk to obtain an array with names that
+     * need to be tested.
+     */
+    function prepare_name(&amp;$val, $key, &amp;$current) {
+      if (''!==$current) {
+        $val = $val.&quot;.&quot;.$current;
+      }
+      $current = $val;
+    }
+    (...)
+    $rev_server = array_reverse($server);
+    $current='';
+    array_walk($rev_server, 'prepare_name', $current);
+    $work_server = array_reverse($rev_server);
+    // --end new
+    for ($i = count($uri) - 1; $i &gt; 0; $i--) {
+      // now the loop is a simple foreach name on first array
+      foreach($work_server as $k =&gt; $name) {
+        $dir = $name . implode('.', array_slice($uri, 0, $i));
+      }
+    }</code></pre>
+</div>
 
 
 <p>And this fixed the performance issue (when <code>file_exists</code> is fast). But preventing bad hostnames as we have in the final fix is a better fix, more radical, no good reason to manage several thousand of subdomains.</p>
@@ -376,10 +384,12 @@ Host: www.example.com
 
 <p>The Mod_rewrite Apache module will receive the same <strong>HOSTNAME</strong> as PHP in the <strong>HTTP_HOST</strong> variable. If the Absolute-URI trick is used mod_rewrite could detect bad hostname and reject the request. Let's say you have one or two valid DNS for your Drupal websites (here <code>foo.example.com</code> and <code>bar.example.com</code>), then check Apache made the right job and reached your Drupal with theses valid names:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># Reject with a 403 any hostname wich is not in our list of supported domains</span>
-    <span class="nb">RewriteCond</span> %{HTTP_HOST} !^foo\.example\.com$
-    <span class="nb">RewriteCond</span> %{HTTP_HOST} !^bar\.example\.com$
-    <span class="nb">RewriteRule</span> .* - [F,L]</code></pre></div>
+<div>
+  <pre><code class='apache'># Reject with a 403 any hostname wich is not in our list of supported domains
+    RewriteCond %{HTTP_HOST} !^foo\.example\.com$
+    RewriteCond %{HTTP_HOST} !^bar\.example\.com$
+    RewriteRule .* - [F,L]</code></pre>
+</div>
 
 
 <h2>The absolute-URI trick?</h2>
@@ -501,9 +511,9 @@ Host: something.else
                      <p>A big re-think of rewrite rules for Drupal, preventing acess from index.php?q=foo default url, no .htaccess, and some other security stuff</p>
                      </a>
                   
-                     <a class="list-group-item" href="/english/drupal/2014/10/30/drupal-nginx_apache_php-fpm-guide/">
-                     <h4>AirPair, Drupal with PHP-FPM, Apache or Nginx</h4>
-                     <p>Some very detailled posts on Installing Drupal with php-fpm with Apache2.4 or Nginx</p>
+                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <h4>Checking HTTP Smuggling issues in 2015 - Part1</h4>
+                     <p>First part of the 2015 HTTP Smuggling articles. Injecting HTTP in HTTP, the theory.</p>
                      </a>
                   
                 </div>
@@ -515,6 +525,10 @@ Host: something.else
                 <h3>Latest posts</h3>
                 </div>
                 <div class="list-group" role="navigation">
+                  
+                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     Checking HTTP Smuggling issues in 2015 - Part1
+                     </a>
                   
                      <a class="list-group-item" href="/security/english/2015/03/25/nginx-integer_truncation/">
                      Nginx Integer Truncation
@@ -532,10 +546,6 @@ Host: something.else
                      SaltStack, Use more than ascii7 on sls files with yaml_utf8 option
                      </a>
                   
-                     <a class="list-group-item" href="/saltstack/english/2014/01/28/saltstack_merge_dictionaries_of_settings_with_grains_filter_by/">
-                     SaltStack, Merge dictionaries of settings with grains.filter_by
-                     </a>
-                  
                 </div>
               </div>
             
@@ -546,38 +556,41 @@ Host: something.else
 
                 <div class="tagcloud">
                 <a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 29px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
 <a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
 <a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
 <a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
 <a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
 
                 </div>
               </div>

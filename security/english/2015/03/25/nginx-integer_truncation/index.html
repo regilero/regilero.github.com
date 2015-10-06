@@ -224,30 +224,32 @@ If I remember well, the one used for the Content-Length header parsing is <code>
 
 <p>Let's analyze one of the functions before the fix:</p>
 
-<div class="highlight"><pre><code class="language-c" data-lang="c"><span class="kt">size_t</span>
-    <span class="nf">ngx_atosz</span><span class="p">(</span><span class="n">u_char</span> <span class="o">*</span><span class="n">line</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">n</span><span class="p">)</span>
-    <span class="p">{</span>
-        <span class="kt">ssize_t</span> <span class="n">value</span><span class="p">;</span>
+<div>
+  <pre><code class='c'>size_t
+    ngx_atosz(u_char *line, size_t n)
+    {
+        ssize_t value;
    
-        <span class="k">if</span> <span class="p">(</span><span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-            <span class="k">return</span> <span class="n">NGX_ERROR</span><span class="p">;</span>
-        <span class="p">}</span>
+        if (n == 0) {
+            return NGX_ERROR;
+        }
    
-        <span class="k">for</span> <span class="p">(</span><span class="n">value</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">n</span><span class="o">--</span><span class="p">;</span> <span class="n">line</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-            <span class="k">if</span> <span class="p">(</span><span class="o">*</span><span class="n">line</span> <span class="o">&lt;</span> <span class="sc">&#39;0&#39;</span> <span class="o">||</span> <span class="o">*</span><span class="n">line</span> <span class="o">&gt;</span> <span class="sc">&#39;9&#39;</span><span class="p">)</span> <span class="p">{</span>
-                <span class="k">return</span> <span class="n">NGX_ERROR</span><span class="p">;</span>
-            <span class="p">}</span>
+        for (value = 0; n--; line++) {
+            if (*line &lt; '0' || *line &gt; '9') {
+                return NGX_ERROR;
+            }
    
-            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">+</span> <span class="p">(</span><span class="o">*</span><span class="n">line</span> <span class="o">-</span> <span class="sc">&#39;0&#39;</span><span class="p">);</span>
-        <span class="p">}</span>
+            value = value * 10 + (*line - '0');
+        }
    
-        <span class="k">if</span> <span class="p">(</span><span class="n">value</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-            <span class="k">return</span> <span class="n">NGX_ERROR</span><span class="p">;</span>
+        if (value &lt; 0) {
+            return NGX_ERROR;
    
-        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-            <span class="k">return</span> <span class="n">value</span><span class="p">;</span>
-        <span class="p">}</span>
-    <span class="p">}</span></code></pre></div>
+        } else {
+            return value;
+        }
+    }</code></pre>
+</div>
 
 
 <p>The goal is to transform a text containing a number, like "15" to a number, 15. <code>line</code> contains the string and <code>n</code> is the string length. The <code>(*line &lt; '0' || *line &gt; '9')</code> test ensure each character of the line is really a digit.</p>
@@ -291,32 +293,34 @@ If I remember well, the one used for the Content-Length header parsing is <code>
 
 <p>The fixed version of this same function (my own proposal was a return as soon as <code>value</code> was lower than previous value in the for loop):</p>
 
-<div class="highlight"><pre><code class="language-c" data-lang="c"><span class="kt">ssize_t</span>
-    <span class="nf">ngx_atosz</span><span class="p">(</span><span class="n">u_char</span> <span class="o">*</span><span class="n">line</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">n</span><span class="p">)</span>
-    <span class="p">{</span>
-        <span class="kt">ssize_t</span> <span class="n">value</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">,</span> <span class="n">cutlim</span><span class="p">;</span>
+<div>
+  <pre><code class='c'>ssize_t
+    ngx_atosz(u_char *line, size_t n)
+    {
+        ssize_t value, cutoff, cutlim;
    
-        <span class="k">if</span> <span class="p">(</span><span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-            <span class="k">return</span> <span class="n">NGX_ERROR</span><span class="p">;</span>
-        <span class="p">}</span>
+        if (n == 0) {
+            return NGX_ERROR;
+        }
    
-        <span class="n">cutoff</span> <span class="o">=</span> <span class="n">NGX_MAX_SIZE_T_VALUE</span> <span class="o">/</span> <span class="mi">10</span><span class="p">;</span>
-        <span class="n">cutlim</span> <span class="o">=</span> <span class="n">NGX_MAX_SIZE_T_VALUE</span> <span class="o">%</span> <span class="mi">10</span><span class="p">;</span>
+        cutoff = NGX_MAX_SIZE_T_VALUE / 10;
+        cutlim = NGX_MAX_SIZE_T_VALUE % 10;
    
-        <span class="k">for</span> <span class="p">(</span><span class="n">value</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">n</span><span class="o">--</span><span class="p">;</span> <span class="n">line</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-            <span class="k">if</span> <span class="p">(</span><span class="o">*</span><span class="n">line</span> <span class="o">&lt;</span> <span class="sc">&#39;0&#39;</span> <span class="o">||</span> <span class="o">*</span><span class="n">line</span> <span class="o">&gt;</span> <span class="sc">&#39;9&#39;</span><span class="p">)</span> <span class="p">{</span>
-                <span class="k">return</span> <span class="n">NGX_ERROR</span><span class="p">;</span>
-            <span class="p">}</span>
+        for (value = 0; n--; line++) {
+            if (*line &lt; '0' || *line &gt; '9') {
+                return NGX_ERROR;
+            }
     
-            <span class="k">if</span> <span class="p">(</span><span class="n">value</span> <span class="o">&gt;=</span> <span class="n">cutoff</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">value</span> <span class="o">&gt;</span> <span class="n">cutoff</span> <span class="o">||</span> <span class="o">*</span><span class="n">line</span> <span class="o">-</span> <span class="sc">&#39;0&#39;</span> <span class="o">&gt;</span> <span class="n">cutlim</span><span class="p">))</span> <span class="p">{</span>
-                <span class="k">return</span> <span class="n">NGX_ERROR</span><span class="p">;</span>
-            <span class="p">}</span>
+            if (value &gt;= cutoff &amp;&amp; (value &gt; cutoff || *line - '0' &gt; cutlim)) {
+                return NGX_ERROR;
+            }
     
-            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">+</span> <span class="p">(</span><span class="o">*</span><span class="n">line</span> <span class="o">-</span> <span class="sc">&#39;0&#39;</span><span class="p">);</span>
-        <span class="p">}</span>
+            value = value * 10 + (*line - '0');
+        }
     
-        <span class="k">return</span> <span class="n">value</span><span class="p">;</span>
-    <span class="p">}</span></code></pre></div>
+        return value;
+    }</code></pre>
+</div>
 
 
 <h2>Example of exploitation Varnish + Nginx</h2>
@@ -421,9 +425,9 @@ If I remember well, the one used for the Content-Length header parsing is <code>
                      <p>A big re-think of rewrite rules for Drupal, preventing acess from index.php?q=foo default url, no .htaccess, and some other security stuff</p>
                      </a>
                   
-                     <a class="list-group-item" href="/english/drupal/2014/10/30/drupal-nginx_apache_php-fpm-guide/">
-                     <h4>AirPair, Drupal with PHP-FPM, Apache or Nginx</h4>
-                     <p>Some very detailled posts on Installing Drupal with php-fpm with Apache2.4 or Nginx</p>
+                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <h4>Checking HTTP Smuggling issues in 2015 - Part1</h4>
+                     <p>First part of the 2015 HTTP Smuggling articles. Injecting HTTP in HTTP, the theory.</p>
                      </a>
                   
                 </div>
@@ -435,6 +439,10 @@ If I remember well, the one used for the Content-Length header parsing is <code>
                 <h3>Latest posts</h3>
                 </div>
                 <div class="list-group" role="navigation">
+                  
+                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     Checking HTTP Smuggling issues in 2015 - Part1
+                     </a>
                   
                      <a class="list-group-item" href="/security/english/2015/03/25/nginx-integer_truncation/">
                      Nginx Integer Truncation
@@ -452,10 +460,6 @@ If I remember well, the one used for the Content-Length header parsing is <code>
                      SaltStack, Use more than ascii7 on sls files with yaml_utf8 option
                      </a>
                   
-                     <a class="list-group-item" href="/saltstack/english/2014/01/28/saltstack_merge_dictionaries_of_settings_with_grains_filter_by/">
-                     SaltStack, Merge dictionaries of settings with grains.filter_by
-                     </a>
-                  
                 </div>
               </div>
             
@@ -465,39 +469,42 @@ If I remember well, the one used for the Content-Length header parsing is <code>
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+                <a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
 <a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
 <a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 29px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
 
                 </div>
               </div>

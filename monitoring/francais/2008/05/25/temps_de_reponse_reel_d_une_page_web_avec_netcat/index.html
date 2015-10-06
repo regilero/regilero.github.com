@@ -104,32 +104,38 @@ Le tout en une seule ligne histoire de se servir de l'historique et pas de mon c
 <p>Commencons par un telnet sur <a href="http://www.google.com">www.google.com</a> sur le port 80 (web).
 On tape la requète comme si nous étions un navigateur web (très basique le navigateur). La requète HTTP va donc être:</p>
 
-<div class="highlight"><pre><code class="language-http" data-lang="http"><span class="nf">GET</span> <span class="nn">/</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.0</span></code></pre></div>
+<div>
+  <pre><code class='http'>GET / HTTP/1.0</code></pre>
+</div>
 
 
 <p>Remarquez qu'il y a une ligne vide (donc deux fois entrée).</p>
 
 <p>Cela donne en résultat une page de redirection vers le site français de google, parfait.</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">nii:~<span class="nv">$ </span>telnet www.google.com 80
+<div>
+  <pre><code class='bash'>nii:~$ telnet www.google.com 80
   Trying 209.85.129.147...
   Connected to www.l.google.com.
-  Escape character is <span class="s1">&#39;^]&#39;</span>.
+  Escape character is '^]'.
   GET / HTTP/1.0
   .
-  HTTP/1.0 <span class="m">302</span> Found
+  HTTP/1.0 302 Found
   Location: http://www.google.fr/
-  <span class="o">(</span>.. je vous passe le reste ...<span class="o">)</span>
+  (.. je vous passe le reste ...)
   Connection closed by foreign host.
-  nii:~<span class="err">$</span></code></pre></div>
+  nii:~$</code></pre>
+</div>
 
 
 <p>Bon, maintenant je veux mesurer le temps de réponse. Avec tout bètement la commande 'time'.
 Pour faire cela l'idéal est de taper ma commande en une seule fois,
 et là telnet n'est plus très souple pour automatiser la saisie utilisateur On va commencer par tester la même chose avec netcat (nc)</p>
 
-<div class="highlight"><pre><code class="language-http" data-lang="http"><span class="err">nii:~$ printf &#39;GET / HTTP/1.0\n\n&#39; | \</span>
-<span class="err">  nc -w 10 www.exemple.com 80</span></code></pre></div>
+<div>
+  <pre><code class='http'>nii:~$ printf 'GET / HTTP/1.0\n\n' | \
+  nc -w 10 www.exemple.com 80</code></pre>
+</div>
 
 
 <p>On avance. Par contre on a de fortes chances de ne pas tomber sur la page web que l'on recherche vraiment.
@@ -139,19 +145,23 @@ Mais pour servir le bon site il faut taper du <strong>HTTP/1.1</strong> au lieu 
 requète indiquant au serveur le nom du site que l'on veut (parmi ceux qu'il héberge),
 revoyez le protocole <a href="http://en.wikipedia.org/wiki/HTTP#Request_Message">http version 1.1</a> si vous ne comprenez rien à ce que je dis.</p>
 
-<div class="highlight"><pre><code class="language-http" data-lang="http"><span class="err">nii:~$ printf &#39;GET / HTTP/1.1\nHost:www.exemple.com\n\n&#39; | \</span>
-<span class="err">  nc -w 10 -q 10 www.exemple.com 80</span></code></pre></div>
+<div>
+  <pre><code class='http'>nii:~$ printf 'GET / HTTP/1.1\nHost:www.exemple.com\n\n' | \
+  nc -w 10 -q 10 www.exemple.com 80</code></pre>
+</div>
 
 
 <p>Et maintenant pour avoir le temps de la commande je rajoute time au début et je fais sauter le temps d'affichage de la réponse...</p>
 
-<div class="highlight"><pre><code class="language-http" data-lang="http"><span class="err">nii:~$ time printf &#39;GET / HTTP/1.1\nHost:www.exemple.com\n\n&#39; | \</span>
-<span class="err">  nc -w 10 -q 10 www.exemple.com 80 1&gt;/dev/null</span>
-<span class="err">  .</span>
-<span class="err">  real    0m0.627s</span>
-<span class="err">  user    0m0.000s</span>
-<span class="err">  sys     0m0.004s</span>
-<span class="err">  nc -w 10 -q 10 www.exemple.com 80</span></code></pre></div>
+<div>
+  <pre><code class='http'>nii:~$ time printf 'GET / HTTP/1.1\nHost:www.exemple.com\n\n' | \
+  nc -w 10 -q 10 www.exemple.com 80 1&gt;/dev/null
+  .
+  real    0m0.627s
+  user    0m0.000s
+  sys     0m0.004s
+  nc -w 10 -q 10 www.exemple.com 80</code></pre>
+</div>
 
 
 <p><strong>Mais...</strong><br/>
@@ -163,14 +173,16 @@ Il faut utiliser l'adresse IP du serveur web directement.
 De toutes façons c'est à l'intérieur du protocole HTTP, avec notre entête <strong>Host:</strong> que l'on indique le site web
 demandé au serveur, et pas du tout avec le nom DNS utilisé pour résoudre l'adresse IP du serveur web.</p>
 
-<div class="highlight"><pre><code class="language-http" data-lang="http"><span class="err">nii:~$ nslookup ww.exemple.com</span>
-<span class="err">  66.116.125.121</span>
-<span class="err">  nii:~$ time printf &#39;GET / HTTP/1.1\nHost:www.exemple.com\n\n&#39; | \</span>
-<span class="err">  nc -w 10 -q 10 66.116.125.121 80 1&gt;/dev/null</span>
-<span class="err">  .</span>
-<span class="err">  real    0m0.408s</span>
-<span class="err">  user    0m0.004s</span>
-<span class="err">  sys     0m0.000s</span></code></pre></div>
+<div>
+  <pre><code class='http'>nii:~$ nslookup ww.exemple.com
+  66.116.125.121
+  nii:~$ time printf 'GET / HTTP/1.1\nHost:www.exemple.com\n\n' | \
+  nc -w 10 -q 10 66.116.125.121 80 1&gt;/dev/null
+  .
+  real    0m0.408s
+  user    0m0.004s
+  sys     0m0.000s</code></pre>
+</div>
 
 
 <p><strong>0.408s</strong> est déjà plus proche du temps de réponse réèl du site (depuis le point du réseau où on se trouve,
@@ -216,6 +228,11 @@ demandé au serveur, et pas du tout avec le nom DNS utilisé pour résoudre l'ad
                 </div>
                 <div class="list-group" role="navigation">
                   
+                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <h4>Checking HTTP Smuggling issues in 2015 - Part1</h4>
+                     <p>First part of the 2015 HTTP Smuggling articles. Injecting HTTP in HTTP, the theory.</p>
+                     </a>
+                  
                      <a class="list-group-item" href="/english/drupal/2014/10/30/drupal-nginx_apache_php-fpm-guide/">
                      <h4>AirPair, Drupal with PHP-FPM, Apache or Nginx</h4>
                      <p>Some very detailled posts on Installing Drupal with php-fpm with Apache2.4 or Nginx</p>
@@ -236,11 +253,6 @@ demandé au serveur, et pas du tout avec le nom DNS utilisé pour résoudre l'ad
                      <p>Complements on the previous article. hash the file map, use a /static url, and avoid security problems with tis new mode.</p>
                      </a>
                   
-                     <a class="list-group-item" href="/apache/english/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/">
-                     <h4>Use RewriteMap to prevent proxying for some static contents</h4>
-                     <p>How to use the not well known RewriteMap Apache feature to proxy static resources on a web app without clean url separation between static and dynamic content (here Plone).</p>
-                     </a>
-                  
                 </div>
               </div>
               
@@ -250,6 +262,10 @@ demandé au serveur, et pas du tout avec le nom DNS utilisé pour résoudre l'ad
                 <h3>Latest posts</h3>
                 </div>
                 <div class="list-group" role="navigation">
+                  
+                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     Checking HTTP Smuggling issues in 2015 - Part1
+                     </a>
                   
                      <a class="list-group-item" href="/security/english/2015/03/25/nginx-integer_truncation/">
                      Nginx Integer Truncation
@@ -267,10 +283,6 @@ demandé au serveur, et pas du tout avec le nom DNS utilisé pour résoudre l'ad
                      SaltStack, Use more than ascii7 on sls files with yaml_utf8 option
                      </a>
                   
-                     <a class="list-group-item" href="/saltstack/english/2014/01/28/saltstack_merge_dictionaries_of_settings_with_grains_filter_by/">
-                     SaltStack, Merge dictionaries of settings with grains.filter_by
-                     </a>
-                  
                 </div>
               </div>
             
@@ -280,37 +292,40 @@ demandé au serveur, et pas du tout avec le nom DNS utilisé pour résoudre l'ad
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+                <a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
 <a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 29px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
 <a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
 <a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
 

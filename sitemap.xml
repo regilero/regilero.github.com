@@ -1,97 +1,117 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-      <loc>http://regilero.github.io/SaltStack/English/2014/02/05/saltstack-use-more-than-ascii7-on-sls-files-with-yaml_utf8-option/</loc>
+      <loc>http://regilero.github.io/security/english/2015/10/04/http_smuggling_in_2015_part_one/</loc>
+      <lastmod>2015-10-04</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
+      <loc>http://regilero.github.io/security/english/2015/03/25/nginx-integer_truncation/</loc>
+      <lastmod>2015-03-25</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
+      <loc>http://regilero.github.io/english/drupal/2014/10/30/drupal-nginx_apache_php-fpm-guide/</loc>
+      <lastmod>2014-10-30</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
+      <loc>http://regilero.github.io/security/english/2014/09/19/drupal-details_ofdrupal_sa_core_2014_003_dos/</loc>
+      <lastmod>2014-09-19</lastmod>
+      <changefreq>never</changefreq>
+  </url>
+  <url>
+      <loc>http://regilero.github.io/saltstack/english/2014/02/05/saltstack-use-more-than-ascii7-on-sls-files-with-yaml_utf8-option/</loc>
       <lastmod>2014-02-05</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/SaltStack/English/2014/01/28/saltstack_merge_dictionaries_of_settings_with_grains_filter_by/</loc>
+      <loc>http://regilero.github.io/saltstack/english/2014/01/28/saltstack_merge_dictionaries_of_settings_with_grains_filter_by/</loc>
       <lastmod>2014-01-28</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/SaltStack/English/2014/01/27/saltstack_use_file_accumulated_accumulators_with_file_managed_and_file_blockreplace/</loc>
+      <loc>http://regilero.github.io/saltstack/english/2014/01/27/saltstack_use_file_accumulated_accumulators_with_file_managed_and_file_blockreplace/</loc>
       <lastmod>2014-01-27</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/SaltStack/English/2014/01/20/saltstack_step_by_step_file_blockreplace/</loc>
+      <loc>http://regilero.github.io/saltstack/english/2014/01/20/saltstack_step_by_step_file_blockreplace/</loc>
       <lastmod>2014-01-20</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/Drupal/English/2013/05/16/Warning_chrooted_php_fpm_and_apc/</loc>
+      <loc>http://regilero.github.io/drupal/english/2013/05/16/Warning_chrooted_php_fpm_and_apc/</loc>
       <lastmod>2013-05-16</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/Drupal/English/2011/10/18/drupal_mongodb_statistics_module_published/</loc>
+      <loc>http://regilero.github.io/drupal/english/2011/10/18/drupal_mongodb_statistics_module_published/</loc>
       <lastmod>2011-10-18</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/Drupal/English/2011/10/03/separate_cache_backends_d6_and_d7/</loc>
+      <loc>http://regilero.github.io/drupal/english/2011/10/03/separate_cache_backends_d6_and_d7/</loc>
       <lastmod>2011-10-03</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/Drupal/English/2011/09/03/Install_drupal_in_php_fpm_fastcgi_and_apache_chroot/</loc>
+      <loc>http://regilero.github.io/drupal/english/2011/09/03/Install_drupal_in_php_fpm_fastcgi_and_apache_chroot/</loc>
       <lastmod>2011-09-03</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/Drupal/English/2011/09/02/Tune_your_php_settings_for_drupal/</loc>
+      <loc>http://regilero.github.io/drupal/english/2011/09/02/Tune_your_php_settings_for_drupal/</loc>
       <lastmod>2011-09-02</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/Drupal/English/2011/09/01/better_rewrite_rules_for_drupal/</loc>
+      <loc>http://regilero.github.io/drupal/english/2011/09/01/better_rewrite_rules_for_drupal/</loc>
       <lastmod>2011-09-01</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/PostgreSQL/Francais/2010/10/14/requetes_recursives_avec_postgresql_8_4/</loc>
+      <loc>http://regilero.github.io/postgresql/francais/2010/10/14/requetes_recursives_avec_postgresql_8_4/</loc>
       <lastmod>2010-10-14</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/Js/English/2010/08/16/nice_webapps_and_tools_using_canvas/</loc>
+      <loc>http://regilero.github.io/js/english/2010/08/16/nice_webapps_and_tools_using_canvas/</loc>
       <lastmod>2010-08-16</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/Apache/English/2009/11/06/more_on_static_file_redirector/</loc>
+      <loc>http://regilero.github.io/apache/english/2009/11/06/more_on_static_file_redirector/</loc>
       <lastmod>2009-11-06</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/Apache/English/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/</loc>
+      <loc>http://regilero.github.io/apache/english/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/</loc>
       <lastmod>2009-11-05</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/Apache/English/2009/06/03/relative_absolute_urls_and_proxies/</loc>
+      <loc>http://regilero.github.io/apache/english/2009/06/03/relative_absolute_urls_and_proxies/</loc>
       <lastmod>2009-06-03</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/PostgreSQL/English/2008/10/30/6_nice_things_not_known_enough_about_postgresql/</loc>
+      <loc>http://regilero.github.io/postgresql/english/2008/10/30/6_nice_things_not_known_enough_about_postgresql/</loc>
       <lastmod>2008-10-30</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/Zend%20Framework/English/2008/10/26/autocomplete_ajax_search_dojo_zend_framework/</loc>
+      <loc>http://regilero.github.io/zend framework/english/2008/10/26/autocomplete_ajax_search_dojo_zend_framework/</loc>
       <lastmod>2008-10-26</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/Apache/English/2008/08/29/force_http_1.0_response_when_php_is_there/</loc>
+      <loc>http://regilero.github.io/apache/english/2008/08/29/force_http_1.0_response_when_php_is_there/</loc>
       <lastmod>2008-08-29</lastmod>
       <changefreq>never</changefreq>
   </url>
   <url>
-      <loc>http://regilero.github.io/Monitoring/Francais/2008/05/25/temps_de_reponse_reel_d_une_page_web_avec_netcat/</loc>
+      <loc>http://regilero.github.io/monitoring/francais/2008/05/25/temps_de_reponse_reel_d_une_page_web_avec_netcat/</loc>
       <lastmod>2008-05-25</lastmod>
       <changefreq>never</changefreq>
   </url>

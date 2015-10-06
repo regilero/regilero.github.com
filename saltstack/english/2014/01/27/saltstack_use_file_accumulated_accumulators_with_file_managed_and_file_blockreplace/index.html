@@ -96,7 +96,7 @@
          <div class="row">
           <div class="col-md-12" id="post-full">
        
-          <p><a href="/saltstack/english/2014/01/20/saltstack_step_by_step_file_blockreplace/">On the last salt-stack post</a> we saw a first step by step usage of <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace"><code>file.blockreplace</code></a>. On this post we'll study usage of state accumulators with <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated"><code>file.accumulated</code></a>. Accumulators are used to collect data on several states and let you use this data on other file states (Actually only the blockreplace and managed states).</p>
+          <p><a href="Liquid%20error:%20undefined%20method%20`name'%20for%20#&lt;Jekyll::Post:0x00000002297668>">On the last salt-stack post</a> we saw a first step by step usage of <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace"><code>file.blockreplace</code></a>. On this post we'll study usage of state accumulators with <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated"><code>file.accumulated</code></a>. Accumulators are used to collect data on several states and let you use this data on other file states (Actually only the blockreplace and managed states).</p>
 
 <p>You can find the examples used on this post on <a href="https://github.com/regilero/regilero-blog-examples/tree/master/accumulated-blockreplace">this github repository</a>.</p>
 
@@ -112,30 +112,34 @@
 
 <p>As I said before states ordering is very important here. The final step must be final. And used states may be split upon several sls files. You can use the order <code>order</code> keyword to ensure the final order, this way:</p>
 
-<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="lineno"> 1</span> <span class="c1"># first.sls</span>
-<span class="lineno"> 2</span>     <span class="l-Scalar-Plain">STATEID1</span><span class="p-Indicator">:</span>
-<span class="lineno"> 3</span>       <span class="l-Scalar-Plain">cmd.run</span><span class="p-Indicator">:</span>
-<span class="lineno"> 4</span>         <span class="l-Scalar-Plain">name</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">echo STATEID1</span>
-<span class="lineno"> 5</span>         <span class="l-Scalar-Plain">order</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">100</span>
-<span class="lineno"> 6</span>     
-<span class="lineno"> 7</span>     <span class="c1"># second.sls</span>
-<span class="lineno"> 8</span>     <span class="l-Scalar-Plain">STATEID2</span><span class="p-Indicator">:</span>
-<span class="lineno"> 9</span>       <span class="l-Scalar-Plain">cmd.run</span><span class="p-Indicator">:</span>
-<span class="lineno">10</span>         <span class="l-Scalar-Plain">name</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">echo last</span>
-<span class="lineno">11</span>         <span class="l-Scalar-Plain">order</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">900</span>
-<span class="lineno">12</span>     
-<span class="lineno">13</span>     <span class="c1"># third sls</span>
-<span class="lineno">14</span>     <span class="l-Scalar-Plain">STATEID3</span><span class="p-Indicator">:</span>
-<span class="lineno">15</span>       <span class="l-Scalar-Plain">cmd.run</span>
-<span class="lineno">16</span>         <span class="l-Scalar-Plain">name</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">echo STATEID3</span>
-<span class="lineno">17</span>         <span class="l-Scalar-Plain">order</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">200</span></code></pre></div>
+<div>
+  <pre><code class='yaml'># first.sls
+    STATEID1:
+      cmd.run:
+        name: echo STATEID1
+        order: 100
+    
+    # second.sls
+    STATEID2:
+      cmd.run:
+        name: echo last
+        order: 900
+    
+    # third sls
+    STATEID3:
+      cmd.run
+        name: echo STATEID3
+        order: 200</code></pre>
+</div>
 
 
 <p>This will make a final execution order of:</p>
 
-<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="lineno">1</span> <span class="l-Scalar-Plain">echo STATEID1</span>
-<span class="lineno">2</span>     <span class="l-Scalar-Plain">echo STATEID3</span>
-<span class="lineno">3</span>     <span class="l-Scalar-Plain">echo last</span></code></pre></div>
+<div>
+  <pre><code class='yaml'>echo STATEID1
+    echo STATEID3
+    echo last</code></pre>
+</div>
 
 
 <p>But to do that you need an ordering schema for all you states. I do not find that very useful when you have a lot of states.</p>
@@ -144,36 +148,42 @@
 
 <p>So using <code>require_in</code> the previous example would be:</p>
 
-<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="lineno"> 1</span> <span class="c1"># first.sls</span>
-<span class="lineno"> 2</span>     <span class="l-Scalar-Plain">STATEID1</span><span class="p-Indicator">:</span>
-<span class="lineno"> 3</span>       <span class="l-Scalar-Plain">cmd.run</span><span class="p-Indicator">:</span>
-<span class="lineno"> 4</span>         <span class="l-Scalar-Plain">name</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">echo STATEID1</span>
-<span class="lineno"> 5</span>         <span class="l-Scalar-Plain">require_in</span><span class="p-Indicator">:</span>
-<span class="lineno"> 6</span>           <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">cmd</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">STATEID2</span>
-<span class="lineno"> 7</span>     
-<span class="lineno"> 8</span>     <span class="c1"># second.sls</span>
-<span class="lineno"> 9</span>     <span class="l-Scalar-Plain">STATEID2</span><span class="p-Indicator">:</span>
-<span class="lineno">10</span>       <span class="l-Scalar-Plain">cmd.run</span><span class="p-Indicator">:</span>
-<span class="lineno">11</span>         <span class="l-Scalar-Plain">name</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">echo last</span>
-<span class="lineno">12</span>     
-<span class="lineno">13</span>     <span class="c1"># third sls</span>
-<span class="lineno">14</span>     <span class="l-Scalar-Plain">STATEID3</span><span class="p-Indicator">:</span>
-<span class="lineno">15</span>       <span class="l-Scalar-Plain">cmd.run</span>
-<span class="lineno">16</span>         <span class="l-Scalar-Plain">name</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">echo STATEID3</span>
-<span class="lineno">17</span>         <span class="l-Scalar-Plain">require_in</span><span class="p-Indicator">:</span>
-<span class="lineno">18</span>           <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">cmd</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">STATEID2</span></code></pre></div>
+<div>
+  <pre><code class='yaml'># first.sls
+    STATEID1:
+      cmd.run:
+        name: echo STATEID1
+        require_in:
+          - cmd: STATEID2
+    
+    # second.sls
+    STATEID2:
+      cmd.run:
+        name: echo last
+    
+    # third sls
+    STATEID3:
+      cmd.run
+        name: echo STATEID3
+        require_in:
+          - cmd: STATEID2</code></pre>
+</div>
 
 
 <p><strong>Be careful:</strong> the syntax for a requisite is:</p>
 
-<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="lineno">1</span> <span class="l-Scalar-Plain">&lt;requisite&gt;</span><span class="p-Indicator">:</span>
-<span class="lineno">2</span>       <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">&lt;module&gt;</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">&lt;state id&gt;</span></code></pre></div>
+<div>
+  <pre><code class='yaml'>&lt;requisite&gt;:
+      - &lt;module&gt;: &lt;state id&gt;</code></pre>
+</div>
 
 
 <p>It is not:</p>
 
-<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="lineno">1</span> <span class="l-Scalar-Plain">&lt;requisite&gt;</span><span class="p-Indicator">:</span>
-<span class="lineno">2</span>       <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">&lt;module&gt;.&lt;function&gt;</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">&lt;state id&gt;</span></code></pre></div>
+<div>
+  <pre><code class='yaml'>&lt;requisite&gt;:
+      - &lt;module&gt;.&lt;function&gt;: &lt;state id&gt;</code></pre>
+</div>
 
 
 <p>So it is not <code>cmd.run:</code> here but only <code>cmd:</code>. And as soon as you start using requisites you see that using meaningfull states ids and not names shortcuts to declare states is quite important, for clarity at least.</p>
@@ -184,57 +194,63 @@
 
 <p>In this first example we'll use several states, the last state will install a <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed">managed file</a> in <code>/etc/apache2/sites-available/100-foo.example.com</code>, it's an apache virtualhost file, in the debian way. The jinja template associated with this file will contain the basic rules, but we want to allow some other states to add instructions on this virtualhost. We'll see theses states later. We start by the end, with this state building a virtualhost file in a <code>example_com_apache_virtualhost.sls</code> file:</p>
 
-<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="lineno"> 1</span> <span class="l-Scalar-Plain">apache-install</span><span class="p-Indicator">:</span>
-<span class="lineno"> 2</span>       <span class="l-Scalar-Plain">pkg.installed</span><span class="p-Indicator">:</span>
-<span class="lineno"> 3</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">pkgs</span><span class="p-Indicator">:</span>
-<span class="lineno"> 4</span>           <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">apache2</span>
-<span class="lineno"> 5</span>     
-<span class="lineno"> 6</span> <span class="-Error">    </span><span class="l-Scalar-Plain">100_example_com_virtualhost</span><span class="p-Indicator">:</span>
-<span class="lineno"> 7</span>       <span class="l-Scalar-Plain">file.managed</span><span class="p-Indicator">:</span>
-<span class="lineno"> 8</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">source</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">salt://files/apache_vhost</span>
-<span class="lineno"> 9</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">name</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">/etc/apache2/sites-available/100-example.com</span>
-<span class="lineno">10</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">user</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">root</span>
-<span class="lineno">11</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">group</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">root</span>
-<span class="lineno">12</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">mode</span><span class="p-Indicator">:</span> <span class="s">&quot;0664&quot;</span>
-<span class="lineno">13</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">template</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">jinja</span>
-<span class="lineno">14</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">defaults</span><span class="p-Indicator">:</span>
-<span class="lineno">15</span>             <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">docroot</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">/path/to/www</span>
-<span class="lineno">16</span>             <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">servername</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">example.com</span>
-<span class="lineno">17</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">require</span><span class="p-Indicator">:</span>
-<span class="lineno">18</span>             <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">pkg</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">apache-install</span></code></pre></div>
+<div>
+  <pre><code class='yaml'>apache-install:
+      pkg.installed:
+        - pkgs:
+          - apache2
+    
+    100_example_com_virtualhost:
+      file.managed:
+        - source: salt://files/apache_vhost
+        - name: /etc/apache2/sites-available/100-example.com
+        - user: root
+        - group: root
+        - mode: &quot;0664&quot;
+        - template: jinja
+        - defaults:
+            - docroot: /path/to/www
+            - servername: example.com
+        - require:
+            - pkg: apache-install</code></pre>
+</div>
 
 
 <p>This file should be put somewhere on your state tree, in this example I will make the function calls as if it were on the root of this tree (like the top.sls file). But there's also a <em>source</em> template for the managed file, which is called <code>salt://files/apache_vhost</code>, this file should be present under the salt master tree, in the directory <code>files</code> (or alter the used path). This is this very simple basic virtualhost example template content:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="lineno"> 1</span> <span class="c"># Main Virtualhost for {{ servername }}</span>
-<span class="lineno"> 2</span>     <span class="nt">&lt;VirtualHost</span> <span class="s">*:80</span><span class="nt">&gt;</span>
-<span class="lineno"> 3</span>         <span class="nb">ServerAdmin</span> foo@example.com
-<span class="lineno"> 4</span>     
-<span class="lineno"> 5</span>         <span class="nb">DocumentRoot</span> {{ docroot }}
-<span class="lineno"> 6</span>     
-<span class="lineno"> 7</span>         <span class="nb">ServerName</span> {{ servername }}
-<span class="lineno"> 8</span>     
-<span class="lineno"> 9</span>         <span class="nb">LogLevel</span> <span class="k">info</span>
-<span class="lineno">10</span>     
-<span class="lineno">11</span>       <span class="nt">&lt;Directory</span> <span class="s">/</span><span class="nt">&gt;</span>
-<span class="lineno">12</span>         <span class="nb">AllowOverride</span> <span class="k">None</span>
-<span class="lineno">13</span>         <span class="nb">Order</span> allow, deny
-<span class="lineno">14</span>         <span class="nb">deny</span> from <span class="k">all</span>
-<span class="lineno">15</span>       <span class="nt">&lt;/Directory&gt;</span>
-<span class="lineno">16</span>     
-<span class="lineno">17</span>       <span class="nt">&lt;Directory</span> <span class="s">{{ docroot }}</span><span class="nt">&gt;</span>
-<span class="lineno">18</span>         <span class="nb">Options</span> FollowSymLinks
-<span class="lineno">19</span>         <span class="nb">AllowOverride</span> <span class="k">None</span>
-<span class="lineno">20</span>         <span class="nb">Order</span> allow,deny
-<span class="lineno">21</span>         <span class="nb">Allow</span> from <span class="k">all</span>
-<span class="lineno">22</span>       <span class="nt">&lt;/Directory&gt;</span>
-<span class="lineno">23</span>     
-<span class="lineno">24</span>     <span class="nt">&lt;/VirtualHost&gt;</span></code></pre></div>
+<div>
+  <pre><code class='apache'># Main Virtualhost for {{ servername }}
+    &lt;VirtualHost *:80&gt;
+        ServerAdmin foo@example.com
+    
+        DocumentRoot {{ docroot }}
+    
+        ServerName {{ servername }}
+    
+        LogLevel info
+    
+      &lt;Directory /&gt;
+        AllowOverride None
+        Order allow, deny
+        deny from all
+      &lt;/Directory&gt;
+    
+      &lt;Directory {{ docroot }}&gt;
+        Options FollowSymLinks
+        AllowOverride None
+        Order allow,deny
+        Allow from all
+      &lt;/Directory&gt;
+    
+    &lt;/VirtualHost&gt;</code></pre>
+</div>
 
 
 <p>Let's test this simple state:</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="lineno">1</span> <span class="nv">$# </span>salt-call -linfo state.sls example_com_apache_virtualhost</code></pre></div>
+<div>
+  <pre><code class='bash'>$# salt-call -linfo state.sls example_com_apache_virtualhost</code></pre>
+</div>
 
 
 <p>You should en up with two states in success and a <code>/etc/apache2/sites-available/100-example.com</code> file created.
@@ -242,192 +258,206 @@ Now let's say we want other states, an infinite list of other states, to be able
 
 <p>Here comes the <strong>accumulator</strong> jinja variable. It's a dictionnary, with several keys. Each key of this dictionary is the result of <strong>one or more</strong> <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated"><code>file.accumulated</code></a> states. So you may have this variable (or not) and it may contain some keys with text data inside. Let's see how to use this on the jinja template (and at first, we known it's empty, we did not used any accumulated state yet).</p>
 
-<div class="highlight"><pre><code class="language-jinja" data-lang="jinja"><span class="lineno"> 1</span> <span class="x"># Main Virtualhost for </span><span class="cp">{{</span> <span class="nv">servername</span> <span class="cp">}}</span><span class="x"></span>
-<span class="lineno"> 2</span> <span class="x">    &lt;VirtualHost *:80&gt;</span>
-<span class="lineno"> 3</span> <span class="x">        ServerAdmin foo@example.com</span>
-<span class="lineno"> 4</span> <span class="x">    </span>
-<span class="lineno"> 5</span> <span class="x">        DocumentRoot </span><span class="cp">{{</span> <span class="nv">docroot</span> <span class="cp">}}</span><span class="x"></span>
-<span class="lineno"> 6</span> <span class="x">    </span>
-<span class="lineno"> 7</span> <span class="x">        ServerName </span><span class="cp">{{</span> <span class="nv">servername</span> <span class="cp">}}</span><span class="x"></span>
-<span class="lineno"> 8</span> <span class="x">    </span>
-<span class="lineno"> 9</span> <span class="x">        LogLevel info</span>
-<span class="lineno">10</span> <span class="x">    </span>
-<span class="lineno">11</span> <span class="x">      &lt;Directory /&gt;</span>
-<span class="lineno">12</span> <span class="x">        AllowOverride None</span>
-<span class="lineno">13</span> <span class="x">        Order allow, deny</span>
-<span class="lineno">14</span> <span class="x">        deny from all</span>
-<span class="lineno">15</span> <span class="x">      &lt;/Directory&gt;</span>
-<span class="lineno">16</span> <span class="x">    </span>
-<span class="lineno">17</span> <span class="x">      &lt;Directory </span><span class="cp">{{</span> <span class="nv">docroot</span> <span class="cp">}}</span><span class="x">&gt;</span>
-<span class="lineno">18</span> <span class="x">        Options FollowSymLinks</span>
-<span class="lineno">19</span> <span class="x">        AllowOverride None</span>
-<span class="lineno">20</span> <span class="x">        Order allow,deny</span>
-<span class="lineno">21</span> <span class="x">        Allow from all</span>
-<span class="lineno">22</span> 
-<span class="lineno">23</span> <span class="x">        # Here any extra configuration settings if any:</span>
-<span class="lineno">24</span> <span class="x">        </span><span class="cp">{%</span> <span class="k">if</span> <span class="nv">accumulator</span><span class="o">|</span><span class="nf">default</span><span class="o">(</span><span class="kp">False</span><span class="o">)</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">25</span> <span class="x">        </span><span class="cp">{%</span>   <span class="k">if</span> <span class="s1">&#39;extra-settings-example-virtualhost-maindir&#39;</span> <span class="k">in</span> <span class="nv">accumulator</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">26</span> <span class="x">        </span><span class="cp">{%</span>     <span class="k">for</span> <span class="nv">line</span> <span class="k">in</span> <span class="nv">accumulator</span><span class="o">[</span><span class="s1">&#39;extra-settings-example-virtualhost-maindir&#39;</span><span class="o">]</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">27</span> <span class="x">        </span><span class="cp">{{</span> <span class="nv">line</span> <span class="cp">}}</span><span class="x"></span>
-<span class="lineno">28</span> <span class="x">        </span><span class="cp">{%</span>     <span class="k">endfor</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">29</span> <span class="x">        </span><span class="cp">{%</span>   <span class="k">endif</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">30</span> <span class="x">        </span><span class="cp">{%</span> <span class="k">endif</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">31</span> 
-<span class="lineno">32</span> <span class="x">      &lt;/Directory&gt;</span>
-<span class="lineno">33</span> 
-<span class="lineno">34</span> <span class="x">    # Here any extra configuration settings if any:</span>
-<span class="lineno">35</span> <span class="x">    </span><span class="cp">{%</span> <span class="k">if</span> <span class="nv">accumulator</span><span class="o">|</span><span class="nf">default</span><span class="o">(</span><span class="kp">False</span><span class="o">)</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">36</span> <span class="x">    </span><span class="cp">{%</span>   <span class="k">if</span> <span class="s1">&#39;extra-settings-example-virtualhost&#39;</span> <span class="k">in</span> <span class="nv">accumulator</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">37</span> <span class="x">    </span><span class="cp">{%</span>     <span class="k">for</span> <span class="nv">line</span> <span class="k">in</span> <span class="nv">accumulator</span><span class="o">[</span><span class="s1">&#39;extra-settings-example-virtualhost&#39;</span><span class="o">]</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">38</span> <span class="x">    </span><span class="cp">{{</span> <span class="nv">line</span> <span class="cp">}}</span><span class="x"></span>
-<span class="lineno">39</span> <span class="x">    </span><span class="cp">{%</span>     <span class="k">endfor</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">40</span> <span class="x">    </span><span class="cp">{%</span>   <span class="k">endif</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">41</span> <span class="x">    </span><span class="cp">{%</span> <span class="k">endif</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">42</span> <span class="x">  </span>
-<span class="lineno">43</span> <span class="x">    &lt;/VirtualHost&gt;</span></code></pre></div>
+<div>
+  <pre><code class='jinja'># Main Virtualhost for {{ servername }}
+    &lt;VirtualHost *:80&gt;
+        ServerAdmin foo@example.com
+    
+        DocumentRoot {{ docroot }}
+    
+        ServerName {{ servername }}
+    
+        LogLevel info
+    
+      &lt;Directory /&gt;
+        AllowOverride None
+        Order allow, deny
+        deny from all
+      &lt;/Directory&gt;
+    
+      &lt;Directory {{ docroot }}&gt;
+        Options FollowSymLinks
+        AllowOverride None
+        Order allow,deny
+        Allow from all
+
+        # Here any extra configuration settings if any:
+        {% if accumulator|default(False) %}
+        {%   if 'extra-settings-example-virtualhost-maindir' in accumulator %}
+        {%     for line in accumulator['extra-settings-example-virtualhost-maindir'] %}
+        {{ line }}
+        {%     endfor %}
+        {%   endif %}
+        {% endif %}
+
+      &lt;/Directory&gt;
+
+    # Here any extra configuration settings if any:
+    {% if accumulator|default(False) %}
+    {%   if 'extra-settings-example-virtualhost' in accumulator %}
+    {%     for line in accumulator['extra-settings-example-virtualhost'] %}
+    {{ line }}
+    {%     endfor %}
+    {%   endif %}
+    {% endif %}
+  
+    &lt;/VirtualHost&gt;</code></pre>
+</div>
 
 
 <p>If you run the state nothing should move, except maybe the two comments lines. The thing we need to do now is to feed this accumulator variable with <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated"><code>file.accumulated</code></a> states. On theses states the <code>name</code> of the state will match the accumulator key.</p>
 
 <p>So, for this example, we will use a second sls file <code>more-things-for-virtualhost.sls</code> :</p>
 
-<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="lineno"> 1</span> <span class="p-Indicator">{</span><span class="c1"># Include dependencies #}</span>
-<span class="lineno"> 2</span>     <span class="nv">include</span><span class="p-Indicator">:</span>
-<span class="lineno"> 3</span>       <span class="nv">- example_com_apache_virtualhost</span>
-<span class="lineno"> 4</span>     
-<span class="lineno"> 5</span>     <span class="nv">example-a-first-rewrite-rule</span><span class="p-Indicator">:</span>
-<span class="lineno"> 6</span>       <span class="nv">file.accumulated</span><span class="p-Indicator">:</span>
-<span class="lineno"> 7</span>         <span class="nv">- name</span><span class="p-Indicator">:</span> <span class="nv">extra-settings-example-virtualhost-maindir</span>
-<span class="lineno"> 8</span>         <span class="nv">- filename</span><span class="p-Indicator">:</span> <span class="nv">/etc/apache2/sites-available/100-example.com</span>
-<span class="lineno"> 9</span>         <span class="nv">- text</span><span class="p-Indicator">:</span> <span class="err">|</span>
-<span class="lineno">10</span>             <span class="c1"># this is an example of thing added in the middle</span>
-<span class="lineno">11</span>             <span class="nv">RewriteEngine On</span>
-<span class="lineno">12</span>             <span class="nv">RewriteCond %</span><span class="p-Indicator">{</span><span class="nv">REQUEST_FILENAME</span><span class="p-Indicator">}</span>  <span class="nv">-d</span>
-<span class="lineno">13</span>             <span class="nv">RewriteRule ^(.+</span><span class="p-Indicator">[</span><span class="nv">^/</span><span class="p-Indicator">]</span><span class="nv">)$  $1/</span>  <span class="p-Indicator">[</span><span class="nv">R</span><span class="p-Indicator">]</span>
-<span class="lineno">14</span>         <span class="nv">- require_in</span><span class="p-Indicator">:</span>
-<span class="lineno">15</span>             <span class="nv">- file</span><span class="p-Indicator">:</span> <span class="nv">100_example_com_virtualhost</span>
-<span class="lineno">16</span>     
-<span class="lineno">17</span>     <span class="nv">example-some-icons-added</span><span class="p-Indicator">:</span>
-<span class="lineno">18</span>       <span class="nv">file.accumulated</span><span class="p-Indicator">:</span>
-<span class="lineno">19</span>         <span class="nv">- name</span><span class="p-Indicator">:</span> <span class="nv">extra-settings-example-virtualhost</span>
-<span class="lineno">20</span>         <span class="nv">- filename</span><span class="p-Indicator">:</span> <span class="nv">/etc/apache2/sites-available/100-example.com</span>
-<span class="lineno">21</span>         <span class="nv">- text</span><span class="p-Indicator">:</span> <span class="err">|</span>
-<span class="lineno">22</span>             <span class="c1"># this is an example of thing added at the end&#39;</span>
-<span class="lineno">23</span>             <span class="nv">Alias /icons /path/to/icons&gt;</span>
-<span class="lineno">24</span>             <span class="nv">&lt;Directory /path/to/icons</span>
-<span class="lineno">25</span>               <span class="nv">Order allow</span><span class="p-Indicator">,</span><span class="nv">deny</span>
-<span class="lineno">26</span>               <span class="nv">Allow from all</span>
-<span class="lineno">27</span>             <span class="nv">&lt;/Directory&gt;</span>
-<span class="lineno">28</span>         <span class="nv">- require_in</span><span class="p-Indicator">:</span>
-<span class="lineno">29</span>             <span class="nv">- file</span><span class="p-Indicator">:</span> <span class="nv">100_example_com_virtualhost</span>
-<span class="lineno">30</span>     
-<span class="lineno">31</span>     <span class="nv">example-another-thing</span><span class="p-Indicator">:</span>
-<span class="lineno">32</span>       <span class="nv">file.accumulated</span><span class="p-Indicator">:</span>
-<span class="lineno">33</span>         <span class="nv">- name</span><span class="p-Indicator">:</span> <span class="nv">extra-settings-example-virtualhost-maindir</span>
-<span class="lineno">34</span>         <span class="nv">- filename</span><span class="p-Indicator">:</span> <span class="nv">/etc/apache2/sites-available/100-example.com</span>
-<span class="lineno">35</span>         <span class="nv">- text</span><span class="p-Indicator">:</span> <span class="err">|</span>
-<span class="lineno">36</span>             <span class="c1"># this is another example of thing added in the middle</span>
-<span class="lineno">37</span>             <span class="nv">RewriteRule    ^/cgi-bin/imagemap(.*)  $1</span>  <span class="p-Indicator">[</span><span class="nv">PT</span><span class="p-Indicator">]</span>
-<span class="lineno">38</span>         <span class="nv">- require_in</span><span class="p-Indicator">:</span>
-<span class="lineno">39</span>             <span class="nv">- file</span><span class="p-Indicator">:</span> <span class="nv">100_example_com_virtualhost</span>
-<span class="lineno">40</span>         <span class="nv">- require</span><span class="p-Indicator">:</span>
-<span class="lineno">41</span>             <span class="nv">- file</span><span class="p-Indicator">:</span> <span class="nv">example-a-first-rewrite-rule</span>
-<span class="lineno">42</span>     
-<span class="lineno">43</span>     <span class="nv">example-another-thing-again</span><span class="p-Indicator">:</span>
-<span class="lineno">44</span>       <span class="nv">file.accumulated</span><span class="p-Indicator">:</span>
-<span class="lineno">45</span>         <span class="nv">- name</span><span class="p-Indicator">:</span> <span class="nv">extra-settings-example-virtualhost-maindir</span>
-<span class="lineno">46</span>         <span class="nv">- filename</span><span class="p-Indicator">:</span> <span class="nv">/etc/apache2/sites-available/100-example.com</span>
-<span class="lineno">47</span>         <span class="nv">- text</span><span class="p-Indicator">:</span> <span class="err">|</span>
-<span class="lineno">48</span>             <span class="c1"># this is another example of thing added in the middle</span>
-<span class="lineno">49</span>             <span class="nv">&lt;FilesMatch &quot;\.(gif|jpe</span><span class="p-Indicator">?</span><span class="nv">g|png)$&quot;&gt;</span>
-<span class="lineno">50</span>                 <span class="nv">ExpiresDefault A2592000</span>
-<span class="lineno">51</span>             <span class="nv">&lt;/FilesMatch&gt;</span>
-<span class="lineno">52</span>         <span class="nv">- require_in</span><span class="p-Indicator">:</span>
-<span class="lineno">53</span>             <span class="nv">- file</span><span class="p-Indicator">:</span> <span class="nv">100_example_com_virtualhost</span></code></pre></div>
+<div>
+  <pre><code class='yaml'>{# Include dependencies #}
+    include:
+      - example_com_apache_virtualhost
+    
+    example-a-first-rewrite-rule:
+      file.accumulated:
+        - name: extra-settings-example-virtualhost-maindir
+        - filename: /etc/apache2/sites-available/100-example.com
+        - text: |
+            # this is an example of thing added in the middle
+            RewriteEngine On
+            RewriteCond %{REQUEST_FILENAME}  -d
+            RewriteRule ^(.+[^/])$  $1/  [R]
+        - require_in:
+            - file: 100_example_com_virtualhost
+    
+    example-some-icons-added:
+      file.accumulated:
+        - name: extra-settings-example-virtualhost
+        - filename: /etc/apache2/sites-available/100-example.com
+        - text: |
+            # this is an example of thing added at the end'
+            Alias /icons /path/to/icons&gt;
+            &lt;Directory /path/to/icons
+              Order allow,deny
+              Allow from all
+            &lt;/Directory&gt;
+        - require_in:
+            - file: 100_example_com_virtualhost
+    
+    example-another-thing:
+      file.accumulated:
+        - name: extra-settings-example-virtualhost-maindir
+        - filename: /etc/apache2/sites-available/100-example.com
+        - text: |
+            # this is another example of thing added in the middle
+            RewriteRule    ^/cgi-bin/imagemap(.*)  $1  [PT]
+        - require_in:
+            - file: 100_example_com_virtualhost
+        - require:
+            - file: example-a-first-rewrite-rule
+    
+    example-another-thing-again:
+      file.accumulated:
+        - name: extra-settings-example-virtualhost-maindir
+        - filename: /etc/apache2/sites-available/100-example.com
+        - text: |
+            # this is another example of thing added in the middle
+            &lt;FilesMatch &quot;\.(gif|jpe?g|png)$&quot;&gt;
+                ExpiresDefault A2592000
+            &lt;/FilesMatch&gt;
+        - require_in:
+            - file: 100_example_com_virtualhost</code></pre>
+</div>
 
 
 <p>Now let's run this new sls:</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="lineno">1</span> <span class="nv">$# </span>salt-call -linfo state.sls more-things-for-virtualhost</code></pre></div>
+<div>
+  <pre><code class='bash'>$# salt-call -linfo state.sls more-things-for-virtualhost</code></pre>
+</div>
 
 
 <p>You should get a nice diff showing you that all theses states added content on the right place:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="lineno"> 1</span> <span class="err">+++</span> 
-<span class="lineno"> 2</span>     <span class="err">@@</span> <span class="err">-21,9</span> <span class="err">+21,41</span> <span class="err">@@</span>
-<span class="lineno"> 3</span>          <span class="nb">Allow</span> from <span class="k">all</span>
-<span class="lineno"> 4</span>          <span class="c"># Here any extra configuration settings if any:</span>
-<span class="lineno"> 5</span>          
-<span class="lineno"> 6</span>     <span class="err">+</span>    
-<span class="lineno"> 7</span>     <span class="err">+</span>    
-<span class="lineno"> 8</span>     <span class="err">+</span>    <span class="c"># this is an example of thing added in the middle</span>
-<span class="lineno"> 9</span>     <span class="err">+</span><span class="nb">RewriteEngine</span> <span class="k">On</span>
-<span class="lineno">10</span>     <span class="err">+</span><span class="nb">RewriteCond</span> %{REQUEST_FILENAME}  -d
-<span class="lineno">11</span>     <span class="err">+</span><span class="nb">RewriteRule</span> ^(.+[^/])$  $1/  [R]
-<span class="lineno">12</span>     <span class="err">+</span>
-<span class="lineno">13</span>     <span class="err">+</span>    
-<span class="lineno">14</span>     <span class="err">+</span>    <span class="c"># this is another example of thing added in the middle</span>
-<span class="lineno">15</span>     <span class="err">+</span><span class="nb">RewriteRule</span>    ^/cgi-bin/imagemap(.*)  $1  [PT]
-<span class="lineno">16</span>     <span class="err">+</span>
-<span class="lineno">17</span>     <span class="err">+</span>    
-<span class="lineno">18</span>     <span class="err">+</span>    <span class="c"># this is another example of thing added in the middle</span>
-<span class="lineno">19</span>     <span class="err">+</span><span class="nt">&lt;FilesMatch</span> <span class="s">&quot;\.(gif|jpe?g|png)$&quot;</span><span class="nt">&gt;</span>
-<span class="lineno">20</span>     <span class="err">+</span>    <span class="nb">ExpiresDefault</span> A2592000
-<span class="lineno">21</span>     <span class="err">+</span><span class="nt">&lt;/FilesMatch&gt;</span>
-<span class="lineno">22</span>     <span class="err">+</span>
-<span class="lineno">23</span>     <span class="err">+</span>    
-<span class="lineno">24</span>     <span class="err">+</span>    
-<span class="lineno">25</span>     <span class="err">+</span>    
-<span class="lineno">26</span>        <span class="nt">&lt;/Directory&gt;</span>
-<span class="lineno">27</span>      
-<span class="lineno">28</span>      <span class="c"># Here any extra configuration settings if any:</span>
-<span class="lineno">29</span>      
-<span class="lineno">30</span>      
-<span class="lineno">31</span>     <span class="err">+</span>
-<span class="lineno">32</span>     <span class="err">+</span><span class="c"># this is an example of thing added at the end&#39;</span>
-<span class="lineno">33</span>     <span class="err">+</span><span class="nb">Alias</span> <span class="sx">/icons</span> <span class="sx">/path/to/icons</span>&gt;
-<span class="lineno">34</span>     <span class="err">+&lt;</span><span class="nb">Directory</span> <span class="sx">/path/to/icons</span>
-<span class="lineno">35</span>     <span class="err">+</span>  <span class="nb">Order</span> allow,deny
-<span class="lineno">36</span>     <span class="err">+</span>  <span class="nb">Allow</span> from <span class="k">all</span>
-<span class="lineno">37</span>     <span class="err">+</span><span class="nt">&lt;/Directory&gt;</span>
-<span class="lineno">38</span>     <span class="err">+</span>
-<span class="lineno">39</span>     <span class="err">+</span>
-<span class="lineno">40</span>     <span class="err">+</span>
-<span class="lineno">41</span>     <span class="err">+</span>
-<span class="lineno">42</span>     <span class="err">+</span>
-<span class="lineno">43</span>      <span class="nt">&lt;/VirtualHost&gt;</span></code></pre></div>
+<div>
+  <pre><code class='apache'>+++ 
+    @@ -21,9 +21,41 @@
+         Allow from all
+         # Here any extra configuration settings if any:
+         
+    +    
+    +    
+    +    # this is an example of thing added in the middle
+    +RewriteEngine On
+    +RewriteCond %{REQUEST_FILENAME}  -d
+    +RewriteRule ^(.+[^/])$  $1/  [R]
+    +
+    +    
+    +    # this is another example of thing added in the middle
+    +RewriteRule    ^/cgi-bin/imagemap(.*)  $1  [PT]
+    +
+    +    
+    +    # this is another example of thing added in the middle
+    +&lt;FilesMatch &quot;\.(gif|jpe?g|png)$&quot;&gt;
+    +    ExpiresDefault A2592000
+    +&lt;/FilesMatch&gt;
+    +
+    +    
+    +    
+    +    
+       &lt;/Directory&gt;
+     
+     # Here any extra configuration settings if any:
+     
+     
+    +
+    +# this is an example of thing added at the end'
+    +Alias /icons /path/to/icons&gt;
+    +&lt;Directory /path/to/icons
+    +  Order allow,deny
+    +  Allow from all
+    +&lt;/Directory&gt;
+    +
+    +
+    +
+    +
+    +
+     &lt;/VirtualHost&gt;</code></pre>
+</div>
 
 
 <p>You can see that some extra spaces were added by my jinja control commands. We can strip down those whitespaces with jinja's<code>-</code>. Instead of:</p>
 
-<div class="highlight"><pre><code class="language-jinja" data-lang="jinja"><span class="lineno">1</span> <span class="cp">{%</span> <span class="k">if</span> <span class="nv">accumulator</span><span class="o">|</span><span class="nf">default</span><span class="o">(</span><span class="kp">False</span><span class="o">)</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">2</span> <span class="x">    </span><span class="cp">{%</span>   <span class="k">if</span> <span class="s1">&#39;extra-settings-example-virtualhost-maindir&#39;</span> <span class="k">in</span> <span class="nv">accumulator</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">3</span> <span class="x">    </span><span class="cp">{%</span>     <span class="k">for</span> <span class="nv">line</span> <span class="k">in</span> <span class="nv">accumulator</span><span class="o">[</span><span class="s1">&#39;extra-settings-example-virtualhost-maindir&#39;</span><span class="o">]</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">4</span> <span class="x">    </span><span class="cp">{{</span> <span class="nv">line</span> <span class="cp">}}</span><span class="x"></span>
-<span class="lineno">5</span> <span class="x">    </span><span class="cp">{%</span>     <span class="k">endfor</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">6</span> <span class="x">    </span><span class="cp">{%</span>   <span class="k">endif</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">7</span> <span class="x">    </span><span class="cp">{%</span> <span class="k">endif</span> <span class="cp">%}</span><span class="x"></span></code></pre></div>
+<div>
+  <pre><code class='jinja'>{% if accumulator|default(False) %}
+    {%   if 'extra-settings-example-virtualhost-maindir' in accumulator %}
+    {%     for line in accumulator['extra-settings-example-virtualhost-maindir'] %}
+    {{ line }}
+    {%     endfor %}
+    {%   endif %}
+    {% endif %}</code></pre>
+</div>
 
 
 <p>Use:</p>
 
-<div class="highlight"><pre><code class="language-jinja" data-lang="jinja"><span class="lineno">1</span> <span class="cp">{%</span> <span class="k">if</span> <span class="nv">accumulator</span><span class="o">|</span><span class="nf">default</span><span class="o">(</span><span class="kp">False</span><span class="o">)</span> -<span class="cp">%}</span><span class="x"></span>
-<span class="lineno">2</span> <span class="x">    </span><span class="cp">{%</span>   <span class="k">if</span> <span class="s1">&#39;extra-settings-example-virtualhost-maindir&#39;</span> <span class="k">in</span> <span class="nv">accumulator</span> -<span class="cp">%}</span><span class="x"></span>
-<span class="lineno">3</span> <span class="x">    </span><span class="cp">{%</span>     <span class="k">for</span> <span class="nv">line</span> <span class="k">in</span> <span class="nv">accumulator</span><span class="o">[</span><span class="s1">&#39;extra-settings-example-virtualhost-maindir&#39;</span><span class="o">]</span> -<span class="cp">%}</span><span class="x"></span>
-<span class="lineno">4</span> <span class="x">    </span><span class="cp">{{</span> <span class="nv">line</span> <span class="cp">}}</span><span class="x"></span>
-<span class="lineno">5</span> <span class="x">    </span><span class="cp">{%</span>-     <span class="k">endfor</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">6</span> <span class="x">    </span><span class="cp">{%</span>-   <span class="k">endif</span> <span class="cp">%}</span><span class="x"></span>
-<span class="lineno">7</span> <span class="x">    </span><span class="cp">{%</span>- <span class="k">endif</span> <span class="cp">%}</span><span class="x"></span></code></pre></div>
+<div>
+  <pre><code class='jinja'>{% if accumulator|default(False) -%}
+    {%   if 'extra-settings-example-virtualhost-maindir' in accumulator -%}
+    {%     for line in accumulator['extra-settings-example-virtualhost-maindir'] -%}
+    {{ line }}
+    {%-     endfor %}
+    {%-   endif %}
+    {%- endif %}</code></pre>
+</div>
 
 
 <p>And to get the right number of spaces on the resulting file use the indent filter:</p>
 
-<div class="highlight"><pre><code class="language-jinja" data-lang="jinja"><span class="lineno">1</span> <span class="cp">{{</span> <span class="nv">line</span><span class="o">|</span><span class="nf">indent</span><span class="o">(</span><span class="m">4</span><span class="o">)</span> <span class="cp">}}</span><span class="x"></span></code></pre></div>
+<div>
+  <pre><code class='jinja'>{{ line|indent(4) }}</code></pre>
+</div>
 
 
 <h2>file.blockreplace using file.accumulated</h2>
 
-<p>Now if you read the <a href="/saltstack/english/2014/01/20/saltstack_step_by_step_file_blockreplace/">previous post on <code>file.blockreplace</code></a> you may wonder how to use it with accumulators. It will differ a little from the <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed"><code>file.managed</code></a> usage of accumulators.</p>
+<p>Now if you read the <a href="Liquid%20error:%20undefined%20method%20`name'%20for%20#&lt;Jekyll::Post:0x00000002297668>">previous post on <code>file.blockreplace</code></a> you may wonder how to use it with accumulators. It will differ a little from the <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed"><code>file.managed</code></a> usage of accumulators.</p>
 
 <p>With <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed"><code>file.managed</code></a> you have this <em>accumulator</em> jinja variable and several keys inside. With <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace"><code>file.blockreplace</code></a> you have nothing to do.</p>
 
@@ -441,24 +471,26 @@ Now let's say we want other states, an infinite list of other states, to be able
 
 <p>So in this example we'll reuse the last example of managing entries in an <code>/etc/hosts</code> file. But we will manage two blocks of edition. So we have theses two states in an <code>hostsedit_acc.sls</code> file:</p>
 
-<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="lineno"> 1</span> <span class="l-Scalar-Plain">test-etc-hosts-blockreplace-services-local</span><span class="p-Indicator">:</span>
-<span class="lineno"> 2</span>       <span class="l-Scalar-Plain">file.blockreplace</span><span class="p-Indicator">:</span>
-<span class="lineno"> 3</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">name</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">/etc/hosts</span>
-<span class="lineno"> 4</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">marker_start</span><span class="p-Indicator">:</span> <span class="s">&quot;#</span><span class="nv"> </span><span class="s">BLOCK</span><span class="nv"> </span><span class="s">TOP</span><span class="nv"> </span><span class="s">:</span><span class="nv"> </span><span class="s">salt</span><span class="nv"> </span><span class="s">managed</span><span class="nv"> </span><span class="s">zone</span><span class="nv"> </span><span class="s">:</span><span class="nv"> </span><span class="s">local</span><span class="nv"> </span><span class="s">services</span><span class="nv"> </span><span class="s">:</span><span class="nv"> </span><span class="s">please</span><span class="nv"> </span><span class="s">do</span><span class="nv"> </span><span class="s">not</span><span class="nv"> </span><span class="s">edit&quot;</span>
-<span class="lineno"> 5</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">marker_end</span><span class="p-Indicator">:</span> <span class="s">&quot;#</span><span class="nv"> </span><span class="s">BLOCK</span><span class="nv"> </span><span class="s">BOTTOM</span><span class="nv"> </span><span class="s">:</span><span class="nv"> </span><span class="s">local</span><span class="nv"> </span><span class="s">:</span><span class="nv"> </span><span class="s">end</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">salt</span><span class="nv"> </span><span class="s">managed</span><span class="nv"> </span><span class="s">zone</span><span class="nv"> </span><span class="s">--&quot;</span>
-<span class="lineno"> 6</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">show_changes</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">True</span>
-<span class="lineno"> 7</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">append_if_not_found</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">True</span>
-<span class="lineno"> 8</span>     
-<span class="lineno"> 9</span> <span class="-Error">    </span><span class="l-Scalar-Plain">test-etc-hosts-blockreplace-services-central</span><span class="p-Indicator">:</span>
-<span class="lineno">10</span>       <span class="l-Scalar-Plain">file.blockreplace</span><span class="p-Indicator">:</span>
-<span class="lineno">11</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">name</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">/etc/hosts</span>
-<span class="lineno">12</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">marker_start</span><span class="p-Indicator">:</span> <span class="s">&quot;#</span><span class="nv"> </span><span class="s">BLOCK</span><span class="nv"> </span><span class="s">TOP</span><span class="nv"> </span><span class="s">:</span><span class="nv"> </span><span class="s">salt</span><span class="nv"> </span><span class="s">managed</span><span class="nv"> </span><span class="s">zone</span><span class="nv"> </span><span class="s">:</span><span class="nv"> </span><span class="s">central</span><span class="nv"> </span><span class="s">services</span><span class="nv"> </span><span class="s">:</span><span class="nv"> </span><span class="s">please</span><span class="nv"> </span><span class="s">do</span><span class="nv"> </span><span class="s">not</span><span class="nv"> </span><span class="s">edit&quot;</span>
-<span class="lineno">13</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">marker_end</span><span class="p-Indicator">:</span> <span class="s">&quot;#</span><span class="nv"> </span><span class="s">BLOCK</span><span class="nv"> </span><span class="s">BOTTOM</span><span class="nv"> </span><span class="s">:</span><span class="nv"> </span><span class="s">central</span><span class="nv"> </span><span class="s">:</span><span class="nv"> </span><span class="s">end</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">salt</span><span class="nv"> </span><span class="s">managed</span><span class="nv"> </span><span class="s">zone</span><span class="nv"> </span><span class="s">--&quot;</span>
-<span class="lineno">14</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">show_changes</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">True</span>
-<span class="lineno">15</span>         <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">append_if_not_found</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">True</span></code></pre></div>
+<div>
+  <pre><code class='yaml'>test-etc-hosts-blockreplace-services-local:
+      file.blockreplace:
+        - name: /etc/hosts
+        - marker_start: &quot;# BLOCK TOP : salt managed zone : local services : please do not edit&quot;
+        - marker_end: &quot;# BLOCK BOTTOM : local : end of salt managed zone --&quot;
+        - show_changes: True
+        - append_if_not_found: True
+    
+    test-etc-hosts-blockreplace-services-central:
+      file.blockreplace:
+        - name: /etc/hosts
+        - marker_start: &quot;# BLOCK TOP : salt managed zone : central services : please do not edit&quot;
+        - marker_end: &quot;# BLOCK BOTTOM : central : end of salt managed zone --&quot;
+        - show_changes: True
+        - append_if_not_found: True</code></pre>
+</div>
 
 
-<p>Same blocks as in the <a href="/saltstack/english/2014/01/20/saltstack_step_by_step_file_blockreplace/">previous guide</a> on blockreplace. But there I removed the content attribute (it <em>could</em> work with a content attribute adding more static stuff, but I do not need it).</p>
+<p>Same blocks as in the <a href="Liquid%20error:%20undefined%20method%20`name'%20for%20#&lt;Jekyll::Post:0x00000002297668>">previous guide</a> on blockreplace. But there I removed the content attribute (it <em>could</em> work with a content attribute adding more static stuff, but I do not need it).</p>
 
 <p>So now if I want to use <a href="http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated"><code>file.accumulated</code></a> to push some content in theses blocks I just need to do two things:</p>
 
@@ -472,66 +504,72 @@ Now let's say we want other states, an infinite list of other states, to be able
 
 <p>Let's try it in a second sls file: <code>hosts_data.sls</code>, but you could split that on more files if everything gets included at the end:</p>
 
-<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="lineno"> 1</span> <span class="p-Indicator">{</span><span class="c1"># Include dependencies #}</span>
-<span class="lineno"> 2</span>     <span class="nv">include</span><span class="p-Indicator">:</span>
-<span class="lineno"> 3</span>         <span class="nv">- hostsedit_acc</span>
-<span class="lineno"> 4</span>     
-<span class="lineno"> 5</span>     <span class="nv">hostadata1-external-google-dns</span><span class="p-Indicator">:</span>
-<span class="lineno"> 6</span>       <span class="nv">file.accumulated</span><span class="p-Indicator">:</span>
-<span class="lineno"> 7</span>         <span class="nv">- filename</span><span class="p-Indicator">:</span> <span class="nv">/etc/hosts</span>
-<span class="lineno"> 8</span>         <span class="nv">- text</span><span class="p-Indicator">:</span> <span class="err">|</span>
-<span class="lineno"> 9</span>             <span class="nv">8.8.8.8 ns1.google.com</span>
-<span class="lineno">10</span>             <span class="nv">8.8.8.4 ns2.google.com</span>
-<span class="lineno">11</span>         <span class="nv">- require_in</span><span class="p-Indicator">:</span>
-<span class="lineno">12</span>             <span class="nv">- file</span><span class="p-Indicator">:</span> <span class="nv">test-etc-hosts-blockreplace-services-central</span>
-<span class="lineno">13</span>     
-<span class="lineno">14</span>     <span class="nv">hostadata2-external-thing</span><span class="p-Indicator">:</span>
-<span class="lineno">15</span>       <span class="nv">file.accumulated</span><span class="p-Indicator">:</span>
-<span class="lineno">16</span>         <span class="nv">- filename</span><span class="p-Indicator">:</span> <span class="nv">/etc/hosts</span>
-<span class="lineno">17</span>         <span class="nv">- text</span><span class="p-Indicator">:</span> <span class="s">&quot;93.184.216.119</span><span class="nv"> </span><span class="s">:</span><span class="nv"> </span><span class="s">www.example.com&quot;</span>
-<span class="lineno">18</span>         <span class="nv">- require_in</span><span class="p-Indicator">:</span>
-<span class="lineno">19</span>             <span class="nv">- file</span><span class="p-Indicator">:</span> <span class="nv">test-etc-hosts-blockreplace-services-central</span>
-<span class="lineno">20</span>     
-<span class="lineno">21</span>     <span class="nv">hostdata3-internal-stuff1</span><span class="p-Indicator">:</span>
-<span class="lineno">22</span>       <span class="nv">file.accumulated</span><span class="p-Indicator">:</span>
-<span class="lineno">23</span>         <span class="nv">- filename</span><span class="p-Indicator">:</span> <span class="nv">/etc/hosts</span>
-<span class="lineno">24</span>         <span class="nv">- text</span><span class="p-Indicator">:</span> <span class="s">&quot;127.0.0.1</span><span class="nv"> </span><span class="s">foo</span><span class="nv"> </span><span class="s">bar</span><span class="nv"> </span><span class="s">foo.local.net</span><span class="nv"> </span><span class="s">bar.local.net&quot;</span>
-<span class="lineno">25</span>         <span class="nv">- require_in</span><span class="p-Indicator">:</span>
-<span class="lineno">26</span>             <span class="nv">- file</span><span class="p-Indicator">:</span> <span class="nv">test-etc-hosts-blockreplace-services-local</span>
-<span class="lineno">27</span>     
-<span class="lineno">28</span>     <span class="nv">hostdata4-internal-stuff2</span><span class="p-Indicator">:</span>
-<span class="lineno">29</span>       <span class="nv">file.accumulated</span><span class="p-Indicator">:</span>
-<span class="lineno">30</span>         <span class="nv">- filename</span><span class="p-Indicator">:</span> <span class="nv">/etc/hosts</span>
-<span class="lineno">31</span>         <span class="nv">- text</span><span class="p-Indicator">:</span> <span class="err">|</span>
-<span class="lineno">32</span>             <span class="nv">127.0.0.1 db.local.net</span>
-<span class="lineno">33</span>             <span class="nv">127.0.0.1 http.local.net</span>
-<span class="lineno">34</span>             <span class="nv">127.0.0.1 foobar</span>
-<span class="lineno">35</span>         <span class="nv">- require_in</span><span class="p-Indicator">:</span>
-<span class="lineno">36</span>             <span class="nv">- file</span><span class="p-Indicator">:</span> <span class="nv">test-etc-hosts-blockreplace-services-local</span></code></pre></div>
+<div>
+  <pre><code class='yaml'>{# Include dependencies #}
+    include:
+        - hostsedit_acc
+    
+    hostadata1-external-google-dns:
+      file.accumulated:
+        - filename: /etc/hosts
+        - text: |
+            8.8.8.8 ns1.google.com
+            8.8.8.4 ns2.google.com
+        - require_in:
+            - file: test-etc-hosts-blockreplace-services-central
+    
+    hostadata2-external-thing:
+      file.accumulated:
+        - filename: /etc/hosts
+        - text: &quot;93.184.216.119 : www.example.com&quot;
+        - require_in:
+            - file: test-etc-hosts-blockreplace-services-central
+    
+    hostdata3-internal-stuff1:
+      file.accumulated:
+        - filename: /etc/hosts
+        - text: &quot;127.0.0.1 foo bar foo.local.net bar.local.net&quot;
+        - require_in:
+            - file: test-etc-hosts-blockreplace-services-local
+    
+    hostdata4-internal-stuff2:
+      file.accumulated:
+        - filename: /etc/hosts
+        - text: |
+            127.0.0.1 db.local.net
+            127.0.0.1 http.local.net
+            127.0.0.1 foobar
+        - require_in:
+            - file: test-etc-hosts-blockreplace-services-local</code></pre>
+</div>
 
 
 <p>Note that I did not use the <code>name</code> attribute in theses states. Using name I could name the dictionary key, or we could say I would set the accumulator name. I could use names, but using the same accumulator name with the four states, strange things would happen, data from all theses accumulators would be merged in the same accumulator name. So, either avoid name attributes or use it with different names if the targeted blockedit is different. And test your recipes :-)</p>
 
 <p>Now run it with:</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="lineno">1</span> <span class="nv">$# </span>salt-call -linfo state.sls hosts_data</code></pre></div>
+<div>
+  <pre><code class='bash'>$# salt-call -linfo state.sls hosts_data</code></pre>
+</div>
 
 
 <p>You should get theses two managed blocks in <code>/etc/hosts</code>, filled from several states:</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="lineno"> 1</span> <span class="c"># BLOCK TOP : salt managed zone : local services : please do not edit</span>
-<span class="lineno"> 2</span>     127.0.0.1 foo bar foo.local.net bar.local.net
-<span class="lineno"> 3</span>     127.0.0.1 db.local.net
-<span class="lineno"> 4</span>     127.0.0.1 http.local.net
-<span class="lineno"> 5</span>     127.0.0.1 foobar
-<span class="lineno"> 6</span>     
-<span class="lineno"> 7</span>     <span class="c"># BLOCK BOTTOM : local : end of salt managed zone --</span>
-<span class="lineno"> 8</span>     <span class="c"># BLOCK TOP : salt managed zone : central services : please do not edit    </span>
-<span class="lineno"> 9</span>     93.184.216.119 : www.example.com
-<span class="lineno">10</span>     8.8.8.8 ns1.google.com
-<span class="lineno">11</span>     8.8.8.4 ns2.google.com
-<span class="lineno">12</span>     
-<span class="lineno">13</span>     <span class="c"># BLOCK BOTTOM : central : end of salt managed zone --</span></code></pre></div>
+<div>
+  <pre><code class='bash'># BLOCK TOP : salt managed zone : local services : please do not edit
+    127.0.0.1 foo bar foo.local.net bar.local.net
+    127.0.0.1 db.local.net
+    127.0.0.1 http.local.net
+    127.0.0.1 foobar
+    
+    # BLOCK BOTTOM : local : end of salt managed zone --
+    # BLOCK TOP : salt managed zone : central services : please do not edit    
+    93.184.216.119 : www.example.com
+    8.8.8.8 ns1.google.com
+    8.8.8.4 ns2.google.com
+    
+    # BLOCK BOTTOM : central : end of salt managed zone --</code></pre>
+</div>
 
 
 <h2>Last words</h2>
@@ -604,6 +642,10 @@ If you use accumulators you may need to subscribe on this <a href="https://githu
                 </div>
                 <div class="list-group" role="navigation">
                   
+                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     Checking HTTP Smuggling issues in 2015 - Part1
+                     </a>
+                  
                      <a class="list-group-item" href="/security/english/2015/03/25/nginx-integer_truncation/">
                      Nginx Integer Truncation
                      </a>
@@ -620,10 +662,6 @@ If you use accumulators you may need to subscribe on this <a href="https://githu
                      SaltStack, Use more than ascii7 on sls files with yaml_utf8 option
                      </a>
                   
-                     <a class="list-group-item" href="/saltstack/english/2014/01/28/saltstack_merge_dictionaries_of_settings_with_grains_filter_by/">
-                     SaltStack, Merge dictionaries of settings with grains.filter_by
-                     </a>
-                  
                 </div>
               </div>
             
@@ -633,39 +671,42 @@ If you use accumulators you may need to subscribe on this <a href="https://githu
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 31px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+                <a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
 <a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
 <a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
 <a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
 <a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 29px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
 <a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
 
                 </div>
               </div>
