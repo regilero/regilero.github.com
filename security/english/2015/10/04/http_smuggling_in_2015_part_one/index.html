@@ -102,12 +102,12 @@
 issues and why I think this sort of security issues are critically important and
 could be used in massive attacks against modern web services.</p>
 
-<p>In the last 6 months I've been studying the state of several open source HTTP
+<p>In the last 6 months I've been struggling with the state of several open source HTTP
 servers, and helped fixing several issues. The main problem encountered was,
 usually, to explain the problem.</p>
 
-<p>A first big study on smuggling was done in 2005 and lead to several corrections,
- this was a study by <strong>Chaim Linhart</strong>, <strong>Amit Klein</strong>, <strong>Ronen Heled</strong> and <strong>Steve Orrin</strong>,
+<p>A first big study on smuggling was done in 2005 and lead to several corrections.
+This was was done by <strong>Chaim Linhart</strong>, <strong>Amit Klein</strong>, <strong>Ronen Heled</strong> and <strong>Steve Orrin</strong>,
 published by Watchfire and <a href="http://www.cgisecurity.com/lib/HTTP-Request-Smuggling.pdf" title="HTTP Request Smuggling - watchfire (pdf)">still worth a read ten years after</a>.
 Today even the HTTP/1.1 RFC 7230 contains <a href="https://tools.ietf.org/html/rfc7230#section-3.3.3" title="3.3.3. Message Body Length">protections</a>
 and <a href="https://tools.ietf.org/html/rfc7230#section-9.5" title="9.5. Request Smuggling">warnings</a> against Request Smuggling, but
@@ -123,7 +123,7 @@ nothing <strong>new</strong>, just another way of explaining the problems. I hop
 at least help refreshing memories on the problems.</p>
 
 <p>If you use HTTP servers, and especially if you use several HTTP agents (Reverse
-Proxy, SSL Terminator, Load balancers, etc), you should be interested by this.
+Proxies, SSL Terminators, Load balancers, etc.), you should be interested by this.
 If you build an HTTP agent you should master it, best thing would be knowing all
 this better than me, if you spot any error, do not hesitate to comment or
 <a href="mailto:regis.leroy@makina-corpus.com">contact me</a>.</p>
@@ -163,12 +163,12 @@ newlines injections in PHP redirections or in Digest authentication username,
 but this was a long time ago).</p>
 
 <p>Here I will mostly talk about <em>regular</em> HTTP Smuggling, flaws coming from HTTP
-syntax mistakes, protocol approximations.</p>
+syntax mistakes and protocol approximations.</p>
 
 <h3>Why?</h3>
 
-<p>We'll study in details the 3 main types of attacks below. But if you can hide
-HTTP in HTTP you can perform various forms of attacks, going from bypassing
+<p>We'll study in details the 3 main kinds of attacks below. But if you can hide
+HTTP in HTTP you can perform various forms of attack, going from bypassing
 security checks to hijacking user sessions or defacing content in caches.</p>
 
 <p>This is the story of several HTTP queries. Let's say we have at least 3
@@ -268,7 +268,7 @@ GET /walter.html\r\n
 This will get important later.</p>
 
 <p>Then comes HTTP/1.0, with one important thing added, the <strong>headers</strong>. You <em>can</em>
-add headers in the request, and the response will always contains headers.</p>
+add them in the request, and the response will always contains headers.</p>
 
 <p>The first query became:</p>
 
@@ -351,7 +351,7 @@ connection opening.</p>
 
 <p>This keep-alive mode in the protocol is what things like Comet are trying to
 exploit to maintain pseudo-infinite-time push/pull connections over HTTP. But
-even without this advanced mode the keep-alive is used a lot in HTTP
+even without this advanced mode, keep-alive is used a lot in HTTP
 environments, especially between the end-user and the first part of the
 middleware. Usage of keep-alive between HTTP servers and proxies (in the
 middleware or between the middleware and the backend) is less common.</p>
@@ -410,10 +410,10 @@ or an SSL terminator) and the end server is usually not using pipelining
 <p>Sometimes the connection between the middleware and the end server is even not
 using Keep Alive connections. Some other times it's reusing a pool of tcp keep
 alive connections. But the first protection against HTTP smuggling applied here
-is breaking your pipeline of request in several requests, and waiting for the
+is breaking your pipeline of requests in several requests, waiting for the
 end of a first request before handling the next one.</p>
 
-<p>Finally, the server is <strong>never</strong> expected to respond to all requests in a
+<p>Eventually, the server is <strong>never</strong> expected to respond to all requests in a
 pipeline. You can get the first response with a <code>Connection: close</code> header,
 cutting the Keep Alive connection right after the response.</p>
 
@@ -431,7 +431,7 @@ cutting the Keep Alive connection right after the response.</p>
 <p>And this is the second big protection against smuggling. As soon as the
 middleware detects a bad Suzann query, it should send a <strong>400 bad request</strong>
  response <strong>and</strong> close the connection (but if you really search you'll find
-examples of proxy which does not close the keep alive after an error).</p>
+examples of proxies which does not close the keep alive after an error).</p>
 
 <h3>Chunks</h3>
 
@@ -472,18 +472,18 @@ e\r\n
 <p>I said it several times. But, yes, size matters. To inject HTTP in HTTP the
 key is usually to trick the HTTP agent reader about the size of your message.</p>
 
-<p>HTTP queries and response are mostly a list of strings separated by end of lines.
+<p>HTTP queries and responses are mostly a list of strings separated by end of lines.
 And we saw with pipelines that you could send several queries, one after another.</p>
 
-<p>The HTTP agent reading the query or parsing the responses MUST know where this
-list of strings ends, so that what comes after is another query (or response if
-it's a backend stream).</p>
+<p>The HTTP agent reading the queries or parsing the responses MUST know where this
+list of strings ends. this way, the agent can check if what's coming after is
+another query (or response if it's a backend stream).</p>
 
 <p>The tools used by the HTTP reader is either the <strong>chunks mecanism</strong> or the
 <strong>Content-Length</strong> header.</p>
 
 <p>And if something goes wrong <strong>here</strong> you can start hiding some queries or
-responses. One of the actor will parse the stream and will not understand the
+responses. One of the composants will parse the stream and will not understand the
 incoming characters as new requests but as the previous request body, or will not
 understand the stream as the first request response but as a new one.</p>
 
@@ -593,7 +593,7 @@ early).</p>
 <p>Here the biggest issue is at <code>[*2*]</code>, the middleware receive a Walter response
 which is assigned to ivan request (request #2).</p>
 
-<p>Suzann has performed some sort of Jedi trick on the empire dock's guards and
+<p>Suzann has performed some kind of Jedi trick on the empire dock's guards and
 they feed the next ship requesting something from the docks with one or more
 wookies instead of the regular cargo.</p>
 
@@ -656,7 +656,7 @@ response is already received.</p>
 
 <p>This was a complexe scheme, but for example the Ivan request could contain a
 valid session that Walter did not have (<strong>cookies</strong>, <strong>HTTP Authentication</strong>).
-And this valid session was needed for Walter query success.
+Also this valid session was needed for Walter query to succeed.
 Credentials used in Ivan query are stolen (<strong>hijacked</strong>) for a <code>Walter</code> query.</p>
 
 <p>Damages of such issues are very high (you can make user perform unwanted POST
@@ -756,7 +756,7 @@ need a transmitter</strong> but you need this actor to be a <strong>target</stro
 
 <h3>Encapsulating and Fingerprinting</h3>
 
-<p>On a real life attack the attacker may need to navigate through several
+<p>In real life, the attacker may need to navigate through several
 transmitters. Like hiting an HAProxy first, then an Apache mod_proxy, then a
 Varnish and finally an Nginx (yes, that happens).</p>
 
@@ -779,10 +779,10 @@ precise level.</p>
 <p><strong>Encapsulation</strong>, is the ability to hide your HTTP query in several layers of
 HTTP smuggling issues. Usually the first layers are applying some strict rules
 on the HTTP headers or location, but if you find a transmitter issue in the layer
-you can carry in the request Body another type of smuggling issue (one that
+you can carry in the request body another type of smuggling issue (one that
 would be detected if used directly on this layer). The encapsulation is
 available because usually the Proxy will not filter the request body (and
-against a filter trying to decode the request body you would use several layers
+against a filter trying to decode the request body, you could use several layers
 of Content-Transfer encoding).</p>
 
 <p>In this example Middleware1 is a transmitter to a first type of smuggling noted
@@ -861,7 +861,7 @@ already altered parameters on the queries with tools like Live HTTP Headers (and
 because you will need to make very bad queries, and browsers never does bad
 queries. Well, in the past they was an issue end-of-line injections on Digest
  Authentication names or with bad separators on Ajax queries. But finding a flaw
-in a browser that allow HTTP smuggling requests coming from <em>regular</em> browsers
+in a browser that allows HTTP smuggling requests coming from <em>regular</em> browsers
 is an exception. Smuggling does not usually imply that Suzann is an innocent
 smuggler using a regular browser.</p>
 
@@ -966,12 +966,12 @@ thresholds alter the behaviors, etc.</p>
 the code (when available). Learn the protocol and check implementations, that's
 the reason of open source code, open source needs critical eyes studying the
 code. That's the reason of superior robustness for open source code, but you
-will certainly discovers that a lot of code seems still unchecked.</p>
+will certainly discover that a lot of code still need to be fixed.</p>
 
 <h2>First final words</h2>
 
 <p>I'll end this article here, next things to come soon, with real world issues.
-But while waiting for new contents you can already try to read some documents
+But while waiting for new contents you can already try to read some posts
 and test your tools.</p>
 
 <p>If you are using HTTP (and who isn't?), and usually use reverse proxies, SSL
@@ -982,7 +982,7 @@ versions in production.</p>
 
 <p>But I know this can be a hard task. So my second advice is to add an HTTP
 cleaner in front of your infrastructure. Something like <a href="http://www.haproxy.org" title="HAProxy">HAProxy</a>. This
-tool is a very strong protection against smugglers (but take recent versions, of
+tool is very strong to protect against smugglers (but take recent versions, of
  course). Simply reading the <a href="http://www.haproxy.org/download/1.6/doc/configuration.txt" title="HAProxy configuration">configuration documentation</a> of this
 product you can find an excellent introduction to the HTTP protocol, with common
 pitfalls documented.</p>
@@ -1089,42 +1089,42 @@ pitfalls documented.</p>
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 29px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+                <a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
 <a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
 <a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 29px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
 
                 </div>
               </div>

@@ -13,12 +13,12 @@
 issues and why I think this sort of security issues are critically important and
 could be used in massive attacks against modern web services.&lt;/p&gt;
 
-&lt;p&gt;In the last 6 months I've been studying the state of several open source HTTP
+&lt;p&gt;In the last 6 months I've been struggling with the state of several open source HTTP
 servers, and helped fixing several issues. The main problem encountered was,
 usually, to explain the problem.&lt;/p&gt;
 
-&lt;p&gt;A first big study on smuggling was done in 2005 and lead to several corrections,
- this was a study by &lt;strong&gt;Chaim Linhart&lt;/strong&gt;, &lt;strong&gt;Amit Klein&lt;/strong&gt;, &lt;strong&gt;Ronen Heled&lt;/strong&gt; and &lt;strong&gt;Steve Orrin&lt;/strong&gt;,
+&lt;p&gt;A first big study on smuggling was done in 2005 and lead to several corrections.
+This was was done by &lt;strong&gt;Chaim Linhart&lt;/strong&gt;, &lt;strong&gt;Amit Klein&lt;/strong&gt;, &lt;strong&gt;Ronen Heled&lt;/strong&gt; and &lt;strong&gt;Steve Orrin&lt;/strong&gt;,
 published by Watchfire and &lt;a href=&quot;http://www.cgisecurity.com/lib/HTTP-Request-Smuggling.pdf&quot; title=&quot;HTTP Request Smuggling - watchfire (pdf)&quot;&gt;still worth a read ten years after&lt;/a&gt;.
 Today even the HTTP/1.1 RFC 7230 contains &lt;a href=&quot;https://tools.ietf.org/html/rfc7230#section-3.3.3&quot; title=&quot;3.3.3. Message Body Length&quot;&gt;protections&lt;/a&gt;
 and &lt;a href=&quot;https://tools.ietf.org/html/rfc7230#section-9.5&quot; title=&quot;9.5. Request Smuggling&quot;&gt;warnings&lt;/a&gt; against Request Smuggling, but
@@ -34,7 +34,7 @@ nothing &lt;strong&gt;new&lt;/strong&gt;, just another way of explaining the pro
 at least help refreshing memories on the problems.&lt;/p&gt;
 
 &lt;p&gt;If you use HTTP servers, and especially if you use several HTTP agents (Reverse
-Proxy, SSL Terminator, Load balancers, etc), you should be interested by this.
+Proxies, SSL Terminators, Load balancers, etc.), you should be interested by this.
 If you build an HTTP agent you should master it, best thing would be knowing all
 this better than me, if you spot any error, do not hesitate to comment or
 &lt;a href=&quot;mailto:regis.leroy@makina-corpus.com&quot;&gt;contact me&lt;/a&gt;.&lt;/p&gt;
@@ -74,12 +74,12 @@ newlines injections in PHP redirections or in Digest authentication username,
 but this was a long time ago).&lt;/p&gt;
 
 &lt;p&gt;Here I will mostly talk about &lt;em&gt;regular&lt;/em&gt; HTTP Smuggling, flaws coming from HTTP
-syntax mistakes, protocol approximations.&lt;/p&gt;
+syntax mistakes and protocol approximations.&lt;/p&gt;
 
 &lt;h3&gt;Why?&lt;/h3&gt;
 
-&lt;p&gt;We'll study in details the 3 main types of attacks below. But if you can hide
-HTTP in HTTP you can perform various forms of attacks, going from bypassing
+&lt;p&gt;We'll study in details the 3 main kinds of attacks below. But if you can hide
+HTTP in HTTP you can perform various forms of attack, going from bypassing
 security checks to hijacking user sessions or defacing content in caches.&lt;/p&gt;
 
 &lt;p&gt;This is the story of several HTTP queries. Let's say we have at least 3
@@ -179,7 +179,7 @@ GET /walter.html\r\n
 This will get important later.&lt;/p&gt;
 
 &lt;p&gt;Then comes HTTP/1.0, with one important thing added, the &lt;strong&gt;headers&lt;/strong&gt;. You &lt;em&gt;can&lt;/em&gt;
-add headers in the request, and the response will always contains headers.&lt;/p&gt;
+add them in the request, and the response will always contains headers.&lt;/p&gt;
 
 &lt;p&gt;The first query became:&lt;/p&gt;
 
@@ -262,7 +262,7 @@ connection opening.&lt;/p&gt;
 
 &lt;p&gt;This keep-alive mode in the protocol is what things like Comet are trying to
 exploit to maintain pseudo-infinite-time push/pull connections over HTTP. But
-even without this advanced mode the keep-alive is used a lot in HTTP
+even without this advanced mode, keep-alive is used a lot in HTTP
 environments, especially between the end-user and the first part of the
 middleware. Usage of keep-alive between HTTP servers and proxies (in the
 middleware or between the middleware and the backend) is less common.&lt;/p&gt;
@@ -321,10 +321,10 @@ or an SSL terminator) and the end server is usually not using pipelining
 &lt;p&gt;Sometimes the connection between the middleware and the end server is even not
 using Keep Alive connections. Some other times it's reusing a pool of tcp keep
 alive connections. But the first protection against HTTP smuggling applied here
-is breaking your pipeline of request in several requests, and waiting for the
+is breaking your pipeline of requests in several requests, waiting for the
 end of a first request before handling the next one.&lt;/p&gt;
 
-&lt;p&gt;Finally, the server is &lt;strong&gt;never&lt;/strong&gt; expected to respond to all requests in a
+&lt;p&gt;Eventually, the server is &lt;strong&gt;never&lt;/strong&gt; expected to respond to all requests in a
 pipeline. You can get the first response with a &lt;code&gt;Connection: close&lt;/code&gt; header,
 cutting the Keep Alive connection right after the response.&lt;/p&gt;
 
@@ -342,7 +342,7 @@ cutting the Keep Alive connection right after the response.&lt;/p&gt;
 &lt;p&gt;And this is the second big protection against smuggling. As soon as the
 middleware detects a bad Suzann query, it should send a &lt;strong&gt;400 bad request&lt;/strong&gt;
  response &lt;strong&gt;and&lt;/strong&gt; close the connection (but if you really search you'll find
-examples of proxy which does not close the keep alive after an error).&lt;/p&gt;
+examples of proxies which does not close the keep alive after an error).&lt;/p&gt;
 
 &lt;h3&gt;Chunks&lt;/h3&gt;
 
@@ -383,18 +383,18 @@ e\r\n
 &lt;p&gt;I said it several times. But, yes, size matters. To inject HTTP in HTTP the
 key is usually to trick the HTTP agent reader about the size of your message.&lt;/p&gt;
 
-&lt;p&gt;HTTP queries and response are mostly a list of strings separated by end of lines.
+&lt;p&gt;HTTP queries and responses are mostly a list of strings separated by end of lines.
 And we saw with pipelines that you could send several queries, one after another.&lt;/p&gt;
 
-&lt;p&gt;The HTTP agent reading the query or parsing the responses MUST know where this
-list of strings ends, so that what comes after is another query (or response if
-it's a backend stream).&lt;/p&gt;
+&lt;p&gt;The HTTP agent reading the queries or parsing the responses MUST know where this
+list of strings ends. this way, the agent can check if what's coming after is
+another query (or response if it's a backend stream).&lt;/p&gt;
 
 &lt;p&gt;The tools used by the HTTP reader is either the &lt;strong&gt;chunks mecanism&lt;/strong&gt; or the
 &lt;strong&gt;Content-Length&lt;/strong&gt; header.&lt;/p&gt;
 
 &lt;p&gt;And if something goes wrong &lt;strong&gt;here&lt;/strong&gt; you can start hiding some queries or
-responses. One of the actor will parse the stream and will not understand the
+responses. One of the composants will parse the stream and will not understand the
 incoming characters as new requests but as the previous request body, or will not
 understand the stream as the first request response but as a new one.&lt;/p&gt;
 
@@ -504,7 +504,7 @@ early).&lt;/p&gt;
 &lt;p&gt;Here the biggest issue is at &lt;code&gt;[*2*]&lt;/code&gt;, the middleware receive a Walter response
 which is assigned to ivan request (request #2).&lt;/p&gt;
 
-&lt;p&gt;Suzann has performed some sort of Jedi trick on the empire dock's guards and
+&lt;p&gt;Suzann has performed some kind of Jedi trick on the empire dock's guards and
 they feed the next ship requesting something from the docks with one or more
 wookies instead of the regular cargo.&lt;/p&gt;
 
@@ -567,7 +567,7 @@ response is already received.&lt;/p&gt;
 
 &lt;p&gt;This was a complexe scheme, but for example the Ivan request could contain a
 valid session that Walter did not have (&lt;strong&gt;cookies&lt;/strong&gt;, &lt;strong&gt;HTTP Authentication&lt;/strong&gt;).
-And this valid session was needed for Walter query success.
+Also this valid session was needed for Walter query to succeed.
 Credentials used in Ivan query are stolen (&lt;strong&gt;hijacked&lt;/strong&gt;) for a &lt;code&gt;Walter&lt;/code&gt; query.&lt;/p&gt;
 
 &lt;p&gt;Damages of such issues are very high (you can make user perform unwanted POST
@@ -667,7 +667,7 @@ need a transmitter&lt;/strong&gt; but you need this actor to be a &lt;strong&gt;
 
 &lt;h3&gt;Encapsulating and Fingerprinting&lt;/h3&gt;
 
-&lt;p&gt;On a real life attack the attacker may need to navigate through several
+&lt;p&gt;In real life, the attacker may need to navigate through several
 transmitters. Like hiting an HAProxy first, then an Apache mod_proxy, then a
 Varnish and finally an Nginx (yes, that happens).&lt;/p&gt;
 
@@ -690,10 +690,10 @@ precise level.&lt;/p&gt;
 &lt;p&gt;&lt;strong&gt;Encapsulation&lt;/strong&gt;, is the ability to hide your HTTP query in several layers of
 HTTP smuggling issues. Usually the first layers are applying some strict rules
 on the HTTP headers or location, but if you find a transmitter issue in the layer
-you can carry in the request Body another type of smuggling issue (one that
+you can carry in the request body another type of smuggling issue (one that
 would be detected if used directly on this layer). The encapsulation is
 available because usually the Proxy will not filter the request body (and
-against a filter trying to decode the request body you would use several layers
+against a filter trying to decode the request body, you could use several layers
 of Content-Transfer encoding).&lt;/p&gt;
 
 &lt;p&gt;In this example Middleware1 is a transmitter to a first type of smuggling noted
@@ -772,7 +772,7 @@ already altered parameters on the queries with tools like Live HTTP Headers (and
 because you will need to make very bad queries, and browsers never does bad
 queries. Well, in the past they was an issue end-of-line injections on Digest
  Authentication names or with bad separators on Ajax queries. But finding a flaw
-in a browser that allow HTTP smuggling requests coming from &lt;em&gt;regular&lt;/em&gt; browsers
+in a browser that allows HTTP smuggling requests coming from &lt;em&gt;regular&lt;/em&gt; browsers
 is an exception. Smuggling does not usually imply that Suzann is an innocent
 smuggler using a regular browser.&lt;/p&gt;
 
@@ -877,12 +877,12 @@ thresholds alter the behaviors, etc.&lt;/p&gt;
 the code (when available). Learn the protocol and check implementations, that's
 the reason of open source code, open source needs critical eyes studying the
 code. That's the reason of superior robustness for open source code, but you
-will certainly discovers that a lot of code seems still unchecked.&lt;/p&gt;
+will certainly discover that a lot of code still need to be fixed.&lt;/p&gt;
 
 &lt;h2&gt;First final words&lt;/h2&gt;
 
 &lt;p&gt;I'll end this article here, next things to come soon, with real world issues.
-But while waiting for new contents you can already try to read some documents
+But while waiting for new contents you can already try to read some posts
 and test your tools.&lt;/p&gt;
 
 &lt;p&gt;If you are using HTTP (and who isn't?), and usually use reverse proxies, SSL
@@ -893,7 +893,7 @@ versions in production.&lt;/p&gt;
 
 &lt;p&gt;But I know this can be a hard task. So my second advice is to add an HTTP
 cleaner in front of your infrastructure. Something like &lt;a href=&quot;http://www.haproxy.org&quot; title=&quot;HAProxy&quot;&gt;HAProxy&lt;/a&gt;. This
-tool is a very strong protection against smugglers (but take recent versions, of
+tool is very strong to protect against smugglers (but take recent versions, of
  course). Simply reading the &lt;a href=&quot;http://www.haproxy.org/download/1.6/doc/configuration.txt&quot; title=&quot;HAProxy configuration&quot;&gt;configuration documentation&lt;/a&gt; of this
 product you can find an excellent introduction to the HTTP protocol, with common
 pitfalls documented.&lt;/p&gt;
@@ -1922,7 +1922,7 @@ apache:
 		
 			<item>
 				<title>SaltStack, Use file.accumulated accumulators with file.managed and file.blockreplace</title>
-				<description>&lt;p&gt;&lt;a href=&quot;Liquid%20error:%20undefined%20method%20`name'%20for%20#&amp;lt;Jekyll::Post:0x00000002297668&gt;&quot;&gt;On the last salt-stack post&lt;/a&gt; we saw a first step by step usage of &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;&lt;code&gt;file.blockreplace&lt;/code&gt;&lt;/a&gt;. On this post we'll study usage of state accumulators with &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt;. Accumulators are used to collect data on several states and let you use this data on other file states (Actually only the blockreplace and managed states).&lt;/p&gt;
+				<description>&lt;p&gt;&lt;a href=&quot;Liquid%20error:%20undefined%20method%20`name'%20for%20#&amp;lt;Jekyll::Post:0x000000010c7b40&gt;&quot;&gt;On the last salt-stack post&lt;/a&gt; we saw a first step by step usage of &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;&lt;code&gt;file.blockreplace&lt;/code&gt;&lt;/a&gt;. On this post we'll study usage of state accumulators with &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt;. Accumulators are used to collect data on several states and let you use this data on other file states (Actually only the blockreplace and managed states).&lt;/p&gt;
 
 &lt;p&gt;You can find the examples used on this post on &lt;a href=&quot;https://github.com/regilero/regilero-blog-examples/tree/master/accumulated-blockreplace&quot;&gt;this github repository&lt;/a&gt;.&lt;/p&gt;
 
@@ -2283,7 +2283,7 @@ Now let's say we want other states, an infinite list of other states, to be able
 
 &lt;h2&gt;file.blockreplace using file.accumulated&lt;/h2&gt;
 
-&lt;p&gt;Now if you read the &lt;a href=&quot;Liquid%20error:%20undefined%20method%20`name'%20for%20#&amp;lt;Jekyll::Post:0x00000002297668&gt;&quot;&gt;previous post on &lt;code&gt;file.blockreplace&lt;/code&gt;&lt;/a&gt; you may wonder how to use it with accumulators. It will differ a little from the &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed&quot;&gt;&lt;code&gt;file.managed&lt;/code&gt;&lt;/a&gt; usage of accumulators.&lt;/p&gt;
+&lt;p&gt;Now if you read the &lt;a href=&quot;Liquid%20error:%20undefined%20method%20`name'%20for%20#&amp;lt;Jekyll::Post:0x000000010c7b40&gt;&quot;&gt;previous post on &lt;code&gt;file.blockreplace&lt;/code&gt;&lt;/a&gt; you may wonder how to use it with accumulators. It will differ a little from the &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed&quot;&gt;&lt;code&gt;file.managed&lt;/code&gt;&lt;/a&gt; usage of accumulators.&lt;/p&gt;
 
 &lt;p&gt;With &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed&quot;&gt;&lt;code&gt;file.managed&lt;/code&gt;&lt;/a&gt; you have this &lt;em&gt;accumulator&lt;/em&gt; jinja variable and several keys inside. With &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;&lt;code&gt;file.blockreplace&lt;/code&gt;&lt;/a&gt; you have nothing to do.&lt;/p&gt;
 
@@ -2316,7 +2316,7 @@ Now let's say we want other states, an infinite list of other states, to be able
 &lt;/div&gt;
 
 
-&lt;p&gt;Same blocks as in the &lt;a href=&quot;Liquid%20error:%20undefined%20method%20`name'%20for%20#&amp;lt;Jekyll::Post:0x00000002297668&gt;&quot;&gt;previous guide&lt;/a&gt; on blockreplace. But there I removed the content attribute (it &lt;em&gt;could&lt;/em&gt; work with a content attribute adding more static stuff, but I do not need it).&lt;/p&gt;
+&lt;p&gt;Same blocks as in the &lt;a href=&quot;Liquid%20error:%20undefined%20method%20`name'%20for%20#&amp;lt;Jekyll::Post:0x000000010c7b40&gt;&quot;&gt;previous guide&lt;/a&gt; on blockreplace. But there I removed the content attribute (it &lt;em&gt;could&lt;/em&gt; work with a content attribute adding more static stuff, but I do not need it).&lt;/p&gt;
 
 &lt;p&gt;So now if I want to use &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt; to push some content in theses blocks I just need to do two things:&lt;/p&gt;
 
