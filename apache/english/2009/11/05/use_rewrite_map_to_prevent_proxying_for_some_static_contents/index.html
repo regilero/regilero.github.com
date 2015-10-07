@@ -105,12 +105,10 @@ With url prefixed by a <code>/static/</code> it would be quite easy to redirect 
 (static content handler) and prevent proxy settings from redirecting theses requests to the application server he is proxying
 (as in our case this app server is behind an Apache httpd proxy).</p>
 
-<div>
-  <pre><code class='apache'>Apache-HTTPD
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="err">Apache-</span><span class="nb">HTTPD</span>
     /            \
-filesystem       proxied webapp
-static-files     dynamic-pages</code></pre>
-</div>
+<span class="nb">filesystem</span>       proxied webapp
+<span class="err">static-</span><span class="nb">files</span>     dynamic-pages</code></pre></div>
 
 
 <p>So lets say we know something like 100 or 150 files which are css files,
@@ -128,57 +126,55 @@ content which should certainly not be available statically
 So first let's have a basic plone proxy setting for an apache Virtualhost,
 we serve <code>plone.from.outside.net</code> which is a proxy on <code>plone.inside.lan</code>.</p>
 
-<div>
-  <pre><code class='apache'>&lt;VirtualHost *:80&gt;
-    ServerName  plone.from.outside.net
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;VirtualHost</span> <span class="s">*:80</span><span class="nt">&gt;</span>
+    <span class="nb">ServerName</span>  plone.from.outside.net
 
-    # in case apache is not set in utf-8
-    AddDefaultCharset UTF-8
+    <span class="c"># in case apache is not set in utf-8</span>
+    <span class="nb">AddDefaultCharset</span> UTF-8
 
-    DocumentRoot /var/www/proxyplone/htdocs
+    <span class="nb">DocumentRoot</span> <span class="sx">/var/www/proxyplone/htdocs</span>
 
-    LogLevel info
-    #LogLevel debug
-    ErrorLog /var/www/proxyplone/var/log/error.log
-    CustomLog /var/www/proxyplone/var/log/access.log combined
-    ## uncomment below to enter maintenance mode
-    #ErrorDocument 503 /htdocs/err/503.html
-    #RedirectMatch 503 ^/(?!err/)
+    <span class="nb">LogLevel</span> <span class="k">info</span>
+    <span class="c">#LogLevel debug</span>
+    <span class="nb">ErrorLog</span> <span class="sx">/var/www/proxyplone/var/log/error.log</span>
+    <span class="nb">CustomLog</span> <span class="sx">/var/www/proxyplone/var/log/access.log</span> combined
+    <span class="c">## uncomment below to enter maintenance mode</span>
+    <span class="c">#ErrorDocument 503 /htdocs/err/503.html</span>
+    <span class="c">#RedirectMatch 503 ^/(?!err/)</span>
 
-    &lt;IfModule mod_proxy.c&gt;
-            #
-            # No open proxy
-            ProxyRequests off
-            &lt;Proxy *&gt;
-                    Order allow,deny
-                    Allow from all
-            &lt;/Proxy&gt;
-            ProxyTimeout 1200
-            #exceptions, do not proxy theses ones
-            ProxyPass       /server-status  !
-            ProxyPass       /index.php !
-            ProxyPass       /err/ !
-            #Proxy rewriting
-            ProxyPass       /       &lt;a href=&quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&quot; title=&quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&quot;&gt;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&lt;/a&gt;
-            ProxyPassReverse /      &lt;a href=&quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&quot; title=&quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&quot;&gt;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&lt;/a&gt;
-            ###########
-    &lt;/IfModule&gt;
+    <span class="nt">&lt;IfModule</span> <span class="s">mod_proxy.c</span><span class="nt">&gt;</span>
+            <span class="c">#</span>
+            <span class="c"># No open proxy</span>
+            <span class="nb">ProxyRequests</span> <span class="k">off</span>
+            <span class="nt">&lt;Proxy</span> <span class="s">*</span><span class="nt">&gt;</span>
+                    <span class="nb">Order</span> allow,deny
+                    <span class="nb">Allow</span> from <span class="k">all</span>
+            <span class="nt">&lt;/Proxy&gt;</span>
+            <span class="nb">ProxyTimeout</span> <span class="m">1200</span>
+            <span class="c">#exceptions, do not proxy theses ones</span>
+            <span class="nb">ProxyPass</span>       <span class="sx">/server-status</span>  !
+            <span class="nb">ProxyPass</span>       <span class="sx">/index.php</span> !
+            <span class="nb">ProxyPass</span>       <span class="sx">/err/</span> !
+            <span class="c">#Proxy rewriting</span>
+            <span class="nb">ProxyPass</span>       /       &lt;a href=<span class="s2">&quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&quot;</span> title=<span class="s2">&quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&quot;</span>&gt;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&lt;/a&gt;
+            <span class="nb">ProxyPassReverse</span> /      &lt;a href=<span class="s2">&quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&quot;</span> title=<span class="s2">&quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&quot;</span>&gt;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&lt;/a&gt;
+            <span class="c">###########</span>
+    <span class="nt">&lt;/IfModule&gt;</span>
 
-    &lt;Directory /&gt;
-        Options FollowSymLinks
-        # prevent .htaccess reads on all the filesystem
-        AllowOverride None
-        order allow,deny
-        deny from all
-    &lt;/Directory&gt;
+    <span class="nt">&lt;Directory</span> <span class="s">/</span><span class="nt">&gt;</span>
+        <span class="nb">Options</span> FollowSymLinks
+        <span class="c"># prevent .htaccess reads on all the filesystem</span>
+        <span class="nb">AllowOverride</span> <span class="k">None</span>
+        <span class="nb">order</span> allow,deny
+        <span class="nb">deny</span> from <span class="k">all</span>
+    <span class="nt">&lt;/Directory&gt;</span>
 
-    &lt;Directory /var/www/proxyplone/htdocs&gt;
-        order allow,deny
-        Allow from All
-        DirectoryIndex index.php
-    &lt;/Directory&gt;
-&lt;/Virtualhost&gt;</code></pre>
-</div>
+    <span class="nt">&lt;Directory</span> <span class="s">/var/www/proxyplone/htdocs</span><span class="nt">&gt;</span>
+        <span class="nb">order</span> allow,deny
+        <span class="nb">Allow</span> from <span class="k">All</span>
+        <span class="nb">DirectoryIndex</span> index.php
+    <span class="nt">&lt;/Directory&gt;</span>
+<span class="nt">&lt;/Virtualhost&gt;</span></code></pre></div>
 
 
 <p>Ouch, in fact I've added a few more settings to be able to serve an index.php
@@ -196,21 +192,17 @@ redirecting targeted files on direct static handling and then next time we'll ad
 So the app dev will build for us a nice rewriteMap file.
 This file will map all static urls to the real filesystem file. In this way:</p>
 
-<div>
-  <pre><code class='apache'># staticplonefiles.txt
-# url =&gt; real filesystem file, from an arbitray root
-zonea/images/clean.png foo/bar/img/clean.png
-zonea/images/logo.jpg foo/src/module/foo/images/logo.png
-/module/bar/images/people.png foo/src/module/bar/v1.2.5-5/images/people.png
-# ... to be continued</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># staticplonefiles.txt</span>
+<span class="c"># url =&gt; real filesystem file, from an arbitray root</span>
+<span class="err">zonea/images/clean</span>.<span class="nb">png</span> foo/bar/img/clean.png
+<span class="err">zonea/images/logo</span>.<span class="nb">jpg</span> foo/src/module/foo/images/logo.png
+<span class="err">/module/bar/images/people</span>.<span class="nb">png</span> foo/src/module/bar/v1.2.5-5/images/people.png
+<span class="c"># ... to be continued</span></code></pre></div>
 
 
 <p>We will store this file in <strong>/var/www/proxyplone/etc/staticplonefiles.txt</strong> and reference it in the apache configuration.</p>
 
-<div>
-  <pre><code class='apache'>RewriteMap statics txt:/var/www/proxyplone/etc/staticplonefiles.txt</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">RewriteMap</span> statics txt:/var/www/proxyplone/etc/staticplonefiles.txt</code></pre></div>
 
 
 <p>Then we can pass any url in <code>${static:/here/the/url}</code> and obtain the filesystem mapping as the result.
@@ -230,39 +222,29 @@ as he will not proxy them.</p>
 
 <p>Starting with a rule:</p>
 
-<div>
-  <pre><code class='apache'>RewriteRule ^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js)) /opt/plone/source/${statics:$1}</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">RewriteRule</span> ^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js)) <span class="sx">/opt/plone/source/</span>${statics:$1}</code></pre></div>
 
 
 <p>wont work, as the rewrite engine will prefix the final destination with the current documentRoot. So we should better use:</p>
 
-<div>
-  <pre><code class='apache'>RewriteRule ^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js)) ${statics:$1}</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">RewriteRule</span> ^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js)) ${statics:$1}</code></pre></div>
 
 
 <p>and change the DocumentRoot to:</p>
 
-<div>
-  <pre><code class='apache'>DocumentRoot /opt/plone/source</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">DocumentRoot</span> <span class="sx">/opt/plone/source</span></code></pre></div>
 
 
 <p>And to do it we must fix accordingly previous content like our index.php,
 which is not anymore in the documentRoot.
 To keep the same fonctionnal DocumentRoot we can add a rule:</p>
 
-<div>
-  <pre><code class='apache'>Alias / /var/www/proxyplone/htdocs/ (do not forget last '/')</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">Alias</span> / <span class="sx">/var/www/proxyplone/htdocs/</span> (do not forget last &#39;/&#39;)</code></pre></div>
 
 
 <p>Now a finished rule must always contains some flags at the end. here we'll use:</p>
 
-<div>
-  <pre><code class='apache'>[NC,L,handler=default-handler]</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="err">[NC,L,handler=default-handler]</span></code></pre></div>
 
 
 <ul>
@@ -276,9 +258,7 @@ To keep the same fonctionnal DocumentRoot we can add a rule:</p>
 (static files not listed in the rewrite map) won't be handled by our rewriteRule
 and will still be served by the app server.</p>
 
-<div>
-  <pre><code class='apache'>RewriteCond ${statics:$1} !=&quot;&quot;</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">RewriteCond</span> ${statics:$1} !=<span class="s2">&quot;&quot;</span></code></pre></div>
 
 
 <p>will do that for us,
@@ -289,73 +269,71 @@ and not re-read at each request.</p>
 
 <p>Put it all together we have:</p>
 
-<div>
-  <pre><code class='apache'>&lt;VirtualHost *:80&gt;
-    ServerName  plone.from.outside.net
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;VirtualHost</span> <span class="s">*:80</span><span class="nt">&gt;</span>
+    <span class="nb">ServerName</span>  plone.from.outside.net
     
-    # in case apache is not set in utf-8
-    AddDefaultCharset UTF-8
+    <span class="c"># in case apache is not set in utf-8</span>
+    <span class="nb">AddDefaultCharset</span> UTF-8
  
-    DocumentRoot /opt/plone/source
-    LogLevel info
-    #LogLevel debug
-    ErrorLog /var/www/proxyplone/var/log/error.log
-    CustomLog /var/www/proxyplone/var/log/access.log combined
-    ## uncomment below to enter maintenance mode
-    #ErrorDocument 503 /htdocs/err/503.html
-    #RedirectMatch 503 ^/(?!err/)
+    <span class="nb">DocumentRoot</span> <span class="sx">/opt/plone/source</span>
+    <span class="nb">LogLevel</span> <span class="k">info</span>
+    <span class="c">#LogLevel debug</span>
+    <span class="nb">ErrorLog</span> <span class="sx">/var/www/proxyplone/var/log/error.log</span>
+    <span class="nb">CustomLog</span> <span class="sx">/var/www/proxyplone/var/log/access.log</span> combined
+    <span class="c">## uncomment below to enter maintenance mode</span>
+    <span class="c">#ErrorDocument 503 /htdocs/err/503.html</span>
+    <span class="c">#RedirectMatch 503 ^/(?!err/)</span>
 
-    # REWRITER for Static files managment rules
-    # we need:
-    RewriteEngine on
-    #RewriteLog /var/www/proxyplone/var/log/rewrite.log
-    # from 0 to 9
-    #RewriteLogLevel 9
-    RewriteMap statics txt:/var/www/proxyplone/etc/staticplonefiles.txt
-    # only apply the rewriterule for entries listed in the rewritemap, $1 refers to the $1 from next rewriteRule
-    RewriteCond ${statics:$1} !=&quot;&quot;
-    # prevent rewritemap parsing for URI not containing static file extensions
-    # NC: case insensitive in comparison of testString and Pattern
-    # L: stop rewriting
-    RewriteRule ^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js)) /${statics:$1} [NC,L,handler=default-handler]
+    <span class="c"># REWRITER for Static files managment rules</span>
+    <span class="c"># we need:</span>
+    <span class="nb">RewriteEngine</span> <span class="k">on</span>
+    <span class="c">#RewriteLog /var/www/proxyplone/var/log/rewrite.log</span>
+    <span class="c"># from 0 to 9</span>
+    <span class="c">#RewriteLogLevel 9</span>
+    <span class="nb">RewriteMap</span> statics txt:/var/www/proxyplone/etc/staticplonefiles.txt
+    <span class="c"># only apply the rewriterule for entries listed in the rewritemap, $1 refers to the $1 from next rewriteRule</span>
+    <span class="nb">RewriteCond</span> ${statics:$1} !=<span class="s2">&quot;&quot;</span>
+    <span class="c"># prevent rewritemap parsing for URI not containing static file extensions</span>
+    <span class="c"># NC: case insensitive in comparison of testString and Pattern</span>
+    <span class="c"># L: stop rewriting</span>
+    <span class="nb">RewriteRule</span> ^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js)) /${statics:$1} [NC,L,handler=default-handler]
 
-    &lt;IfModule mod_proxy.c&gt;
-            #
-            # No open proxy
-            ProxyRequests off
-            &lt;Proxy *&gt;
-                    Order allow,deny
-                    Allow from all
-            &lt;/Proxy&gt;
-            ProxyTimeout 1200
-            #exceptions, do not proxy theses ones
-            ProxyPass       /server-status  !
-            ProxyPass       /index.php !
-            ProxyPass       /err/ !
-            #Proxy rewriting
-            ProxyPass       /       &lt;a href=&quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&quot; title=&quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&quot;&gt;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&lt;/a&gt;
-            ProxyPassReverse /      &lt;a href=&quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&quot; title=&quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&quot;&gt;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&lt;/a&gt;
-            ###########
-    &lt;/IfModule&gt;
-    &lt;Directory /&gt;
-        Options FollowSymLinks
-        # prevent .htaccess reads on all the filesystem
-        AllowOverride None
-        order allow,deny
-        deny from all
-    &lt;/Directory&gt;
-    Alias / /var/www/proxyplone/htdocs/
-    &lt;Directory /var/www/proxyplone/htdocs&gt;
-        order allow,deny
-        Allow from All
-        DirectoryIndex index.php
-    &lt;/Directory&gt;
-    &lt;Directory /opt/plone/source&gt;
-        order allow,deny
-        Allow from All
-    &lt;/Directory&gt;
-&lt;/Virtualhost&gt;</code></pre>
-</div>
+    <span class="nt">&lt;IfModule</span> <span class="s">mod_proxy.c</span><span class="nt">&gt;</span>
+            <span class="c">#</span>
+            <span class="c"># No open proxy</span>
+            <span class="nb">ProxyRequests</span> <span class="k">off</span>
+            <span class="nt">&lt;Proxy</span> <span class="s">*</span><span class="nt">&gt;</span>
+                    <span class="nb">Order</span> allow,deny
+                    <span class="nb">Allow</span> from <span class="k">all</span>
+            <span class="nt">&lt;/Proxy&gt;</span>
+            <span class="nb">ProxyTimeout</span> <span class="m">1200</span>
+            <span class="c">#exceptions, do not proxy theses ones</span>
+            <span class="nb">ProxyPass</span>       <span class="sx">/server-status</span>  !
+            <span class="nb">ProxyPass</span>       <span class="sx">/index.php</span> !
+            <span class="nb">ProxyPass</span>       <span class="sx">/err/</span> !
+            <span class="c">#Proxy rewriting</span>
+            <span class="nb">ProxyPass</span>       /       &lt;a href=<span class="s2">&quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&quot;</span> title=<span class="s2">&quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&quot;</span>&gt;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&lt;/a&gt;
+            <span class="nb">ProxyPassReverse</span> /      &lt;a href=<span class="s2">&quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&quot;</span> title=<span class="s2">&quot;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&quot;</span>&gt;http://plone.inside.lan/here/be/dragons/like/virtualhostmonster/settings/&lt;/a&gt;
+            <span class="c">###########</span>
+    <span class="nt">&lt;/IfModule&gt;</span>
+    <span class="nt">&lt;Directory</span> <span class="s">/</span><span class="nt">&gt;</span>
+        <span class="nb">Options</span> FollowSymLinks
+        <span class="c"># prevent .htaccess reads on all the filesystem</span>
+        <span class="nb">AllowOverride</span> <span class="k">None</span>
+        <span class="nb">order</span> allow,deny
+        <span class="nb">deny</span> from <span class="k">all</span>
+    <span class="nt">&lt;/Directory&gt;</span>
+    <span class="nb">Alias</span> / <span class="sx">/var/www/proxyplone/htdocs/</span>
+    <span class="nt">&lt;Directory</span> <span class="s">/var/www/proxyplone/htdocs</span><span class="nt">&gt;</span>
+        <span class="nb">order</span> allow,deny
+        <span class="nb">Allow</span> from <span class="k">All</span>
+        <span class="nb">DirectoryIndex</span> index.php
+    <span class="nt">&lt;/Directory&gt;</span>
+    <span class="nt">&lt;Directory</span> <span class="s">/opt/plone/source</span><span class="nt">&gt;</span>
+        <span class="nb">order</span> allow,deny
+        <span class="nb">Allow</span> from <span class="k">All</span>
+    <span class="nt">&lt;/Directory&gt;</span>
+<span class="nt">&lt;/Virtualhost&gt;</span></code></pre></div>
 
 
 <p>And <strong>it works</strong>, at this point you should note the rewriteRule
@@ -382,7 +360,7 @@ some more rule from Apache after the rewrite part.</p>
 <h3>Closely Related articles</h3>
 
 <ul>
-<li><a href="Liquid%20error:%20undefined%20method%20`name'%20for%20#&lt;Jekyll::Post:0x000000010c7b40>">More on Static file redirector</a></li>
+<li><a href="/apache/english/2009/11/06/more_on_static_file_redirector/">More on Static file redirector</a></li>
 </ul>
 
 
@@ -488,42 +466,42 @@ some more rule from Apache after the rewrite part.</p>
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 29px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+                <a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
 <a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 29px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
 <a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
 
                 </div>
               </div>

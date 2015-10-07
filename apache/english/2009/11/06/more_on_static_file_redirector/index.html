@@ -96,7 +96,7 @@
          <div class="row">
           <div class="col-md-12" id="post-full">
        
-          <p>So On <a href="Liquid%20error:%20undefined%20method%20`name'%20for%20#&lt;Jekyll::Post:0x000000010c7b40>">a previous blog entry</a>
+          <p>So On <a href="/apache/english/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/">a previous blog entry</a>
 I presented the basics for a rewriteRule settings to serve some targeted plone static files directly from apache and
 without proxying to Plone.</p>
 
@@ -116,29 +116,23 @@ having a map of application url to filesystem real files stored in a text file a
 <p>So first thing to change, we used a simple text file for the mapping, mod_rewrite allows us to use a <strong>hash file</strong>.<br/>
 Simply change:</p>
 
-<div>
-  <pre><code class='apache'>RewriteMap statics txt:/var/www/proxyplone/etc/staticplonefiles.txt</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">RewriteMap</span> statics txt:/var/www/proxyplone/etc/staticplonefiles.txt</code></pre></div>
 
 
 <p>by:</p>
 
-<div>
-  <pre><code class='apache'># RewriteMap statics txt:/var/www/proxyplone//etc/staticplonefiles.txt
-# to generate hash version of previous file use (do not forget the rm):
-# rm /var/www/proxyplone//etc/staticplonefiles.map; 
-# httxt2dbm -i /var/www/proxyplone/etc/staticplonefiles.txt -o /var/www/proxyplone/etc/staticplonefiles.map
-RewriteMap statics dbm:/var/www/proxyplone/etc/staticplonefiles.map</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># RewriteMap statics txt:/var/www/proxyplone//etc/staticplonefiles.txt</span>
+<span class="c"># to generate hash version of previous file use (do not forget the rm):</span>
+<span class="c"># rm /var/www/proxyplone//etc/staticplonefiles.map; </span>
+<span class="c"># httxt2dbm -i /var/www/proxyplone/etc/staticplonefiles.txt -o /var/www/proxyplone/etc/staticplonefiles.map</span>
+<span class="nb">RewriteMap</span> statics dbm:/var/www/proxyplone/etc/staticplonefiles.map</code></pre></div>
 
 
 <p>And to generate the .map file simply read the comments. <br/>
 One important point, if you do not remove the old map before generating the new one,
 old entries are still in the .map, to see it without too much garbage use :</p>
 
-<div>
-  <pre><code class='apache'>strings /var/www/proxyplone/etc/staticplonefiles.map</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">strings</span> <span class="sx">/var/www/proxyplone/etc/staticplonefiles.map</span></code></pre></div>
 
 
 <p>Ok, so now let's look the current RewriteRule,
@@ -151,16 +145,12 @@ That mean the proxy settings for example will be applied on it.<br/>
 So we will as well add a <code>/satic</code> on the resulting url and prevent <code>/static</code> to be served by the Proxy.<br/>
 The rewriteRule is now:</p>
 
-<div>
-  <pre><code class='apache'>RewriteRule ^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js)) /static/${statics:$1} [NC,L,handler=default-handler,PT]</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">RewriteRule</span> ^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js)) <span class="sx">/static/</span>${statics:$1} [NC,L,handler=default-handler,PT]</code></pre></div>
 
 
 <p>And we add this ProxyPass exception:</p>
 
-<div>
-  <pre><code class='apache'>ProxyPass       /static  !</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">ProxyPass</span>       <span class="sx">/static</span>  !</code></pre></div>
 
 
 <p>We now have a virtual <code>/static</code> directory with all theses mapped contents inside.
@@ -171,42 +161,36 @@ well in fact mod_expires requires a Directory directive so it will be on the <co
 
 <p>Reset DocumentRoot:</p>
 
-<div>
-  <pre><code class='apache'>DocumentRoot /var/www/proxyplone/htdocs</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">DocumentRoot</span> <span class="sx">/var/www/proxyplone/htdocs</span></code></pre></div>
 
 
 <p>Remove this line:</p>
 
-<div>
-  <pre><code class='apache'>Alias / /opt/plone/source/</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">Alias</span> / <span class="sx">/opt/plone/source/</span></code></pre></div>
 
 
 <p>And add theses settings:</p>
 
-<div>
-  <pre><code class='apache'>Alias /static /opt/plone/source/
-&lt;Location /static&gt;
-    Options FollowSymLinks
-    Order deny,allow
-    Allow from all
-    DirectoryIndex index.html
-    # avoid execution of PHP  scripts
-    AddType text/plain .php
-    AddType text/plain .php3
-    AddType text/plain .phps
-&lt;/Location&gt;
-# adding some cache handling for static files
-&lt;Directory /opt/plone/source&gt;
-    order allow,deny
-    allow from all
-    ExpiresActive On
-    ExpiresDefault &quot;access plus 1 month&quot;
-    ExpiresByType text/css &quot;access plus 1 day&quot;
-    ExpiresByType text/javascript &quot;access plus 1 day&quot;
-&lt;/Directory&gt;</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">Alias</span> <span class="sx">/static</span> <span class="sx">/opt/plone/source/</span>
+<span class="nt">&lt;Location</span> <span class="s">/static</span><span class="nt">&gt;</span>
+    <span class="nb">Options</span> FollowSymLinks
+    <span class="nb">Order</span> deny,allow
+    <span class="nb">Allow</span> from <span class="k">all</span>
+    <span class="nb">DirectoryIndex</span> index.html
+    <span class="c"># avoid execution of PHP  scripts</span>
+    <span class="nb">AddType</span> text/plain .php
+    <span class="nb">AddType</span> text/plain .php3
+    <span class="nb">AddType</span> text/plain .phps
+<span class="nt">&lt;/Location&gt;</span>
+<span class="c"># adding some cache handling for static files</span>
+<span class="nt">&lt;Directory</span> <span class="s">/opt/plone/source</span><span class="nt">&gt;</span>
+    <span class="nb">order</span> allow,deny
+    <span class="nb">allow</span> from <span class="k">all</span>
+    <span class="nb">ExpiresActive</span> <span class="k">On</span>
+    <span class="nb">ExpiresDefault</span> <span class="s2">&quot;access plus 1 month&quot;</span>
+    <span class="nb">ExpiresByType</span> text/css <span class="s2">&quot;access plus 1 day&quot;</span>
+    <span class="nb">ExpiresByType</span> text/javascript <span class="s2">&quot;access plus 1 day&quot;</span>
+<span class="nt">&lt;/Directory&gt;</span></code></pre></div>
 
 
 <p>That's done. <strong>Now we have a big security Hole :-(</strong>.<br/>
@@ -219,31 +203,27 @@ we should let them use <code>/static</code> urls for files known to be static.
 And maybe one day they'll think it's a good idea to make the distinction between known static files and dynamic content... <br/>
 So we'll ask developpers to add some entries in the </strong>staticplonefiles.txt** making a mapping from static/files to real files this way (see, every entry is present 2 times):</p>
 
-<div>
-  <pre><code class='apache'># staticplonefiles.txt
-# url =&gt; real filesystem file, from an arbitray root
-zonea/images/clean.png foo/bar/img/clean.png
-/static/foo/bar/img/clean.png foo/bar/img/clean.png
-zonea/images/logo.jpg foo/src/module/foo/images/logo.png
-/static/foo/src/module/foo/images/logo.png foo/src/module/foo/images/logo.png
-/module/bar/images/people.png foo/src/module/bar/v1.2.5-5/images/people.png
-/static/foo/src/module/bar/v1.2.5-5/images/people.png foo/src/module/bar/v1.2.5-5/images/people.png
-# ... to be continued</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># staticplonefiles.txt</span>
+<span class="c"># url =&gt; real filesystem file, from an arbitray root</span>
+<span class="err">zonea/images/clean</span>.<span class="nb">png</span> foo/bar/img/clean.png
+<span class="err">/static/foo/bar/img/clean</span>.<span class="nb">png</span> foo/bar/img/clean.png
+<span class="err">zonea/images/logo</span>.<span class="nb">jpg</span> foo/src/module/foo/images/logo.png
+<span class="err">/static/foo/src/module/foo/images/logo</span>.<span class="nb">png</span> foo/src/module/foo/images/logo.png
+<span class="err">/module/bar/images/people</span>.<span class="nb">png</span> foo/src/module/bar/v1.2.5-5/images/people.png
+<span class="err">/static/foo/src/module/bar/v1</span>.<span class="err">2</span>.<span class="err">5-5/images/people</span>.<span class="nb">png</span> foo/src/module/bar/v1.2.5-5/images/people.png
+<span class="c"># ... to be continued</span></code></pre></div>
 
 
 <p>And now our 3 static examples are available as well with the /static url. Well in fact do not forget to add this rule:</p>
 
-<div>
-  <pre><code class='apache'># Security for uri containing our /static shortcut we should check only
-# listed files from rewritemap are served, as
-# in this current case the static directory contins as well
-# some unsecure files... yep.
-RewriteCond %{REQUEST_URI} ^/static/ [NC]
-RewriteCond ${statics:$1} =&quot;&quot;
-# F : force forbidden 403 response
-RewriteRule ^(.*)$ - [F,L]</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># Security for uri containing our /static shortcut we should check only</span>
+<span class="c"># listed files from rewritemap are served, as</span>
+<span class="c"># in this current case the static directory contins as well</span>
+<span class="c"># some unsecure files... yep.</span>
+<span class="nb">RewriteCond</span> %{REQUEST_URI} ^/static/ [NC]
+<span class="nb">RewriteCond</span> ${statics:$1} =<span class="s2">&quot;&quot;</span>
+<span class="c"># F : force forbidden 403 response</span>
+<span class="nb">RewriteRule</span> ^(.*)$ - [F,L]</code></pre></div>
 
 
 <p>This will check that all directly accessed files via <code>/static</code> are present in our mapping.
@@ -259,18 +239,16 @@ VirtualHost and check the errorLog to observe what is done After the rewrite.</p
 </ul>
 
 
-<div>
-  <pre><code class='apache'>(2) init rewrite engine with requested uri /images/people.png
-(3) applying pattern '^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))' to uri '/images/people.png'
-(6) cache lookup FAILED, forcing new map lookup
-(5) map lookup OK: map=statics[dbm] key=images/people.png -&gt; val=test/img/clean.png
-(4) RewriteCond: input='test/img/clean.png' pattern='!=' =&gt; matched
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="err">(2)</span> <span class="nb">init</span> rewrite engine with requested uri <span class="sx">/images/people.png</span>
+<span class="err">(3)</span> <span class="nb">applying</span> pattern &#39;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&#39; to uri &#39;/images/people.png&#39;
+<span class="err">(6)</span> <span class="nb">cache</span> lookup FAILED, forcing new map lookup
+<span class="err">(5)</span> <span class="nb">map</span> lookup OK: map=statics[dbm] key=images/people.png -&gt; val=test/img/clean.png
+<span class="err">(4)</span> <span class="err">RewriteCond:</span> <span class="err">input=&#39;test/img/clean</span>.<span class="err">png&#39;</span> <span class="err">pattern=&#39;!=&#39;</span> <span class="err">=&gt;</span> <span class="nb">matched</span>
 (5) cache lookup OK: map=statics[dbm] key=images/people.png -&gt; val=test/img/clean.png
-(2) rewrite '/images/people.png' -&gt; '/static/test/img/clean.png'
-(2) remember /static/test/img/clean.png to have Content-handler 'default-handler'
-(2) forcing '/static/test/img/clean.png' to get passed through to next API URI-to-filename handler
-(1) force filename /tmp/htdocs/test/img/clean.png to have the Content-handler 'default-handler'</code></pre>
-</div>
+<span class="err">(2)</span> <span class="nb">rewrite</span> &#39;/images/people.png&#39; -&gt; &#39;/static/test/img/clean.png&#39;
+<span class="err">(2)</span> <span class="nb">remember</span> <span class="sx">/static/test/img/clean.png</span> to have Content-handler &#39;default-handler&#39;
+<span class="err">(2)</span> <span class="nb">forcing</span> &#39;/static/test/img/clean.png&#39; to get passed through to next API URI-to-filename handler
+<span class="err">(1)</span> <span class="nb">force</span> filename <span class="sx">/tmp/htdocs/test/img/clean.png</span> to have the Content-handler &#39;default-handler&#39;</code></pre></div>
 
 
 <ul>
@@ -278,13 +256,11 @@ VirtualHost and check the errorLog to observe what is done After the rewrite.</p
 </ul>
 
 
-<div>
-  <pre><code class='apache'>(2) init rewrite engine with requested uri /index.php
-(3) applying pattern '^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))' to uri '/index.php'
-(3) applying pattern '^(.*)$' to uri '/index.php'
-(4) RewriteCond: input='/index.php' pattern='^/static/' [NC] =&gt; not-matched
-(1) pass through /index.php</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="err">(2)</span> <span class="nb">init</span> rewrite engine with requested uri <span class="sx">/index.php</span>
+<span class="err">(3)</span> <span class="nb">applying</span> pattern &#39;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&#39; to uri &#39;/index.php&#39;
+<span class="err">(3)</span> <span class="nb">applying</span> pattern &#39;^(.*)$&#39; to uri &#39;/index.php&#39;
+<span class="err">(4)</span> <span class="err">RewriteCond:</span> <span class="err">input=&#39;/index</span>.<span class="err">php&#39;</span> <span class="err">pattern=&#39;^/static/&#39;</span> <span class="err">[NC]</span> <span class="err">=&gt;</span> <span class="err">not-</span><span class="nb">matched</span>
+(1) pass through <span class="sx">/index.php</span></code></pre></div>
 
 
 <ul>
@@ -292,13 +268,11 @@ VirtualHost and check the errorLog to observe what is done After the rewrite.</p
 </ul>
 
 
-<div>
-  <pre><code class='apache'>(2) init rewrite engine with requested uri /
-(3) applying pattern '^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))' to uri '/'
-(3) applying pattern '^(.*)$' to uri '/'
-(4) RewriteCond: input='/' pattern='^/static/' [NC] =&gt; not-matched
-(1) pass through /</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="err">(2)</span> <span class="nb">init</span> rewrite engine with requested uri /
+<span class="err">(3)</span> <span class="nb">applying</span> pattern &#39;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&#39; to uri &#39;/&#39;
+<span class="err">(3)</span> <span class="nb">applying</span> pattern &#39;^(.*)$&#39; to uri &#39;/&#39;
+<span class="err">(4)</span> <span class="err">RewriteCond:</span> <span class="err">input=&#39;/&#39;</span> <span class="err">pattern=&#39;^/static/&#39;</span> <span class="err">[NC]</span> <span class="err">=&gt;</span> <span class="err">not-</span><span class="nb">matched</span>
+(1) pass through /</code></pre></div>
 
 
 <ul>
@@ -306,16 +280,14 @@ VirtualHost and check the errorLog to observe what is done After the rewrite.</p
 </ul>
 
 
-<div>
-  <pre><code class='apache'>(2) init rewrite engine with requested uri /images/crystal/32/personal.png
-(3) applying pattern '^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))' to uri '/images/crystal/32/personal.png'
-(6) cache lookup FAILED, forcing new map lookup
-(5) map lookup FAILED: map=statics[dbm] key=images/crystal/32/personal.png
-(4) RewriteCond: input='' pattern='!=' =&gt; not-matched
-(3) applying pattern '^(.*)$' to uri '/images/crystal/32/personal.png'
-(4) RewriteCond: input='/images/crystal/32/personal.png' pattern='^/static/' [NC] =&gt; not-matched
-(1) pass through /images/crystal/32/personal.png</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="err">(2)</span> <span class="nb">init</span> rewrite engine with requested uri <span class="sx">/images/crystal/32/personal.png</span>
+<span class="err">(3)</span> <span class="nb">applying</span> pattern &#39;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&#39; to uri &#39;/images/crystal/32/personal.png&#39;
+<span class="err">(6)</span> <span class="nb">cache</span> lookup FAILED, forcing new map lookup
+<span class="err">(5)</span> <span class="nb">map</span> lookup FAILED: map=statics[dbm] key=images/crystal/32/personal.png
+<span class="err">(4)</span> <span class="err">RewriteCond:</span> <span class="err">input=&#39;&#39;</span> <span class="err">pattern=&#39;!=&#39;</span> <span class="err">=&gt;</span> <span class="err">not-</span><span class="nb">matched</span>
+(3) applying pattern &#39;^(.*)$&#39; to uri &#39;/images/crystal/32/personal.png&#39;
+<span class="err">(4)</span> <span class="err">RewriteCond:</span> <span class="err">input=&#39;/images/crystal/32/personal</span>.<span class="err">png&#39;</span> <span class="err">pattern=&#39;^/static/&#39;</span> <span class="err">[NC]</span> <span class="err">=&gt;</span> <span class="err">not-</span><span class="nb">matched</span>
+(1) pass through <span class="sx">/images/crystal/32/personal.png</span></code></pre></div>
 
 
 <ul>
@@ -323,16 +295,14 @@ VirtualHost and check the errorLog to observe what is done After the rewrite.</p
 </ul>
 
 
-<div>
-  <pre><code class='apache'>(2) init rewrite engine with requested uri /static/config/config.ini
-(3) applying pattern '^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))' to uri '/static/config/config.ini'
-(3) applying pattern '^(.*)$' to uri '/static/config/config.ini'
-(4) RewriteCond: input='/static/config/config.ini' pattern='^/static/' [NC] =&gt; matched
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="err">(2)</span> <span class="nb">init</span> rewrite engine with requested uri <span class="sx">/static/config/config.ini</span>
+<span class="err">(3)</span> <span class="nb">applying</span> pattern &#39;^/(.*\.(ico|png|gif|jpg|jpeg|bmp|css|js))&#39; to uri &#39;/static/config/config.ini&#39;
+<span class="err">(3)</span> <span class="nb">applying</span> pattern &#39;^(.*)$&#39; to uri &#39;/static/config/config.ini&#39;
+<span class="err">(4)</span> <span class="err">RewriteCond:</span> <span class="err">input=&#39;/static/config/config</span>.<span class="err">ini&#39;</span> <span class="err">pattern=&#39;^/static/&#39;</span> <span class="err">[NC]</span> <span class="err">=&gt;</span> <span class="nb">matched</span>
 (6) cache lookup FAILED, forcing new map lookup
-(5) map lookup FAILED: map=statics[dbm] key=/static/config/config.ini
-(4) RewriteCond: input='' pattern='=' =&gt; matched
-(2) forcing responsecode 403 for /static/config/config.ini</code></pre>
-</div>
+<span class="err">(5)</span> <span class="nb">map</span> lookup FAILED: map=statics[dbm] key=/static/config/config.ini
+<span class="err">(4)</span> <span class="err">RewriteCond:</span> <span class="err">input=&#39;&#39;</span> <span class="err">pattern=&#39;=&#39;</span> <span class="err">=&gt;</span> <span class="nb">matched</span>
+(2) forcing responsecode <span class="m">403</span> for <span class="sx">/static/config/config.ini</span></code></pre></div>
 
 
 <p>Quite readable isn't it? But <strong>do not forget to remove debug</strong> for production env.</p>
@@ -340,7 +310,7 @@ VirtualHost and check the errorLog to observe what is done After the rewrite.</p
 <h3>Closely Related articles</h3>
 
 <ul>
-<li><a href="Liquid%20error:%20undefined%20method%20`name'%20for%20#&lt;Jekyll::Post:0x000000010c7b40>">Use RewriteMap to prevent proxying for some static contents</a></li>
+<li><a href="/apache/english/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/">Use RewriteMap to prevent proxying for some static contents</a></li>
 </ul>
 
 
@@ -446,42 +416,42 @@ VirtualHost and check the errorLog to observe what is done After the rewrite.</p
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+                <a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
 <a style='font-size: 29px' class='taglink' href='/tag/Security/'>Security</a>
 <a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
 <a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
 <a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
 <a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
 <a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
 
                 </div>
               </div>

@@ -179,109 +179,97 @@ we will call the second <strong>php-fpm-test</strong>. So this new conf file wil
 <p>Usually, at least on debian, the main configuration file is loading all pools from the pool diectory with
 this instruction:</p>
 
-<div>
-  <pre><code class='php'>include=/etc/php5/fpm/pool.d/*.conf</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">include=/etc/php5/fpm/pool.d/*.conf</span></code></pre></div>
 
 
 <p>We alter the configuration file to only include one pool. Then we make the copy and alter this name in the second file,
 we also alter the pid setting reference.
 After that a diff should give something like that:</p>
 
-<div>
-  <pre><code class='bash'>$ diff -bBNaur /etc/php5/fpm/php-fpm.conf /etc/php5/fpm/php-fpm-test.conf
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>diff -bBNaur /etc/php5/fpm/php-fpm.conf /etc/php5/fpm/php-fpm-test.conf
 --- /etc/php5/fpm/php-fpm.conf  2013-04-10 16:48:23.000000000 +0200
 +++ /etc/php5/fpm/php-fpm-test.conf  2013-04-10 18:34:12.000000000 +0200
 @@ -22,7 +22,7 @@
- ; Pid file
- ; Note: the default prefix is /var
- ; Default Value: none
--pid = /var/run/php5-fpm.pid
-+pid = /var/run/php5-fpm-test.pid
+ <span class="p">;</span> Pid file
+ <span class="p">;</span> Note: the default prefix is /var
+ <span class="p">;</span> Default Value: none
+-pid <span class="o">=</span> /var/run/php5-fpm.pid
++pid <span class="o">=</span> /var/run/php5-fpm-test.pid
  
- ; Error log file
- ; If it's set to &quot;syslog&quot;, log is sent to syslogd instead of being written
+ <span class="p">;</span> Error log file
+ <span class="p">;</span> If it<span class="err">&#39;</span>s <span class="nb">set </span>to <span class="s2">&quot;syslog&quot;</span>, log is sent to syslogd instead of being written
 @@ -118,5 +118,5 @@
  
- ; To configure the pools it is recommended to have one .conf file per
- ; pool in the following directory:
--include=/etc/php5/fpm/pool.d/my-pool.conf
-+include=/etc/php5/fpm/pool.d/my-pool-test.conf</code></pre>
-</div>
+ <span class="p">;</span> To configure the pools it is recommended to have one .conf file per
+ <span class="p">;</span> pool in the following directory:
+-include<span class="o">=</span>/etc/php5/fpm/pool.d/my-pool.conf
++include<span class="o">=</span>/etc/php5/fpm/pool.d/my-pool-test.conf</code></pre></div>
 
 
 <p>Now we need an init script starting a new php-fpm daemon using this <code>php-fpm-test.conf</code> file.
 Copy the main startup script on a new one with test extension and alter it so that at least you obtain this diff:</p>
 
-<div>
-  <pre><code class='bash'>$ diff -bBNaur /etc/init.d/php5-fpm /etc/init.d/php5-fpm-test
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>diff -bBNaur /etc/init.d/php5-fpm /etc/init.d/php5-fpm-test
 --- /etc/init.d/php5-fpm  2012-07-23 13:59:30.000000000 +0200
 +++ /etc/init.d/php5-fpm-test  2013-04-10 18:56:22.000000000 +0200
 @@ -1,24 +1,24 @@
- #!/bin/sh
- ### BEGIN INIT INFO
+ <span class="c">#!/bin/sh</span>
+ <span class="c">### BEGIN INIT INFO</span>
 -# Provides:          php-fpm php5-fpm
 +# Provides:          php-fpm-test php5-fpm-test
- # Required-Start:    $remote_fs $network
- # Required-Stop:     $remote_fs $network
- # Default-Start:     2 3 4 5
- # Default-Stop:      0 1 6 
+ <span class="c"># Required-Start:    $remote_fs $network</span>
+ <span class="c"># Required-Stop:     $remote_fs $network</span>
+ <span class="c"># Default-Start:     2 3 4 5</span>
+ <span class="c"># Default-Stop:      0 1 6 </span>
 -# Short-Description: starts php5-fpm
 -# Description:       Starts PHP5 FastCGI Process Manager Daemon
 +# Short-Description: starts php5-fpm-test
-+# Description:       Starts PHP5 FastCGI Process Manager Daemon for test
- ### END INIT INFO
++# Description:       Starts PHP5 FastCGI Process Manager Daemon <span class="k">for</span> <span class="nb">test</span>
+ <span class="c">### END INIT INFO</span>
  
- # Author: Ondrej Sury &lt;ondrej@debian.org&gt;
+ <span class="c"># Author: Ondrej Sury &lt;ondrej@debian.org&gt;</span>
  
- PATH=/sbin:/usr/sbin:/bin:/usr/bin
- DESC=&quot;PHP5 FastCGI Process Manager&quot;
- NAME=php5-fpm
- DAEMON=/usr/sbin/$NAME
--DAEMON_ARGS=&quot;--fpm-config /etc/php5/fpm/php-fpm.conf&quot;
--PIDFILE=/var/run/php5-fpm.pid
-+DAEMON_ARGS=&quot;--fpm-config /etc/php5/fpm/php-fpm-test.conf&quot;
-+PIDFILE=/var/run/php5-fpm-test.pid
- TIMEOUT=30
--SCRIPTNAME=/etc/init.d/$NAME
-+SCRIPTNAME=/etc/init.d/$NAME-test
+ <span class="nv">PATH</span><span class="o">=</span>/sbin:/usr/sbin:/bin:/usr/bin
+ <span class="nv">DESC</span><span class="o">=</span><span class="s2">&quot;PHP5 FastCGI Process Manager&quot;</span>
+ <span class="nv">NAME</span><span class="o">=</span>php5-fpm
+ <span class="nv">DAEMON</span><span class="o">=</span>/usr/sbin/<span class="nv">$NAME</span>
+-DAEMON_ARGS<span class="o">=</span><span class="s2">&quot;--fpm-config /etc/php5/fpm/php-fpm.conf&quot;</span>
+-PIDFILE<span class="o">=</span>/var/run/php5-fpm.pid
++DAEMON_ARGS<span class="o">=</span><span class="s2">&quot;--fpm-config /etc/php5/fpm/php-fpm-test.conf&quot;</span>
++PIDFILE<span class="o">=</span>/var/run/php5-fpm-test.pid
+ <span class="nv">TIMEOUT</span><span class="o">=</span>30
+-SCRIPTNAME<span class="o">=</span>/etc/init.d/<span class="nv">$NAME</span>
++SCRIPTNAME<span class="o">=</span>/etc/init.d/<span class="nv">$NAME</span>-test
  
- # Exit if the package is not installed
- [ -x &quot;$DAEMON&quot; ] || exit 0</code></pre>
-</div>
+ <span class="c"># Exit if the package is not installed</span>
+ <span class="o">[</span> -x <span class="s2">&quot;$DAEMON&quot;</span> <span class="o">]</span> <span class="o">||</span> <span class="nb">exit </span>0</code></pre></div>
 
 
 <p>Do not forget to add this script on start/stop levels if you want it after reboot.</p>
 
-<div>
-  <pre><code class='bash'>update-rc.d default php5-fpm-test defaults</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">update-rc.d default php5-fpm-test defaults</code></pre></div>
 
 
 <p>Start this new php-fpm, it should be ok.</p>
 
-<div>
-  <pre><code class='bash'>/etc/init.d/php5-fpm-test start</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">/etc/init.d/php5-fpm-test start</code></pre></div>
 
 
 <p>Test it with this  <code>ps</code> command, you sholuld see the two daemons and the children, one pool per daemon
 (number of children depends on your pool's settings):</p>
 
-<div>
-  <pre><code class='bash'>ps auxf|grep php
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">ps auxf<span class="p">|</span>grep php
  
- 1005     30688  0.0  0.0   9616   904 pts/0    S+   13:47   0:00              \_ grep php
- root     17906  0.0  0.1 667208  5236 ?        Ss   May07   0:13 php-fpm: master process (/etc/php5/fpm/php-fpm-test.conf)
- 1005      9753  0.0  3.0 733316 122300 ?       S    04:13   0:06  \_ php-fpm: pool my-pool-test
- 1005      9754  0.0  1.9 691336 81188 ?        S    04:13   0:04  \_ php-fpm: pool my-pool-test
- 1005     17920  0.0  3.0 733316 123152 ?       S    05:41   0:05  \_ php-fpm: pool my-pool-test
- root     19130  0.0  0.1 667908  5940 ?        Ss   May07   0:14 php-fpm: master process (/etc/php5/fpm/php-fpm.conf)
- 1005     10731  0.1  2.7 699296 110940 ?       S    May14   1:30  \_ php-fpm: pool my-pool
- 1005     10816  0.1  2.4 688676 99048 ?        S    May14   1:35  \_ php-fpm: pool my-pool
- 1005     10817  0.1  2.5 694604 104196 ?       S    May14   1:18  \_ php-fpm: pool my-pool
- 1005     10912  0.1  2.6 696708 108364 ?       S    May14   1:27  \_ php-fpm: pool my-pool</code></pre>
-</div>
+ <span class="m">1005</span>     <span class="m">30688</span>  0.0  0.0   <span class="m">9616</span>   <span class="m">904</span> pts/0    S+   13:47   0:00              <span class="se">\_</span> grep php
+ root     <span class="m">17906</span>  0.0  0.1 <span class="m">667208</span>  <span class="m">5236</span> ?        Ss   May07   0:13 php-fpm: master process <span class="o">(</span>/etc/php5/fpm/php-fpm-test.conf<span class="o">)</span>
+ <span class="m">1005</span>      <span class="m">9753</span>  0.0  3.0 <span class="m">733316</span> <span class="m">122300</span> ?       S    04:13   0:06  <span class="se">\_</span> php-fpm: pool my-pool-test
+ <span class="m">1005</span>      <span class="m">9754</span>  0.0  1.9 <span class="m">691336</span> <span class="m">81188</span> ?        S    04:13   0:04  <span class="se">\_</span> php-fpm: pool my-pool-test
+ <span class="m">1005</span>     <span class="m">17920</span>  0.0  3.0 <span class="m">733316</span> <span class="m">123152</span> ?       S    05:41   0:05  <span class="se">\_</span> php-fpm: pool my-pool-test
+ root     <span class="m">19130</span>  0.0  0.1 <span class="m">667908</span>  <span class="m">5940</span> ?        Ss   May07   0:14 php-fpm: master process <span class="o">(</span>/etc/php5/fpm/php-fpm.conf<span class="o">)</span>
+ <span class="m">1005</span>     <span class="m">10731</span>  0.1  2.7 <span class="m">699296</span> <span class="m">110940</span> ?       S    May14   1:30  <span class="se">\_</span> php-fpm: pool my-pool
+ <span class="m">1005</span>     <span class="m">10816</span>  0.1  2.4 <span class="m">688676</span> <span class="m">99048</span> ?        S    May14   1:35  <span class="se">\_</span> php-fpm: pool my-pool
+ <span class="m">1005</span>     <span class="m">10817</span>  0.1  2.5 <span class="m">694604</span> <span class="m">104196</span> ?       S    May14   1:18  <span class="se">\_</span> php-fpm: pool my-pool
+ <span class="m">1005</span>     <span class="m">10912</span>  0.1  2.6 <span class="m">696708</span> <span class="m">108364</span> ?       S    May14   1:27  <span class="se">\_</span> php-fpm: pool my-pool</code></pre></div>
 
 
 <h3>Watch the nice crash on start/stop</h3>
@@ -293,33 +281,31 @@ Redo the ps to see it.</p>
 
 <p>Problem is coming fom the <code>do_stop</code> function in the init script:</p>
 
-<div>
-  <pre><code class='bash'>#
-# Function that stops the daemon/service
-#
-do_stop()
-{
-  # Return
-  #   0 if daemon has been stopped
-  #   1 if daemon was already stopped
-  #   2 if daemon could not be stopped
-  #   other if a failure occurred
-  start-stop-daemon --stop --quiet --retry=QUIT/$TIMEOUT/TERM/5/KILL/5 --pidfile $PIDFILE --name $NAME
-  RETVAL=&quot;$?&quot;
-  [ &quot;$RETVAL&quot; = 2 ] &amp;&amp; return 2
-  # Wait for children to finish too if this is a daemon that forks
-  # and if the daemon is only ever run from this initscript.
-  # If the above conditions are not satisfied then add some other code
-  # that waits for the process to drop all resources that could be
-  # needed by services started subsequently.  A last resort is to
-  # sleep for some time.
-  start-stop-daemon --stop --quiet --oknodo --retry=0/30/TERM/5/KILL/5 --exec $DAEMON
-  [ &quot;$?&quot; = 2 ] &amp;&amp; return 2
-  # Many daemons don't delete their pidfiles when they exit.
-  rm -f $PIDFILE
-  return &quot;$RETVAL&quot;
-}</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c">#</span>
+<span class="c"># Function that stops the daemon/service</span>
+<span class="c">#</span>
+do_stop<span class="o">()</span>
+<span class="o">{</span>
+  <span class="c"># Return</span>
+  <span class="c">#   0 if daemon has been stopped</span>
+  <span class="c">#   1 if daemon was already stopped</span>
+  <span class="c">#   2 if daemon could not be stopped</span>
+  <span class="c">#   other if a failure occurred</span>
+  start-stop-daemon --stop --quiet --retry<span class="o">=</span>QUIT/<span class="nv">$TIMEOUT</span>/TERM/5/KILL/5 --pidfile <span class="nv">$PIDFILE</span> --name <span class="nv">$NAME</span>
+  <span class="nv">RETVAL</span><span class="o">=</span><span class="s2">&quot;$?&quot;</span>
+  <span class="o">[</span> <span class="s2">&quot;$RETVAL&quot;</span> <span class="o">=</span> <span class="m">2</span> <span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="k">return</span> 2
+  <span class="c"># Wait for children to finish too if this is a daemon that forks</span>
+  <span class="c"># and if the daemon is only ever run from this initscript.</span>
+  <span class="c"># If the above conditions are not satisfied then add some other code</span>
+  <span class="c"># that waits for the process to drop all resources that could be</span>
+  <span class="c"># needed by services started subsequently.  A last resort is to</span>
+  <span class="c"># sleep for some time.</span>
+  start-stop-daemon --stop --quiet --oknodo --retry<span class="o">=</span>0/30/TERM/5/KILL/5 --exec <span class="nv">$DAEMON</span>
+  <span class="o">[</span> <span class="s2">&quot;$?&quot;</span> <span class="o">=</span> <span class="m">2</span> <span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="k">return</span> 2
+  <span class="c"># Many daemons don&#39;t delete their pidfiles when they exit.</span>
+  rm -f <span class="nv">$PIDFILE</span>
+  <span class="k">return</span> <span class="s2">&quot;$RETVAL&quot;</span>
+<span class="o">}</span></code></pre></div>
 
 
 <p>The <code>start-stop-daemon</code> command is a first stop on the right daemon, based on the pid.
@@ -332,12 +318,10 @@ child stay alive, and this second <code>start-stop-daemon</code> command is runn
 
 <p>Let's see whet is this <code>/proc/pid/exe</code>:</p>
 
-<div>
-  <pre><code class='bash'>$ cat /var/run/php5-fpm.pid 
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>cat /var/run/php5-fpm.pid 
 1246
-$ ls -alh /proc/1246/exe
-lrwxrwxrwx 1 root root 0 15 mai   13:30 /proc/1246/exe -&gt; /usr/sbin/php5-fpm</code></pre>
-</div>
+<span class="nv">$ </span>ls -alh /proc/1246/exe
+lrwxrwxrwx <span class="m">1</span> root root <span class="m">0</span> <span class="m">15</span> mai   13:30 /proc/1246/exe -&gt; /usr/sbin/php5-fpm</code></pre></div>
 
 
 <p>So this second stop is waiting for <strong>any</strong> process whose executable is <code>/usr/sbin/php5-fpm</code>,
@@ -351,18 +335,14 @@ Same for the first daemon.</p>
 
 <p>First step, indicate a different binary in <strong>/etc/init.d/php5-fpm-test</strong>:</p>
 
-<div>
-  <pre><code class='bash'>-NAME=php5-fpm
-+NAME=php5-fpm-test</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">-NAME<span class="o">=</span>php5-fpm
++NAME<span class="o">=</span>php5-fpm-test</code></pre></div>
 
 
 <p>Then this binary should exists, doing a symbolic link from php5-fpm-test to php5-fpm will not fool
 the  <code>/proc/pid/exe</code> link. So one ugly solution is to make a real copy of the binary:</p>
 
-<div>
-  <pre><code class='bash'>cp /usr/sbin/php5-fpm /usr/sbin/php5-fpm-test</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">cp /usr/sbin/php5-fpm /usr/sbin/php5-fpm-test</code></pre></div>
 
 
 <p>One caveat: when upgrading php5-fpm package you will have to redo this manual copy of the binary.</p>
@@ -473,42 +453,42 @@ the  <code>/proc/pid/exe</code> link. So one ugly solution is to make a real cop
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+                <a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
 <a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
 <a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
 <a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 29px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
 <a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 29px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
 <a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
 
                 </div>
               </div>
