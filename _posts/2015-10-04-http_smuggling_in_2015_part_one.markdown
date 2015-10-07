@@ -14,12 +14,12 @@ The goal of this serie of articles is to explain clearly what are HTTP smuggling
 issues and why I think this sort of security issues are critically important and
 could be used in massive attacks against modern web services.
 
-In the last 6 months I've been studying the state of several open source HTTP
+In the last 6 months I've been struggling with the state of several open source HTTP
 servers, and helped fixing several issues. The main problem encountered was,
 usually, to explain the problem.
 
-A first big study on smuggling was done in 2005 and lead to several corrections,
- this was a study by **Chaim Linhart**, **Amit Klein**, **Ronen Heled** and **Steve Orrin**,
+A first big study on smuggling was done in 2005 and lead to several corrections.
+This was was done by **Chaim Linhart**, **Amit Klein**, **Ronen Heled** and **Steve Orrin**,
 published by Watchfire and [still worth a read ten years after][2005WATCHFIRE].
 Today even the HTTP/1.1 RFC 7230 contains [protections][RFC_REQUEST_SMUGGLING_2]
 and [warnings][RFC_REQUEST_SMUGGLING_1] against Request Smuggling, but
@@ -35,7 +35,7 @@ nothing **new**, just another way of explaining the problems. I hope this will
 at least help refreshing memories on the problems.
 
 If you use HTTP servers, and especially if you use several HTTP agents (Reverse
-Proxy, SSL Terminator, Load balancers, etc), you should be interested by this.
+Proxies, SSL Terminators, Load balancers, etc.), you should be interested by this.
 If you build an HTTP agent you should master it, best thing would be knowing all
 this better than me, if you spot any error, do not hesitate to comment or
 <a href="mailto:regis.leroy@makina-corpus.com">contact me</a>.
@@ -76,12 +76,12 @@ newlines injections in PHP redirections or in Digest authentication username,
 but this was a long time ago).
 
 Here I will mostly talk about *regular* HTTP Smuggling, flaws coming from HTTP
-syntax mistakes, protocol approximations.
+syntax mistakes and protocol approximations.
 
 ### Why?
 
-We'll study in details the 3 main types of attacks below. But if you can hide
-HTTP in HTTP you can perform various forms of attacks, going from bypassing
+We'll study in details the 3 main kinds of attacks below. But if you can hide
+HTTP in HTTP you can perform various forms of attack, going from bypassing
 security checks to hijacking user sessions or defacing content in caches.
 
 This is the story of several HTTP queries. Let's say we have at least 3 
@@ -175,7 +175,7 @@ HTTP is a quite simple protocol, especially at this time. Note that I'm using
 This will get important later.
 
 Then comes HTTP/1.0, with one important thing added, the **headers**. You *can*
-add headers in the request, and the response will always contains headers.  
+add them in the request, and the response will always contains headers.  
 
 The first query became:
 
@@ -252,7 +252,7 @@ connection opening.
 
 This keep-alive mode in the protocol is what things like Comet are trying to
 exploit to maintain pseudo-infinite-time push/pull connections over HTTP. But
-even without this advanced mode the keep-alive is used a lot in HTTP
+even without this advanced mode, keep-alive is used a lot in HTTP
 environments, especially between the end-user and the first part of the
 middleware. Usage of keep-alive between HTTP servers and proxies (in the
 middleware or between the middleware and the backend) is less common.
@@ -308,10 +308,10 @@ or an SSL terminator) and the end server is usually not using pipelining
 Sometimes the connection between the middleware and the end server is even not
 using Keep Alive connections. Some other times it's reusing a pool of tcp keep
 alive connections. But the first protection against HTTP smuggling applied here
-is breaking your pipeline of request in several requests, and waiting for the
+is breaking your pipeline of requests in several requests, waiting for the
 end of a first request before handling the next one.
 
-Finally, the server is **never** expected to respond to all requests in a
+Eventually, the server is **never** expected to respond to all requests in a
 pipeline. You can get the first response with a `Connection: close` header,
 cutting the Keep Alive connection right after the response.
 
@@ -329,7 +329,7 @@ cutting the Keep Alive connection right after the response.
 And this is the second big protection against smuggling. As soon as the
 middleware detects a bad Suzann query, it should send a **400 bad request**
  response **and** close the connection (but if you really search you'll find
-examples of proxy which does not close the keep alive after an error).
+examples of proxies which does not close the keep alive after an error).
 
 ### Chunks
 
@@ -368,18 +368,18 @@ So much fun :-)
 I said it several times. But, yes, size matters. To inject HTTP in HTTP the
 key is usually to trick the HTTP agent reader about the size of your message.
 
-HTTP queries and response are mostly a list of strings separated by end of lines.
+HTTP queries and responses are mostly a list of strings separated by end of lines.
 And we saw with pipelines that you could send several queries, one after another.
 
-The HTTP agent reading the query or parsing the responses MUST know where this
-list of strings ends, so that what comes after is another query (or response if
-it's a backend stream).
+The HTTP agent reading the queries or parsing the responses MUST know where this
+list of strings ends. this way, the agent can check if what's coming after is
+another query (or response if it's a backend stream).
 
 The tools used by the HTTP reader is either the **chunks mecanism** or the
 **Content-Length** header.
 
 And if something goes wrong **here** you can start hiding some queries or
-responses. One of the actor will parse the stream and will not understand the
+responses. One of the composants will parse the stream and will not understand the
 incoming characters as new requests but as the previous request body, or will not
 understand the stream as the first request response but as a new one.
 
@@ -488,7 +488,7 @@ The regular Ivan response may be rejected by the middleware (which already have
 Here the biggest issue is at `[*2*]`, the middleware receive a Walter response
 which is assigned to ivan request (request #2).
 
-Suzann has performed some sort of Jedi trick on the empire dock's guards and
+Suzann has performed some kind of Jedi trick on the empire dock's guards and
 they feed the next ship requesting something from the docks with one or more
 wookies instead of the regular cargo.
 
@@ -550,7 +550,7 @@ response is already received.
 
 This was a complexe scheme, but for example the Ivan request could contain a
 valid session that Walter did not have (**cookies**, **HTTP Authentication**).
-And this valid session was needed for Walter query success.
+Also this valid session was needed for Walter query to succeed.
 Credentials used in Ivan query are stolen (**hijacked**) for a `Walter` query.
 
 Damages of such issues are very high (you can make user perform unwanted POST
@@ -647,7 +647,7 @@ need a transmitter** but you need this actor to be a **target**.
 
 ### Encapsulating and Fingerprinting
 
-On a real life attack the attacker may need to navigate through several
+In real life, the attacker may need to navigate through several
 transmitters. Like hiting an HAProxy first, then an Apache mod_proxy, then a
 Varnish and finally an Nginx (yes, that happens).
 
@@ -670,10 +670,10 @@ precise level.
 **Encapsulation**, is the ability to hide your HTTP query in several layers of
 HTTP smuggling issues. Usually the first layers are applying some strict rules
 on the HTTP headers or location, but if you find a transmitter issue in the layer
-you can carry in the request Body another type of smuggling issue (one that 
+you can carry in the request body another type of smuggling issue (one that 
 would be detected if used directly on this layer). The encapsulation is
 available because usually the Proxy will not filter the request body (and
-against a filter trying to decode the request body you would use several layers
+against a filter trying to decode the request body, you could use several layers
 of Content-Transfer encoding).
 
 In this example Middleware1 is a transmitter to a first type of smuggling noted
@@ -751,7 +751,7 @@ But for HTTP smuggling you will usually need to test HTTP **without** a browser,
 because you will need to make very bad queries, and browsers never does bad
 queries. Well, in the past they was an issue end-of-line injections on Digest
  Authentication names or with bad separators on Ajax queries. But finding a flaw
-in a browser that allow HTTP smuggling requests coming from *regular* browsers
+in a browser that allows HTTP smuggling requests coming from *regular* browsers
 is an exception. Smuggling does not usually imply that Suzann is an innocent
 smuggler using a regular browser.
 
@@ -853,12 +853,12 @@ The final tool, **the best one**, is **the code**, do not be afraid of reading
 the code (when available). Learn the protocol and check implementations, that's
 the reason of open source code, open source needs critical eyes studying the
 code. That's the reason of superior robustness for open source code, but you
-will certainly discovers that a lot of code seems still unchecked.
+will certainly discover that a lot of code still need to be fixed.
 
 ## First final words
 
 I'll end this article here, next things to come soon, with real world issues.
-But while waiting for new contents you can already try to read some documents
+But while waiting for new contents you can already try to read some posts
 and test your tools.
 
 If you are using HTTP (and who isn't?), and usually use reverse proxies, SSL
@@ -869,7 +869,7 @@ versions in production.
 
 But I know this can be a hard task. So my second advice is to add an HTTP
 cleaner in front of your infrastructure. Something like [HAProxy][HAPROXY]. This
-tool is a very strong protection against smugglers (but take recent versions, of
+tool is very strong to protect against smugglers (but take recent versions, of
  course). Simply reading the [configuration documentation][HACONF] of this
 product you can find an excellent introduction to the HTTP protocol, with common
 pitfalls documented.
