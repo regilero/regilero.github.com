@@ -435,7 +435,7 @@ Note here the `<--X---` arrow, the middleware may not be really aware that a
 Walter query was emitted, and can reject the response (and close it). But the 
 query has already been emitted, and this enough *could* be a problem.
 
-You have an example of such issue in [my previous blog post][PREVIOUS_NGINX_ISSUE]
+You have an example of such issue in [my previous blog post][PREVIOUS_NGINX_SMUGGLING]
 with Nginx as end server, Varnish as middleware, and very huge queries. In this
 variant the Middleware receive a response while it still thinks the 1st query is
 not even completly transmitted (just to say that between theory and real
