@@ -5,7 +5,7 @@ title: Relative/Absolute URL and Proxies
 categories: [Apache, English]
 tags: [HTTP, Apache, Proxy, Web, PHP]
 pic: old5.jpg
-excerpt: Let's explore FillFactor, Returning inserts, TOAST, table inheritance, table partitionning and Notify/listen features. 
+excerpt: Understanding absolute and relative urls problems when playing with several domains from the same web application.
 
 ---
 
