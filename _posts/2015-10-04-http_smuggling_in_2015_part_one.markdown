@@ -522,10 +522,13 @@ But we'll see in a coming article how user mix can happen without going to type
 ### Attack 3 : Credentials Hijacking
 
 This third type of attack was referenced in the 2005 Watchfire study. Most proxy
-are now engineered well enough to prevent this from hapenning. It is now very
+are now engineered well enough to prevent this from hapenning. <strike>It is now very
 hard to have a proxy sending a query to a backend, reusing the same connection
 as the one used on a previous unclosed communication  (or I did not try
-hard enough, maybe).
+hard enough, maybe).</strike>. I did miss some tests here, having backend connection
+pooling is not rare at all. But usually it is done by HTTP agents which are robust
+enough to avoid being transmitters of splitting attacks (@see next part for transmitters
+and splitters).
 
 The trick was to inject a partial query in the stream, and wait for the regular
 user query, coming in the same backend connection and added to the partial
@@ -556,14 +559,15 @@ Credentials used in Ivan query are stolen (**hijacked**) for a `Walter` query.
 Damages of such issues are very high (you can make user perform unwanted POST
 actions, using his own credentials and rights). Keep alive and pipelines are not used
 in most proxies while communicating with backends.  
-Implementing shared backends connections or pools is a dangerous thing.
+Implementing shared backends connections or pools is a dangerous thing, unless you are
+very carefull of not being a splitting attack transmitter.
 
 ### Transmitters and Splitters
 
 In smuggling attacks you will need mainly two types of actors behaving
 differently on some HTTP protocol issues.
 
-On the first part you need **transmitters*.
+On the first part you need **transmitters**.
 
 A transmitter is an HTTP agent, a proxy, which receive an altered HTTP query and
 transmits the alteration to an HTTP backend. When testing HTTP proxies you will
