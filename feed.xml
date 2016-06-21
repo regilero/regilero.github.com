@@ -6,6 +6,302 @@
 		<link>http://regilero.github.io</link>
 		
 			<item>
+				<title>Web Security, using bad HTML to evade from a DIV</title>
+				<description>&lt;p&gt;&lt;small&gt;&lt;strong&gt;English version&lt;/strong&gt; (&lt;strong&gt;Version Française&lt;/strong&gt; disponible sur &lt;a href=&quot;http://www.makina-corpus.com/blog/metier/2016/securite-web-utiliser-du-mauvais-html-pour-sevader-dun-div&quot;&gt;makina corpus&lt;/a&gt;).&lt;/small&gt;
+&lt;small&gt;estimated read time: 10min&lt;/small&gt;&lt;/p&gt;
+
+&lt;h2&gt;Why?&lt;/h2&gt;
+
+&lt;p&gt;Have you ever wondered why you cannot enter any HTML on Facebook? It seems so
+easy on a lot of website to contribute with a small HTML subset, why don't they
+allow it?&lt;/p&gt;
+
+&lt;p&gt;Or maybe you knew that it was possible in Facebook Notes, before April 2014, you
+had a little rich text editor where you could enter some HTML tags (both in
+wysiwyg and raw mode). But, you cannot do that anymore, you are enforced in
+wysiwyg mode, and even using the API you will see that the very small part of
+HTML you can use will always be very very clean. Very few nested levels,
+very strict opening/closing policy for tags, no attributes, etc.&lt;/p&gt;
+
+&lt;p&gt;Well, in this article I'll try to explain why. I'll show you how, by simply
+playing with &lt;strong&gt;bad HTML syntax&lt;/strong&gt; on a very small subset of HTML, it is easy
+for contributed HTML to &lt;strong&gt;evade the box&lt;/strong&gt; and write everywhere on the page.&lt;/p&gt;
+
+&lt;p&gt;This was a 1500 $USD facebook bounty (and a Github T-shirt). So, yes, it's very
+simple but it's still very annoying and real.&lt;/p&gt;
+
+&lt;p&gt;I like to inspect &lt;strong&gt;very simple things&lt;/strong&gt;, and HTML box evasion is something very
+very simple. So simple that most people would not even see why it is a problem.&lt;/p&gt;
+
+&lt;p&gt;So, before reading, think about HTML contributions and HTML injection, this is
+not about XSS or SQL injection. The problem here is:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Can you let the user contribute a small part of your layout with a small subset of HTML?&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;Can you ensure the contributed content will stay &lt;em&gt;in the box&lt;/em&gt;, in the dedicated layout subset.&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;This impacts every markup language where the final destination is HTML (like
+partial HTML, of course, but also markdown, REST, etc.).&lt;/p&gt;
+
+&lt;h2&gt;So what?&lt;/h2&gt;
+
+&lt;h3&gt;Implicit HTML and the browser fixing your errors&lt;/h3&gt;
+
+&lt;p&gt;When you feed a browser with some HTML, the browser is very kind and will try to
+fix a big numbers of errors that could be present in the page.&lt;/p&gt;
+
+&lt;p&gt;This behavior was a very important part of the web success. If the browsers made a
+&lt;em&gt;White-Page-Of-Death&lt;/em&gt; at every HTML syntax error, the web would be really
+smaller.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;This is cool for the end user.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;This is cool for the web developper.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;This is bad in terms of security.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;One of the way the browsers will fix the HTML is by adding closing tags when the
+page clearly forgot to close some tags.&lt;/p&gt;
+
+&lt;p&gt;So this:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- initial --&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;ul&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;foo
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;bar
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/ul&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Is automatically rewritten with closing &lt;code&gt;&amp;lt;/LI&amp;gt;&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- rendered --&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;ul&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;foo&lt;span class=&quot;nt&quot;&gt;&amp;lt;/LI&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;nt&quot;&gt;&amp;lt;/LI&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/ul&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;But let's look at something nastier, we have an opening &lt;code&gt;&amp;lt;DIV&amp;gt;&lt;/code&gt; inside the &lt;code&gt;&amp;lt;LI&amp;gt;&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- initial --&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;ul&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;foo
+          &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;second&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+             test
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;/li&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/ul&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The browser will add the closing DIV:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- rendered --&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;ul&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;foo
+          &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;second&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+            test
+          &lt;span class=&quot;nt&quot;&gt;&amp;lt;/DIV&amp;gt;&lt;/span&gt;  &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- implicit HTML --&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;/li&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/ul&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Chances are that a &lt;strong&gt;server side output filter&lt;/strong&gt;, filtering HTML contributions
+would have &lt;strong&gt;detected&lt;/strong&gt; this HTML as invalid, if you &lt;strong&gt;count opening and closing
+tags&lt;/strong&gt; you can detect that a closing tag is missing.&lt;/p&gt;
+
+&lt;p&gt;So our bad contributor will instead write this:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- initial --&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;ul&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;foo&lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;second&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;third&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;test&lt;span class=&quot;nt&quot;&gt;&amp;lt;/li&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/ul&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end third --&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end second --&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And &lt;strong&gt;if you count&lt;/strong&gt; the number of closing and opening tags, or if you try to
+cleanup this with some regexp (are you crazy?), chances are that this will look
+good.&lt;/p&gt;
+
+&lt;p&gt;And now the browser result:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- rendered --&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;ul&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;foo
+           &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;second&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;third&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;test
+            &lt;span class=&quot;nt&quot;&gt;&amp;lt;/DIV&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- implicit HTML - end third--&amp;gt;&lt;/span&gt;
+           &lt;span class=&quot;nt&quot;&gt;&amp;lt;/DIV&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- implicit HTML - end second --&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;/li&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/ul&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end third? no, end foo --&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end second? no end foo&amp;#39;s parent if any --&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end foo&amp;#39;s parent&amp;#39;s parent if any --&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Two &lt;code&gt;&amp;lt;/DIV&amp;gt;&lt;/code&gt; are &lt;strong&gt;impliclty added by the browser&lt;/strong&gt;, because you cannot close
+the &lt;code&gt;&amp;lt;LI&amp;gt;&lt;/code&gt; without closing the &lt;code&gt;&amp;lt;DIV&amp;gt;&lt;/code&gt; inside. And now, on the final page, you have
+2 extras closing divs !&lt;/p&gt;
+
+&lt;h3&gt;Ok, too much closing divs, and then?&lt;/h3&gt;
+
+&lt;p&gt;If the contributor can enter &lt;code&gt;&amp;lt;div&amp;gt;&lt;/code&gt; and &lt;code&gt;&amp;lt;/div&amp;gt;&lt;/code&gt;, and if you count the number
+of closing and opening divs to assume the HTML is correct, &lt;strong&gt;you are wrong&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;The HTML is correct only if &lt;strong&gt;the order&lt;/strong&gt; of the opening and closing tags is
+correct, if some tags are closed before some others it may breaks the layout
+(it depends of the tags).&lt;/p&gt;
+
+&lt;p&gt;For the contibutors, this means writing outside of the controlled zone (the
+user-comment box for example) and adding content, with the subset of HTML that
+they are allowed to use, on other parts of the page (maybe playing with &lt;code&gt;&amp;lt;table&amp;gt;&lt;/code&gt;
+and &lt;code&gt;&amp;lt;br/&amp;gt;&lt;/code&gt; to fake content on some parts of your layout that other users will
+trust more than a spam comment box (see last examples at the end of this text).&lt;/p&gt;
+
+&lt;h2&gt;Demo&lt;/h2&gt;
+
+&lt;p&gt;Here are some iframes using the implicit DIV closing trick, and writing one
+simple line of text on the &lt;code&gt;main&lt;/code&gt; div, instead of writing it 3 nested DIV
+deeper.&lt;/p&gt;
+
+&lt;p&gt;A nice thing to do is opening one of theses iframes in a new window and looking
+at the source. This is an example for the first iframe, where we cans see in red
+that something was detected as wrong.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/theme/img/posts/t1_html_source.png&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;Inspecting the DOM we see the fixed divs&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/theme/img/posts/t1_html_dom.png&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;Here:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;the goal is to write something &lt;strong&gt;in red&lt;/strong&gt;, in the main div&lt;/li&gt;
+&lt;li&gt;somes tests should fail (using &lt;code&gt;&amp;lt;P&amp;gt;&lt;/code&gt; or &lt;code&gt;&amp;lt;TD&amp;gt;&lt;/code&gt; &lt;code&gt;&amp;lt;TR&amp;gt;&lt;/code&gt; we do not break the divs
+as would most inline tags like &lt;code&gt;&amp;lt;span&amp;gt;&lt;/code&gt;, &lt;code&gt;&amp;lt;strong&amp;gt;&lt;/code&gt;, &lt;code&gt;&amp;lt;sub&amp;gt;&lt;/code&gt;, etc.)&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;table&gt;
+&lt;tr&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t1.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t2.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;/tr&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t1.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t2.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t3.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t4.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;/tr&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t3.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t4.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t5.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t6.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;/tr&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t5.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t6.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t7.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t8.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;/tr&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t7.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t8.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t9.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t10.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;/tr&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t9.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t10.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t11.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t12.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;/tr&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t11.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t12.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t13.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t14.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;/tr&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t13.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t14.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t15.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t16.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;/tr&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t15.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t16.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;td&gt;&lt;small&gt;&lt;a href=&quot;///theme/resource/t17.html&quot;&gt;direct link&lt;/a&gt;&lt;/small&gt;&lt;/td&gt;&lt;td&gt;&amp;nbsp;&lt;/td&gt;&lt;/tr&gt;&lt;td&gt;
+&lt;iframe src=/theme/resource/t17.html style=&quot;height:450px; width: 350px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;
+&lt;/table&gt;
+
+
+&lt;p&gt;&lt;strong&gt;H1, H2, H3, PRE, LI&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Theses are the tags I prefer.&lt;/p&gt;
+
+&lt;p&gt;Because chances are that theses tags are in the list of allowed tags for contributors.&lt;/p&gt;
+
+&lt;h3&gt;Will it break &lt;code&gt;&amp;lt;section&amp;gt;&lt;/code&gt; or &lt;code&gt;&amp;lt;article&amp;gt;&lt;/code&gt; ?&lt;/h3&gt;
+
+&lt;p&gt;Yes.&lt;/p&gt;
+
+&lt;p&gt;First, if you allow &lt;code&gt;&amp;lt;section&amp;gt;&lt;/code&gt; or &lt;code&gt;&amp;lt;article&amp;gt;&lt;/code&gt; in allowed contributors tags, it
+will obviously allow the contributor to close such tags. But this would be a very
+bad move.&lt;/p&gt;
+
+&lt;p&gt;More generaly, if you use one &lt;code&gt;&amp;lt;DIV&amp;gt;&lt;/code&gt; on your layout, closing this tag will also
+close any &lt;code&gt;&amp;lt;section&amp;gt;&lt;/code&gt; or &lt;code&gt;&amp;lt;article&amp;gt;&lt;/code&gt; embedded inside.&lt;/p&gt;
+
+&lt;p&gt;Let's see it in a more complex layout:&lt;/p&gt;
+
+&lt;p&gt;Here is a new iframe with a full layout, you can see a div around the article.&lt;/p&gt;
+
+&lt;iframe src=/theme/resource/t18.html style=&quot;height:450px; width: 700px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;
+
+
+&lt;p&gt;And here is this layout after a bad comment closing the comment and main divs (the real aside section and footers are far in the bottom):&lt;/p&gt;
+
+&lt;iframe src=/theme/resource/t19.html style=&quot;height:450px; width: 700px; border: 1px solid #ccc;&quot;&gt;&lt;/iframe&gt;
+
+
+&lt;h3&gt;What if direct HTML is not allowed?&lt;/h3&gt;
+
+&lt;p&gt;If the only way to contribute is Markdown, Rest, or others wiki-like syntax, you
+cannot directly enter bad HTML, in theory.&lt;/p&gt;
+
+&lt;p&gt;Well, for markdown it depends of the flavor, because you can always enter raw
+HTML in markdown, unless this fonctionnality is removed.&lt;/p&gt;
+
+&lt;p&gt;Anyway, with a language generating HTML the game is to find strange syntax in
+this language which will generate bad HTML.&lt;/p&gt;
+
+&lt;p&gt;Be careful, previews modes are usually made by some js syntax parser, theses
+parsers are usually less robust than the real final generators. So a bad syntax
+in a preview mode means almost nothing.&lt;/p&gt;
+
+&lt;p&gt;I wont give you specific syntax errors example, it depends on the engine, you'll
+have to search on your own.&lt;/p&gt;
+
+&lt;h2&gt;Protections&lt;/h2&gt;
+
+&lt;p&gt;If you want to allow contributions, here are some thoughts:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;why not simply allowing unformatted text?&lt;/li&gt;
+&lt;li&gt;why allowing &lt;code&gt;&amp;lt;div&amp;gt;&lt;/code&gt;, if you use &lt;code&gt;&amp;lt;div&amp;gt;&lt;/code&gt; in your layout you could in fact
+prevent any contributions from using this HTML tag&lt;/li&gt;
+&lt;li&gt;more generally do not allow tags used for your layout structure (like article or section)&lt;/li&gt;
+&lt;li&gt;check your CMS for functions applying HTML syntax cleanup (there is one in
+Drupal for example)&lt;/li&gt;
+&lt;li&gt;avoid regex to cleanup (filter) the contributed HTML, prefer DOM-based tools
+when they are available,
+theses tools will analyze the contributed text stream, build a dom tree, then
+generate HTML output from the tree, so tags will always be in the right order,
+and can even be filtered for attributes and id cleanup.&lt;/li&gt;
+&lt;li&gt;that said, regexp based filters can also work and perform the same filtering
+task, here is for example &lt;a href=&quot;https://www.drupal.org/project/wysiwyg_filter&quot; title=&quot;Drupal WYSIWYG filter&quot;&gt;a very good drupal7 module, wysiwyg_filter&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+				<published>2016-06-10 00:00:00 +0200</published>
+				<link>http://regilero.github.io/security/english/2016/06/10/security_play_with_implicit_html_and_closing_divs/</link>
+			</item>
+		
+			<item>
 				<title>Checking HTTP Smuggling issues in 2015 - Part1</title>
 				<description>&lt;p&gt;&lt;small&gt; &lt;strong&gt;English version&lt;/strong&gt; (&lt;strong&gt;Version Française&lt;/strong&gt; disponible sur &lt;a href=&quot;http://makina-corpus.com/blog/metier/2015/problemes-de-http-smuggling-contrebandede-http-en-2015-partie-1&quot;&gt;makina corpus&lt;/a&gt;.)&lt;/small&gt;&lt;/p&gt;
 
@@ -451,7 +747,7 @@ the cargo).&lt;/p&gt;
 Walter query was emitted, and can reject the response (and close it). But the
 query has already been emitted, and this enough &lt;em&gt;could&lt;/em&gt; be a problem.&lt;/p&gt;
 
-&lt;p&gt;You have an example of such issue in [my previous blog post][PREVIOUS_NGINX_ISSUE]
+&lt;p&gt;You have an example of such issue in &lt;a href=&quot;http://regilero.github.io/security/english/2015/03/25/nginx-integer_truncation&quot; title=&quot;Nginx Integer Truncation&quot;&gt;my previous blog post&lt;/a&gt;
 with Nginx as end server, Varnish as middleware, and very huge queries. In this
 variant the Middleware receive a response while it still thinks the 1st query is
 not even completly transmitted (just to say that between theory and real
@@ -538,10 +834,13 @@ But we'll see in a coming article how user mix can happen without going to type
 &lt;h3&gt;Attack 3 : Credentials Hijacking&lt;/h3&gt;
 
 &lt;p&gt;This third type of attack was referenced in the 2005 Watchfire study. Most proxy
-are now engineered well enough to prevent this from hapenning. It is now very
+are now engineered well enough to prevent this from hapenning. &lt;strike&gt;It is now very
 hard to have a proxy sending a query to a backend, reusing the same connection
 as the one used on a previous unclosed communication  (or I did not try
-hard enough, maybe).&lt;/p&gt;
+hard enough, maybe).&lt;/strike&gt;. I did miss some tests here, having backend connection
+pooling is not rare at all. But usually it is done by HTTP agents which are robust
+enough to avoid being transmitters of splitting attacks (@see next part for transmitters
+and splitters).&lt;/p&gt;
 
 &lt;p&gt;The trick was to inject a partial query in the stream, and wait for the regular
 user query, coming in the same backend connection and added to the partial
@@ -573,14 +872,15 @@ Credentials used in Ivan query are stolen (&lt;strong&gt;hijacked&lt;/strong&gt;
 &lt;p&gt;Damages of such issues are very high (you can make user perform unwanted POST
 actions, using his own credentials and rights). Keep alive and pipelines are not used
 in most proxies while communicating with backends.&lt;br/&gt;
-Implementing shared backends connections or pools is a dangerous thing.&lt;/p&gt;
+Implementing shared backends connections or pools is a dangerous thing, unless you are
+very carefull of not being a splitting attack transmitter.&lt;/p&gt;
 
 &lt;h3&gt;Transmitters and Splitters&lt;/h3&gt;
 
 &lt;p&gt;In smuggling attacks you will need mainly two types of actors behaving
 differently on some HTTP protocol issues.&lt;/p&gt;
 
-&lt;p&gt;On the first part you need &lt;em&gt;*transmitters&lt;/em&gt;.&lt;/p&gt;
+&lt;p&gt;On the first part you need &lt;strong&gt;transmitters&lt;/strong&gt;.&lt;/p&gt;
 
 &lt;p&gt;A transmitter is an HTTP agent, a proxy, which receive an altered HTTP query and
 transmits the alteration to an HTTP backend. When testing HTTP proxies you will
@@ -2972,33 +3272,6 @@ the  &lt;code&gt;/proc/pid/exe&lt;/code&gt; link. So one ugly solution is to mak
 </description>
 				<published>2013-05-16 00:00:00 +0200</published>
 				<link>http://regilero.github.io/drupal/english/2013/05/16/Warning_chrooted_php_fpm_and_apc/</link>
-			</item>
-		
-			<item>
-				<title>Drupal - Mongodb statistics module published</title>
-				<description>&lt;h3&gt;What is this about?&lt;/h3&gt;
-
-&lt;p&gt;Just a few words, as I've other some things to do.&lt;/p&gt;
-
-&lt;p&gt;I've just published a development version of &lt;a href=&quot;http://github.com/regilero/drupal_mongodb_statistics&quot;&gt;mongodb-statistics&lt;/a&gt; on github.&lt;/p&gt;
-
-&lt;p&gt;This module is a first try on replacing heavy MySQL operations done by the core statistics module.&lt;/p&gt;
-
-&lt;p&gt;It's copy-and-alter of the core statistics module, with some additions.
-So it's not the nicest piece of code I could write :-)&lt;/p&gt;
-
-&lt;p&gt;On the things added :&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;batch migration of previous node_counter statistics if any (not yet for accesslog)&lt;/li&gt;
-&lt;li&gt;post-synchronisation of node_counter mongodb table to a sql table (via cron), so that you could query it via views (not for accesslog, are you mad?)&lt;/li&gt;
-&lt;li&gt;time based caching of the popular content block&lt;/li&gt;
-&lt;li&gt;Still lot of thing to do (see the &lt;a href=&quot;https://github.com/regilero/drupal_mongodb_statistics/blob/master/mongodb_statistics/TODO.txt&quot;&gt;TODO&lt;/a&gt;) but it was a nice way to learn &lt;strong&gt;mongodb&lt;/strong&gt;. I especially like the idea of &lt;a href=&quot;http://nosql.mypopescu.com/post/392418792/translate-sql-to-mongodb-mapreduce&quot;&gt;mapReduce&lt;/a&gt; functions applied for complex &lt;code&gt;GROUP BY&lt;/code&gt; equivalents.&lt;/li&gt;
-&lt;/ul&gt;
-
-</description>
-				<published>2011-10-18 00:00:00 +0200</published>
-				<link>http://regilero.github.io/drupal/english/2011/10/18/drupal_mongodb_statistics_module_published/</link>
 			</item>
 		
 	</channel>
