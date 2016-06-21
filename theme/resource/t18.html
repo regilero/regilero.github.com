@@ -1,0 +1,78 @@
+<html><head><title>HTML TEST</title></head>
+<body>
+<style>
+body { width:680px;}
+.main { float: left;  width:63%; margin: 0 1.5%; border: 1px solid red; color: #111; background-color:  rgba(150,150,150,0.5); }
+.level1 { border: 1px solid #00FF00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #333; background-color: rgba(150,150,150,0.5);}
+.level2 { border: 1px solid #00CC00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #222; background-color: rgba(150,150,150,0.5)}
+.level3 { border: 1px solid #00AA00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #111; background-color: rgba(150,150,150,0.5);}
+h1,h2,h3 { font-size: 12px;}
+h1 { border: 1px solid #00CC00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #222; background-color: rgba(150,150,150,0.5)}
+pre { background-color: #222; color: #ccc; border: 1px solid #444;}
+span.high { color: red; }
+span.test { color: green; }
+aside { float: right; width:30%; margin: 0 1.5%; border: 1px solid #00CC00; color: #222; background-color: rgba(150,150,150,0.5)}
+article { border: 1px solid #00CC00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #222; background-color: rgba(150,150,150,0.5)}
+footer { clear: both; border: 1px solid #00CC00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #222; background-color: rgba(150,150,150,0.5)}
+.comment { border: 1px solid #00AA00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #111; background-color: rgba(150,150,150,0.5);}
+section { border: 1px solid red; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; }
+</style>
+
+<body>
+  <header>  
+    <h1>Test: Full Layout example</h1>
+    <!-- Header content -->
+  </header>
+  <div role="main" class="main">
+    &lt;div&gt;main
+    <article>
+        &lt;article&gt;Article
+        <section class="edito">
+        &lt;section&gt;<h2>Title of the article</h2>
+        <p>Lorem Ipsum dolor</p>
+            &lt;/section&gt;
+        </section>
+        <hr>
+        <section class="comments">
+            &lt;section&gt;<h3> Comments</h3>
+            <div class="comment">
+            First
+            </div>
+            <div class="comment">
+             my 2 cents
+            </div>
+            &lt;/section&gt;
+        </section>
+        &lt;/article&gt;
+    </article>
+    &lt;/div&gt; end of div main
+  </div>
+  <aside role="complementary">
+    &lt;aside&gt;
+    <section class="links">
+        &lt;section&gt;
+        <h3>Links</h3>
+        <ul>
+            <li> Foo </li>
+            <li>Bar</li>
+        </ul>
+        &lt;/section&gt;
+    </section>
+    <section class="Stuff">
+        &lt;section&gt;
+        <h3>Stuff</h3>
+        <ul>
+            <li> Foo </li>
+            <li>Bar</li>
+        </ul>
+        &lt;/section&gt;
+    </section>
+    &lt;/aside&gt;
+  </aside>
+  <footer>
+    &lt;footer&gt;
+    <p>Footer</p>
+    &lt;/footer&gt;
+  </footer>
+</body>
+</html>
