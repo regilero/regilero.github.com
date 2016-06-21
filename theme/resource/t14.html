@@ -1,0 +1,39 @@
+<html><head><title>HTML TEST</title></head>
+<body>
+<h2>Test: H1 Breaking DIV</h2>
+<style>
+.main { border: 1px solid red; margin-left: 3px; color: red; background-color: #000; }
+.level1 { border: 1px solid #00FF00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #333; background-color: rgba(100,100,100,0.5);}
+.level2 { border: 1px solid #00CC00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #222; background-color: rgba(100,100,100,0.5)}
+.level3 { border: 1px solid #00AA00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #111; background-color: rgba(100,100,100,0.5);}
+h1,h2,h3 { font-size: 12px;}
+pre { background-color: #222; color: #ccc; border: 1px solid #444;}
+span.high { color: red; }
+span.test { color: green; }
+</style>
+<div class=main>
+    <h3>Main</h3>
+    <div class="level1">
+        <h3>level 1</h3>
+        <div class="level2">
+            <h3>Level2</h3>
+            <div class="level3">
+                <h3>Level 3</h3>
+
+               <pre>
+START Content INSIDE LEVEL 3
+<span class="test">&lt;H1&gt;</span>H1<span class="high">&lt;div&gt;&lt;div&gt;&lt;div&gt;</span><span class="test">&lt;/H1&gt;</span>
+<span class="high">&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;</span>
+END Content INSIDE LEVEL 3
+               </pre>
+
+               <strong>START Content INSIDE LEVEL 3</strong>
+               <H1>H1<div><div><div></H1>
+               </div></div></div>
+               <strong>END Content INSIDE LEVEL 3</strong>
+            </div> <!-- end level3 -->
+        </div> <!-- end level2 -->
+    </div> <!-- end level1 -->
+<div> <!-- end main -->
+</body>
+</html>

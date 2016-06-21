@@ -1,0 +1,128 @@
+<html><head><title>HTML TEST</title></head>
+<body>
+<style>
+body { width:680px;}
+.main { float: left;  width:63%; margin: 0 1.5%; border: 1px solid red; color: #111; background-color:  rgba(150,150,150,0.5); }
+.level1 { border: 1px solid #00FF00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #333; background-color: rgba(150,150,150,0.5);}
+.level2 { border: 1px solid #00CC00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #222; background-color: rgba(150,150,150,0.5)}
+.level3 { border: 1px solid #00AA00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #111; background-color: rgba(150,150,150,0.5);}
+h1,h2,h3 { font-size: 12px;}
+h1 { border: 1px solid #00CC00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #222; background-color: rgba(150,150,150,0.5)}
+pre { background-color: #222; color: #ccc; border: 1px solid #444;}
+span.high { color: red; }
+span.test { color: green; }
+aside { float: right; width:30%; margin: 0 1.5%; border: 1px solid #00CC00; color: #222; background-color: rgba(150,150,150,0.5)}
+article { border: 1px solid #00CC00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #222; background-color: rgba(150,150,150,0.5)}
+footer { clear: both; border: 1px solid #00CC00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #222; background-color: rgba(150,150,150,0.5)}
+.comment { border: 1px solid #00AA00; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; color: #111; background-color: rgba(150,150,150,0.5);}
+section { border: 1px solid red; margin-left: 10px; margin-right: 10px; margin-bottom: 3px; }
+</style>
+
+<body>
+  <header>  
+    <h1>Test: Full Layout example</h1>
+    <!-- Header content -->
+  </header>
+  <div role="main" class="main">
+    &lt;div&gt;main
+    <article>
+        &lt;article&gt;Article
+        <section class="edito">
+        &lt;section&gt;<h2>Title of the article</h2>
+        <p>Lorem Ipsum dolor</p>
+            &lt;/section&gt;
+        </section>
+        <hr>
+        <section class="comments">
+            &lt;section&gt;<h3> Comments</h3>
+            <div class="comment">
+            First
+            </div>
+            <div class="comment">
+             my 2 cents
+            </div>
+            <div class="comment">
+<!-- START OF INJECTED COMMENT -->
+               <pre>
+START Content INSIDE comment div
+<span class="test">&lt;li&gt;</span>LI1<span class="high">&lt;div&gt;&lt;div&gt;</span><span class="test">&lt;/li&gt;</span>
+<span class="high">&lt;/div&gt;&lt;/div&gt;</span>
+ (...) then inject content outside of the box (...)
+               </pre>
+
+               <strong>START Content INSIDE comment div</strong>
+               <li>LI1<div><div></li>
+               </div></div>
+                (...) then inject content outside of the box (...)
+               <table>
+               <tr><td>Hello</td><td>World</td></tr>
+               <tr><td>Lorem ipsum dolor sit amet, consectetur adipiscing elit. </td>
+               <td>Nulla mattis massa ante, ac hendrerit turpis viverra eu. </td></tr>
+               </table>
+               <table>
+               <tr><td>Hello</td><td>World</td></tr>
+               <tr><td>Lorem ipsum dolor sit amet, consectetur adipiscing elit.  </td>
+               <td>Nulla mattis massa ante, ac hendrerit turpis viverra eu.  </td></tr>
+               </table>
+               <br/><br/><br/><br/><br/>
+               <br/><br/><br/><br/><br/>
+               <table>
+               <tr><td>Bottom</td><td>Table</td><td>If your want</td><td>maybe</td></tr>
+               <tr><td>Donec facilisis luctus finibus. Duis cursus rutrum volutpat. Phasellus fermentum tempus orci, aliquet egestas enim sodales ac. Vivamus vitae tempus leo. Nam ultrices dui eget risus convallis condimentum. Donec malesuada erat nec accumsan imperdiet. Phasellus iaculis justo vel ullamcorper lacinia. Nunc ornare odio eget sapien imperdiet eleifend. In tristique non nisl in scelerisque. Mauris ut est libero. Nam euismod consequat rutrum. Fusce augue enim, fringilla id mi ac, ullamcorper dapibus erat. Mauris a tellus tristique, bibendum metus sit amet, facilisis arcu. </td>
+               <td>Maecenas consectetur augue in est facilisis, quis tristique velit lacinia. In euismod arcu id ante eleifend, vel rutrum turpis imperdiet. Vestibulum nibh ligula, rhoncus et mauris varius, ullamcorper fringilla nibh. Mauris eu ex ultricies felis sodales viverra sit amet quis nulla. Praesent massa sapien, iaculis eget pretium fermentum, varius in dui. Pellentesque iaculis fermentum enim, ut vestibulum turpis aliquet quis. Phasellus placerat, urna sed facilisis sollicitudin, lectus diam vestibulum purus, eu varius tortor odio non enim. Nullam et mollis lacus. Praesent commodo neque libero, ac pellentesque libero accumsan vitae. Nunc at maximus dui. Vivamus eget massa augue. Maecenas et malesuada dui. </td>
+               <td> Vivamus vel efficitur lacus. Interdum et malesuada fames ac ante ipsum primis in faucibus. Nulla facilisi. Mauris finibus porttitor arcu, quis tempor velit volutpat ut. Morbi viverra lectus vitae justo pulvinar commodo. Aenean fermentum tempor hendrerit. Integer porta diam ac justo sollicitudin posuere. Nulla neque tortor, elementum id dui ut, congue rutrum augue. Aenean venenatis risus ac risus maximus, quis viverra sapien accumsan. Fusce massa justo, ultricies quis dignissim et, tincidunt in dolor. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla elementum massa eget erat condimentum, a sodales nisi laoreet. Nunc et ligula lobortis arcu semper condimentum. Phasellus tempus et nisl et convallis. Maecenas finibus, sem tempus pulvinar fermentum, nisl diam pretium arcu, rutrum dignissim augue odio vel magna. Sed efficitur ante nec sem ullamcorper faucibus.
+</td>
+               <td>Cras vitae arcu vitae erat lobortis eleifend ut sed libero. Vestibulum nisl lorem, fringilla vitae ex vitae, elementum rhoncus quam. Nam sit amet fringilla metus. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Praesent et nibh lacinia sapien bibendum luctus. Etiam et nunc non mauris finibus commodo. Quisque in nibh maximus, porttitor felis sed, aliquet nulla. Duis tincidunt nulla sed ante cursus, vitae auctor ex efficitur. Phasellus ut congue urna. Suspendisse potenti. Nulla convallis sem at metus ullamcorper, et pretium mi porttitor. Nulla consectetur cursus risus, at aliquam orci fringilla vel. Suspendisse fermentum tristique enim, vel rutrum velit sodales vitae. Mauris auctor ultrices tempus.</td></tr>
+               </table>
+               <div>Fusce fringilla quam nec commodo maximus. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc semper aliquam risus id blandit. In egestas magna nisi, et suscipit libero lacinia in. Curabitur fringilla, dui dignissim ultricies tincidunt, lacus tortor suscipit tellus, vel vulputate dui lorem hendrerit neque. Vivamus dapibus luctus dui, id varius libero rhoncus at. Maecenas dictum sapien in semper rutrum. Vivamus porta commodo nulla et consectetur. Proin elementum lorem commodo dui condimentum, nec sollicitudin quam rhoncus. </div>
+               <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+               <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+               <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+               <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+               <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+               <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+               <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+               <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+               <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+               <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+               <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+               <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+
+<!-- END OF INJECTED COMMENT -->
+
+            </div>
+            &lt;/section&gt;
+        </section>
+        &lt;/article&gt;
+    </article>
+    &lt;/div&gt; end of div main
+  </div>
+  <aside role="complementary">
+    &lt;aside&gt;
+    <section class="links">
+        &lt;section&gt;
+        <h3>Links</h3>
+        <ul>
+            <li> Foo </li>
+            <li>Bar</li>
+        </ul>
+        &lt;/section&gt;
+    </section>
+    <section class="Stuff">
+        &lt;section&gt;
+        <h3>Stuff</h3>
+        <ul>
+            <li> Foo </li>
+            <li>Bar</li>
+        </ul>
+        &lt;/section&gt;
+    </section>
+    &lt;/aside&gt;
+  </aside>
+  <footer>
+    &lt;footer&gt;
+    <p>Footer</p>
+    &lt;/footer&gt;
+  </footer>
+</body>
+</html>
