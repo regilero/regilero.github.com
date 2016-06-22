@@ -289,4 +289,4 @@ If you want to allow contributions, here are some thoughts:
  task, here is for example [a very good drupal7 module, wysiwyg_filter][WYSIWYGFILTER]
 
   [WYSIWYGFILTER]: https://www.drupal.org/project/wysiwyg_filter "Drupal WYSIWYG filter"
-  [FRENCH]: http://www.makina-corpus.com/blog/metier/2016/securite-web-utiliser-du-mauvais-html-pour-sevader-dun-div
+  [FRENCH]: http://www.makina-corpus.com/blog/metier/2016/securite-web-utiliser-du-mauvais-html-pour-sevader-dun-div-1
