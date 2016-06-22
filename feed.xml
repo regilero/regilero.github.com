@@ -6,20 +6,19 @@
 		<link>http://regilero.github.io</link>
 		
 			<item>
-				<title>Web Security, using bad HTML to evade from a DIV</title>
-				<description>&lt;p&gt;&lt;small&gt;&lt;strong&gt;English version&lt;/strong&gt; (&lt;strong&gt;Version Française&lt;/strong&gt; disponible sur &lt;a href=&quot;http://www.makina-corpus.com/blog/metier/2016/securite-web-utiliser-du-mauvais-html-pour-sevader-dun-div&quot;&gt;makina corpus&lt;/a&gt;).&lt;/small&gt;
+				<title>Web Security, using bad HTML to escape from a DIV</title>
+				<description>&lt;p&gt;&lt;small&gt;&lt;strong&gt;English version&lt;/strong&gt; (&lt;strong&gt;Version Française&lt;/strong&gt; disponible sur &lt;a href=&quot;http://www.makina-corpus.com/blog/metier/2016/securite-web-utiliser-du-mauvais-html-pour-sevader-dun-div-1&quot;&gt;makina corpus&lt;/a&gt;).&lt;/small&gt;
 &lt;small&gt;estimated read time: 10min&lt;/small&gt;&lt;/p&gt;
 
 &lt;h2&gt;Why?&lt;/h2&gt;
 
-&lt;p&gt;Have you ever wondered why you cannot enter any HTML on Facebook? It seems so
-easy on a lot of website to contribute with a small HTML subset, why don't they
-allow it?&lt;/p&gt;
+&lt;p&gt;Have you ever wondered why you cannot post any HTML on Facebook? It seems so
+easy on a lot of websites to submit content containing a small HTML subset, why doesn't Facebook allow it?&lt;/p&gt;
 
-&lt;p&gt;Or maybe you knew that it was possible in Facebook Notes, before April 2014, you
-had a little rich text editor where you could enter some HTML tags (both in
-wysiwyg and raw mode). But, you cannot do that anymore, you are enforced in
-wysiwyg mode, and even using the API you will see that the very small part of
+&lt;p&gt;Or maybe you knew that it was possible in Facebook Notes, before April 2014. You
+had a little rich text editor where you could type in some HTML tags (both in
+wysiwyg and raw mode). But you cannot do that anymore. Now you are forced to use the
+wysiwyg mode and even using the API you will see that the very small part of
 HTML you can use will always be very very clean. Very few nested levels,
 very strict opening/closing policy for tags, no attributes, etc.&lt;/p&gt;
 
@@ -27,42 +26,42 @@ very strict opening/closing policy for tags, no attributes, etc.&lt;/p&gt;
 playing with &lt;strong&gt;bad HTML syntax&lt;/strong&gt; on a very small subset of HTML, it is easy
 for contributed HTML to &lt;strong&gt;evade the box&lt;/strong&gt; and write everywhere on the page.&lt;/p&gt;
 
-&lt;p&gt;This was a 1500 $USD facebook bounty (and a Github T-shirt). So, yes, it's very
+&lt;p&gt;This earned me a 1500 USD facebook bounty (and a Github T-shirt). So, yes, it's very
 simple but it's still very annoying and real.&lt;/p&gt;
 
-&lt;p&gt;I like to inspect &lt;strong&gt;very simple things&lt;/strong&gt;, and HTML box evasion is something very
+&lt;p&gt;I like to look at &lt;strong&gt;very simple things&lt;/strong&gt; and HTML box evasion is something very
 very simple. So simple that most people would not even see why it is a problem.&lt;/p&gt;
 
-&lt;p&gt;So, before reading, think about HTML contributions and HTML injection, this is
+&lt;p&gt;So, before reading, keep in mind that this is about HTML contributions and HTML injection, this is
 not about XSS or SQL injection. The problem here is:&lt;/p&gt;
 
 &lt;ul&gt;
-&lt;li&gt;&lt;strong&gt;Can you let the user contribute a small part of your layout with a small subset of HTML?&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Can you let the user contribute content formatted with a small subset of HTML?&lt;/strong&gt;&lt;/li&gt;
 &lt;li&gt;Can you ensure the contributed content will stay &lt;em&gt;in the box&lt;/em&gt;, in the dedicated layout subset.&lt;/li&gt;
 &lt;/ul&gt;
 
 
-&lt;p&gt;This impacts every markup language where the final destination is HTML (like
-partial HTML, of course, but also markdown, REST, etc.).&lt;/p&gt;
+&lt;p&gt;This impacts every markup language that is rendered to HTML (like
+partial HTML, of course, but also markdown, reStructuredText, etc.).&lt;/p&gt;
 
 &lt;h2&gt;So what?&lt;/h2&gt;
 
 &lt;h3&gt;Implicit HTML and the browser fixing your errors&lt;/h3&gt;
 
 &lt;p&gt;When you feed a browser with some HTML, the browser is very kind and will try to
-fix a big numbers of errors that could be present in the page.&lt;/p&gt;
+fix a big number of errors that could be present in the page.&lt;/p&gt;
 
-&lt;p&gt;This behavior was a very important part of the web success. If the browsers made a
-&lt;em&gt;White-Page-Of-Death&lt;/em&gt; at every HTML syntax error, the web would be really
+&lt;p&gt;This behavior was a very important part of the web's success. If browsers made a
+&lt;em&gt;White-Page-Of-Death&lt;/em&gt; for every HTML syntax error, the web would be really
 smaller.&lt;/p&gt;
 
 &lt;p&gt;&lt;strong&gt;This is cool for the end user.&lt;/strong&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;This is cool for the web developper.&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;This is cool for the web developer.&lt;/strong&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;strong&gt;This is bad in terms of security.&lt;/strong&gt;&lt;/p&gt;
 
-&lt;p&gt;One of the way the browsers will fix the HTML is by adding closing tags when the
+&lt;p&gt;One of the way browsers will fix HTML is by adding closing tags when the
 page clearly forgot to close some tags.&lt;/p&gt;
 
 &lt;p&gt;So this:&lt;/p&gt;
@@ -159,38 +158,39 @@ good.&lt;/p&gt;
 the &lt;code&gt;&amp;lt;LI&amp;gt;&lt;/code&gt; without closing the &lt;code&gt;&amp;lt;DIV&amp;gt;&lt;/code&gt; inside. And now, on the final page, you have
 2 extras closing divs !&lt;/p&gt;
 
-&lt;h3&gt;Ok, too much closing divs, and then?&lt;/h3&gt;
+&lt;h3&gt;Ok, too many closing divs, and then?&lt;/h3&gt;
 
 &lt;p&gt;If the contributor can enter &lt;code&gt;&amp;lt;div&amp;gt;&lt;/code&gt; and &lt;code&gt;&amp;lt;/div&amp;gt;&lt;/code&gt;, and if you count the number
 of closing and opening divs to assume the HTML is correct, &lt;strong&gt;you are wrong&lt;/strong&gt;.&lt;/p&gt;
 
 &lt;p&gt;The HTML is correct only if &lt;strong&gt;the order&lt;/strong&gt; of the opening and closing tags is
-correct, if some tags are closed before some others it may breaks the layout
+correct, if some tags are closed before some others it may break the layout
 (it depends of the tags).&lt;/p&gt;
 
 &lt;p&gt;For the contibutors, this means writing outside of the controlled zone (the
 user-comment box for example) and adding content, with the subset of HTML that
-they are allowed to use, on other parts of the page (maybe playing with &lt;code&gt;&amp;lt;table&amp;gt;&lt;/code&gt;
+they are allowed to use, on other parts of the page, maybe playing with &lt;code&gt;&amp;lt;table&amp;gt;&lt;/code&gt;
 and &lt;code&gt;&amp;lt;br/&amp;gt;&lt;/code&gt; to fake content on some parts of your layout that other users will
 trust more than a spam comment box (see last examples at the end of this text).&lt;/p&gt;
 
 &lt;h2&gt;Demo&lt;/h2&gt;
 
-&lt;p&gt;Here are some iframes using the implicit DIV closing trick, and writing one
+&lt;p&gt;Below are some iframes that use the implicit DIV closing trick to write one
 simple line of text on the &lt;code&gt;main&lt;/code&gt; div, instead of writing it 3 nested DIV
 deeper.&lt;/p&gt;
 
-&lt;p&gt;A nice thing to do is opening one of theses iframes in a new window and looking
-at the source. This is an example for the first iframe, where we cans see in red
-that something was detected as wrong.&lt;/p&gt;
+&lt;p&gt;An interesting thing to do is opening these iframes in a new window and looking
+at the source. Here is what you'll see if you view the source of the first iframe:&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/theme/img/posts/t1_html_source.png&quot;&gt;&lt;/p&gt;
 
-&lt;p&gt;Inspecting the DOM we see the fixed divs&lt;/p&gt;
+&lt;p&gt;We can see that something wrong was detected and highlighted in red.&lt;/p&gt;
+
+&lt;p&gt;Inspecting the DOM we see how the browser automatcially closes the divs:&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/theme/img/posts/t1_html_dom.png&quot;&gt;&lt;/p&gt;
 
-&lt;p&gt;Here:&lt;/p&gt;
+&lt;p&gt;In these examples:&lt;/p&gt;
 
 &lt;ul&gt;
 &lt;li&gt;the goal is to write something &lt;strong&gt;in red&lt;/strong&gt;, in the main div&lt;/li&gt;
@@ -231,22 +231,20 @@ as would most inline tags like &lt;code&gt;&amp;lt;span&amp;gt;&lt;/code&gt;, &l
 
 &lt;p&gt;&lt;strong&gt;H1, H2, H3, PRE, LI&lt;/strong&gt;&lt;/p&gt;
 
-&lt;p&gt;Theses are the tags I prefer.&lt;/p&gt;
+&lt;p&gt;These are the tags I prefer because chances are that they are in the list of allowed tags for contributors.&lt;/p&gt;
 
-&lt;p&gt;Because chances are that theses tags are in the list of allowed tags for contributors.&lt;/p&gt;
-
-&lt;h3&gt;Will it break &lt;code&gt;&amp;lt;section&amp;gt;&lt;/code&gt; or &lt;code&gt;&amp;lt;article&amp;gt;&lt;/code&gt; ?&lt;/h3&gt;
+&lt;h3&gt;Will it break &lt;code&gt;&amp;lt;section&amp;gt;&lt;/code&gt; or &lt;code&gt;&amp;lt;article&amp;gt;&lt;/code&gt;?&lt;/h3&gt;
 
 &lt;p&gt;Yes.&lt;/p&gt;
 
 &lt;p&gt;First, if you allow &lt;code&gt;&amp;lt;section&amp;gt;&lt;/code&gt; or &lt;code&gt;&amp;lt;article&amp;gt;&lt;/code&gt; in allowed contributors tags, it
-will obviously allow the contributor to close such tags. But this would be a very
+will obviously allow the contributor to close such tags, so this would be a very
 bad move.&lt;/p&gt;
 
 &lt;p&gt;More generaly, if you use one &lt;code&gt;&amp;lt;DIV&amp;gt;&lt;/code&gt; on your layout, closing this tag will also
 close any &lt;code&gt;&amp;lt;section&amp;gt;&lt;/code&gt; or &lt;code&gt;&amp;lt;article&amp;gt;&lt;/code&gt; embedded inside.&lt;/p&gt;
 
-&lt;p&gt;Let's see it in a more complex layout:&lt;/p&gt;
+&lt;p&gt;Let's see this in action in a more complex layout:&lt;/p&gt;
 
 &lt;p&gt;Here is a new iframe with a full layout, you can see a div around the article.&lt;/p&gt;
 
@@ -260,39 +258,37 @@ close any &lt;code&gt;&amp;lt;section&amp;gt;&lt;/code&gt; or &lt;code&gt;&amp;l
 
 &lt;h3&gt;What if direct HTML is not allowed?&lt;/h3&gt;
 
-&lt;p&gt;If the only way to contribute is Markdown, Rest, or others wiki-like syntax, you
-cannot directly enter bad HTML, in theory.&lt;/p&gt;
+&lt;p&gt;If the only way to contribute is Markdown, reStructuredText or other wiki-like syntaxes, you
+cannot directly insert bad HTML, in theory.&lt;/p&gt;
 
-&lt;p&gt;Well, for markdown it depends of the flavor, because you can always enter raw
-HTML in markdown, unless this fonctionnality is removed.&lt;/p&gt;
+&lt;p&gt;Well, for Markdown it depends of the flavor. By default, you can include raw
+HTML in Markdown, unless this feature is removed.&lt;/p&gt;
 
 &lt;p&gt;Anyway, with a language generating HTML the game is to find strange syntax in
 this language which will generate bad HTML.&lt;/p&gt;
 
-&lt;p&gt;Be careful, previews modes are usually made by some js syntax parser, theses
+&lt;p&gt;Be careful, preview modes are usually made with syntax parsers written in JavaScript. These
 parsers are usually less robust than the real final generators. So a bad syntax
 in a preview mode means almost nothing.&lt;/p&gt;
 
-&lt;p&gt;I wont give you specific syntax errors example, it depends on the engine, you'll
-have to search on your own.&lt;/p&gt;
+&lt;p&gt;I wont give you specific syntax error examples, it depends on the engine, you'll
+have to research on your own.&lt;/p&gt;
 
 &lt;h2&gt;Protections&lt;/h2&gt;
 
 &lt;p&gt;If you want to allow contributions, here are some thoughts:&lt;/p&gt;
 
 &lt;ul&gt;
-&lt;li&gt;why not simply allowing unformatted text?&lt;/li&gt;
-&lt;li&gt;why allowing &lt;code&gt;&amp;lt;div&amp;gt;&lt;/code&gt;, if you use &lt;code&gt;&amp;lt;div&amp;gt;&lt;/code&gt; in your layout you could in fact
-prevent any contributions from using this HTML tag&lt;/li&gt;
-&lt;li&gt;more generally do not allow tags used for your layout structure (like article or section)&lt;/li&gt;
-&lt;li&gt;check your CMS for functions applying HTML syntax cleanup (there is one in
-Drupal for example)&lt;/li&gt;
-&lt;li&gt;avoid regex to cleanup (filter) the contributed HTML, prefer DOM-based tools
-when they are available,
-theses tools will analyze the contributed text stream, build a dom tree, then
+&lt;li&gt;Why not simply allowing unformatted text?&lt;/li&gt;
+&lt;li&gt;Why allowing &lt;code&gt;&amp;lt;div&amp;gt;&lt;/code&gt;? If you use &lt;code&gt;&amp;lt;div&amp;gt;&lt;/code&gt; in your layout you could in fact
+prevent any contributions from using this HTML tag.&lt;/li&gt;
+&lt;li&gt;More generally do not allow tags used for your layout structure (like article or section)&lt;/li&gt;
+&lt;li&gt;Check your CMS if you CMS provides HTML syntax cleanup (Drupal does, for example)&lt;/li&gt;
+&lt;li&gt;Avoid regexps to cleanup (filter) contributed HTML, prefer DOM-based tools
+when they are available. These tools will analyze text input, build a dom tree, then
 generate HTML output from the tree, so tags will always be in the right order,
 and can even be filtered for attributes and id cleanup.&lt;/li&gt;
-&lt;li&gt;that said, regexp based filters can also work and perform the same filtering
+&lt;li&gt;That said, regexp-based filters might also work and perform the same filtering
 task, here is for example &lt;a href=&quot;https://www.drupal.org/project/wysiwyg_filter&quot; title=&quot;Drupal WYSIWYG filter&quot;&gt;a very good drupal7 module, wysiwyg_filter&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
 

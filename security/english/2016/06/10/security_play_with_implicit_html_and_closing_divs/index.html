@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title> Web Security, using bad HTML to evade from a DIV |  RBleug</title>
+    <title> Web Security, using bad HTML to escape from a DIV |  RBleug</title>
     <meta name="description" content="Regilero's blog; Mostly tech things about web stuff."/>
     <meta name="author" content="regilero"/>
     <link rel="author" href="/contact/" title="who am I?" type="text/html" />
@@ -75,7 +75,7 @@
           <article>
         <header>
             <div class="page-header">
-            <h1>Web Security, using bad HTML to evade from a DIV
+            <h1>Web Security, using bad HTML to escape from a DIV
             <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="2016-06-10">Jun 10, 2016</time></span>
             <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/english/">english</a> and <a href="/security/">security</a></span>
             </h1>
@@ -85,30 +85,29 @@
         <div class="entry">
          <div class="col-md-6">
           <div class="post-excerpt-full">
-          Break HTML layouts with only bad HTML and the browsers help.
+          Break HTML layouts with only bad HTML and the browser's help.
           </div>
           <div id="post-toc">
           </div>
          </div>
          <div class="col-md-6">
-          <img class="topimg" src="/theme/img/pic/counting.jpg" alt="Break HTML layouts with only bad HTML and the browsers help." title="Break HTML layouts with only bad HTML and the browsers help." />
+          <img class="topimg" src="/theme/img/pic/counting.jpg" alt="Break HTML layouts with only bad HTML and the browser's help." title="Break HTML layouts with only bad HTML and the browser's help." />
          </div>
          <div class="row">
           <div class="col-md-12" id="post-full">
        
-          <p><small><strong>English version</strong> (<strong>Version Française</strong> disponible sur <a href="http://www.makina-corpus.com/blog/metier/2016/securite-web-utiliser-du-mauvais-html-pour-sevader-dun-div">makina corpus</a>).</small>
+          <p><small><strong>English version</strong> (<strong>Version Française</strong> disponible sur <a href="http://www.makina-corpus.com/blog/metier/2016/securite-web-utiliser-du-mauvais-html-pour-sevader-dun-div-1">makina corpus</a>).</small>
 <small>estimated read time: 10min</small></p>
 
 <h2>Why?</h2>
 
-<p>Have you ever wondered why you cannot enter any HTML on Facebook? It seems so
-easy on a lot of website to contribute with a small HTML subset, why don't they
-allow it?</p>
+<p>Have you ever wondered why you cannot post any HTML on Facebook? It seems so
+easy on a lot of websites to submit content containing a small HTML subset, why doesn't Facebook allow it?</p>
 
-<p>Or maybe you knew that it was possible in Facebook Notes, before April 2014, you
-had a little rich text editor where you could enter some HTML tags (both in
-wysiwyg and raw mode). But, you cannot do that anymore, you are enforced in
-wysiwyg mode, and even using the API you will see that the very small part of
+<p>Or maybe you knew that it was possible in Facebook Notes, before April 2014. You
+had a little rich text editor where you could type in some HTML tags (both in
+wysiwyg and raw mode). But you cannot do that anymore. Now you are forced to use the
+wysiwyg mode and even using the API you will see that the very small part of
 HTML you can use will always be very very clean. Very few nested levels,
 very strict opening/closing policy for tags, no attributes, etc.</p>
 
@@ -116,42 +115,42 @@ very strict opening/closing policy for tags, no attributes, etc.</p>
 playing with <strong>bad HTML syntax</strong> on a very small subset of HTML, it is easy
 for contributed HTML to <strong>evade the box</strong> and write everywhere on the page.</p>
 
-<p>This was a 1500 $USD facebook bounty (and a Github T-shirt). So, yes, it's very
+<p>This earned me a 1500 USD facebook bounty (and a Github T-shirt). So, yes, it's very
 simple but it's still very annoying and real.</p>
 
-<p>I like to inspect <strong>very simple things</strong>, and HTML box evasion is something very
+<p>I like to look at <strong>very simple things</strong> and HTML box evasion is something very
 very simple. So simple that most people would not even see why it is a problem.</p>
 
-<p>So, before reading, think about HTML contributions and HTML injection, this is
+<p>So, before reading, keep in mind that this is about HTML contributions and HTML injection, this is
 not about XSS or SQL injection. The problem here is:</p>
 
 <ul>
-<li><strong>Can you let the user contribute a small part of your layout with a small subset of HTML?</strong></li>
+<li><strong>Can you let the user contribute content formatted with a small subset of HTML?</strong></li>
 <li>Can you ensure the contributed content will stay <em>in the box</em>, in the dedicated layout subset.</li>
 </ul>
 
 
-<p>This impacts every markup language where the final destination is HTML (like
-partial HTML, of course, but also markdown, REST, etc.).</p>
+<p>This impacts every markup language that is rendered to HTML (like
+partial HTML, of course, but also markdown, reStructuredText, etc.).</p>
 
 <h2>So what?</h2>
 
 <h3>Implicit HTML and the browser fixing your errors</h3>
 
 <p>When you feed a browser with some HTML, the browser is very kind and will try to
-fix a big numbers of errors that could be present in the page.</p>
+fix a big number of errors that could be present in the page.</p>
 
-<p>This behavior was a very important part of the web success. If the browsers made a
-<em>White-Page-Of-Death</em> at every HTML syntax error, the web would be really
+<p>This behavior was a very important part of the web's success. If browsers made a
+<em>White-Page-Of-Death</em> for every HTML syntax error, the web would be really
 smaller.</p>
 
 <p><strong>This is cool for the end user.</strong></p>
 
-<p><strong>This is cool for the web developper.</strong></p>
+<p><strong>This is cool for the web developer.</strong></p>
 
 <p><strong>This is bad in terms of security.</strong></p>
 
-<p>One of the way the browsers will fix the HTML is by adding closing tags when the
+<p>One of the way browsers will fix HTML is by adding closing tags when the
 page clearly forgot to close some tags.</p>
 
 <p>So this:</p>
@@ -248,38 +247,39 @@ good.</p>
 the <code>&lt;LI&gt;</code> without closing the <code>&lt;DIV&gt;</code> inside. And now, on the final page, you have
 2 extras closing divs !</p>
 
-<h3>Ok, too much closing divs, and then?</h3>
+<h3>Ok, too many closing divs, and then?</h3>
 
 <p>If the contributor can enter <code>&lt;div&gt;</code> and <code>&lt;/div&gt;</code>, and if you count the number
 of closing and opening divs to assume the HTML is correct, <strong>you are wrong</strong>.</p>
 
 <p>The HTML is correct only if <strong>the order</strong> of the opening and closing tags is
-correct, if some tags are closed before some others it may breaks the layout
+correct, if some tags are closed before some others it may break the layout
 (it depends of the tags).</p>
 
 <p>For the contibutors, this means writing outside of the controlled zone (the
 user-comment box for example) and adding content, with the subset of HTML that
-they are allowed to use, on other parts of the page (maybe playing with <code>&lt;table&gt;</code>
+they are allowed to use, on other parts of the page, maybe playing with <code>&lt;table&gt;</code>
 and <code>&lt;br/&gt;</code> to fake content on some parts of your layout that other users will
 trust more than a spam comment box (see last examples at the end of this text).</p>
 
 <h2>Demo</h2>
 
-<p>Here are some iframes using the implicit DIV closing trick, and writing one
+<p>Below are some iframes that use the implicit DIV closing trick to write one
 simple line of text on the <code>main</code> div, instead of writing it 3 nested DIV
 deeper.</p>
 
-<p>A nice thing to do is opening one of theses iframes in a new window and looking
-at the source. This is an example for the first iframe, where we cans see in red
-that something was detected as wrong.</p>
+<p>An interesting thing to do is opening these iframes in a new window and looking
+at the source. Here is what you'll see if you view the source of the first iframe:</p>
 
 <p><img src="/theme/img/posts/t1_html_source.png"></p>
 
-<p>Inspecting the DOM we see the fixed divs</p>
+<p>We can see that something wrong was detected and highlighted in red.</p>
+
+<p>Inspecting the DOM we see how the browser automatcially closes the divs:</p>
 
 <p><img src="/theme/img/posts/t1_html_dom.png"></p>
 
-<p>Here:</p>
+<p>In these examples:</p>
 
 <ul>
 <li>the goal is to write something <strong>in red</strong>, in the main div</li>
@@ -320,22 +320,20 @@ as would most inline tags like <code>&lt;span&gt;</code>, <code>&lt;strong&gt;</
 
 <p><strong>H1, H2, H3, PRE, LI</strong></p>
 
-<p>Theses are the tags I prefer.</p>
+<p>These are the tags I prefer because chances are that they are in the list of allowed tags for contributors.</p>
 
-<p>Because chances are that theses tags are in the list of allowed tags for contributors.</p>
-
-<h3>Will it break <code>&lt;section&gt;</code> or <code>&lt;article&gt;</code> ?</h3>
+<h3>Will it break <code>&lt;section&gt;</code> or <code>&lt;article&gt;</code>?</h3>
 
 <p>Yes.</p>
 
 <p>First, if you allow <code>&lt;section&gt;</code> or <code>&lt;article&gt;</code> in allowed contributors tags, it
-will obviously allow the contributor to close such tags. But this would be a very
+will obviously allow the contributor to close such tags, so this would be a very
 bad move.</p>
 
 <p>More generaly, if you use one <code>&lt;DIV&gt;</code> on your layout, closing this tag will also
 close any <code>&lt;section&gt;</code> or <code>&lt;article&gt;</code> embedded inside.</p>
 
-<p>Let's see it in a more complex layout:</p>
+<p>Let's see this in action in a more complex layout:</p>
 
 <p>Here is a new iframe with a full layout, you can see a div around the article.</p>
 
@@ -349,39 +347,37 @@ close any <code>&lt;section&gt;</code> or <code>&lt;article&gt;</code> embedded 
 
 <h3>What if direct HTML is not allowed?</h3>
 
-<p>If the only way to contribute is Markdown, Rest, or others wiki-like syntax, you
-cannot directly enter bad HTML, in theory.</p>
+<p>If the only way to contribute is Markdown, reStructuredText or other wiki-like syntaxes, you
+cannot directly insert bad HTML, in theory.</p>
 
-<p>Well, for markdown it depends of the flavor, because you can always enter raw
-HTML in markdown, unless this fonctionnality is removed.</p>
+<p>Well, for Markdown it depends of the flavor. By default, you can include raw
+HTML in Markdown, unless this feature is removed.</p>
 
 <p>Anyway, with a language generating HTML the game is to find strange syntax in
 this language which will generate bad HTML.</p>
 
-<p>Be careful, previews modes are usually made by some js syntax parser, theses
+<p>Be careful, preview modes are usually made with syntax parsers written in JavaScript. These
 parsers are usually less robust than the real final generators. So a bad syntax
 in a preview mode means almost nothing.</p>
 
-<p>I wont give you specific syntax errors example, it depends on the engine, you'll
-have to search on your own.</p>
+<p>I wont give you specific syntax error examples, it depends on the engine, you'll
+have to research on your own.</p>
 
 <h2>Protections</h2>
 
 <p>If you want to allow contributions, here are some thoughts:</p>
 
 <ul>
-<li>why not simply allowing unformatted text?</li>
-<li>why allowing <code>&lt;div&gt;</code>, if you use <code>&lt;div&gt;</code> in your layout you could in fact
-prevent any contributions from using this HTML tag</li>
-<li>more generally do not allow tags used for your layout structure (like article or section)</li>
-<li>check your CMS for functions applying HTML syntax cleanup (there is one in
-Drupal for example)</li>
-<li>avoid regex to cleanup (filter) the contributed HTML, prefer DOM-based tools
-when they are available,
-theses tools will analyze the contributed text stream, build a dom tree, then
+<li>Why not simply allowing unformatted text?</li>
+<li>Why allowing <code>&lt;div&gt;</code>? If you use <code>&lt;div&gt;</code> in your layout you could in fact
+prevent any contributions from using this HTML tag.</li>
+<li>More generally do not allow tags used for your layout structure (like article or section)</li>
+<li>Check your CMS if you CMS provides HTML syntax cleanup (Drupal does, for example)</li>
+<li>Avoid regexps to cleanup (filter) contributed HTML, prefer DOM-based tools
+when they are available. These tools will analyze text input, build a dom tree, then
 generate HTML output from the tree, so tags will always be in the right order,
 and can even be filtered for attributes and id cleanup.</li>
-<li>that said, regexp based filters can also work and perform the same filtering
+<li>That said, regexp-based filters might also work and perform the same filtering
 task, here is for example <a href="https://www.drupal.org/project/wysiwyg_filter" title="Drupal WYSIWYG filter">a very good drupal7 module, wysiwyg_filter</a></li>
 </ul>
 
@@ -398,7 +394,7 @@ task, here is for example <a href="https://www.drupal.org/project/wysiwyg_filter
     /* * * CONFIGURATION VARIABLES: * * */
     var disqus_shortname = "regilero";
     var disqus_identifier = '9addd55e-aff4-4qdq-a8eef80dfee8d080f8';
-    var disqus_title = "Web Security, using bad HTML to evade from a DIV";
+    var disqus_title = "Web Security, using bad HTML to escape from a DIV";
     var disqus_url = 'http://regilero.github.io/security/english/2016/06/10/security_play_with_implicit_html_and_closing_divs/';
 
     /* * * DON'T EDIT BELOW THIS LINE * * */
@@ -460,7 +456,7 @@ task, here is for example <a href="https://www.drupal.org/project/wysiwyg_filter
                 <div class="list-group" role="navigation">
                   
                      <a class="list-group-item" href="/security/english/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
-                     Web Security, using bad HTML to evade from a DIV
+                     Web Security, using bad HTML to escape from a DIV
                      </a>
                   
                      <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
@@ -488,44 +484,44 @@ task, here is for example <a href="https://www.drupal.org/project/wysiwyg_filter
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+                <a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 30px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
 <a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
 <a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
 <a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
 <a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Injection/'>Injection</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 30px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
 <a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Injection/'>Injection</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
 
                 </div>
               </div>
