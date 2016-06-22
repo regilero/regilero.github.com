@@ -1,11 +1,11 @@
 ---
 layout: post
 uuid: 9addd55e-aff4-4qdq-a8eef80dfee8d080f8
-title: Web Security, using bad HTML to evade from a DIV
+title: Web Security, using bad HTML to escape from a DIV
 categories: [Security, English]
 tags: [Security, HTML, Injection]
 pic: counting.jpg
-excerpt: Break HTML layouts with only bad HTML and the browsers help.
+excerpt: Break HTML layouts with only bad HTML and the browser's help.
 ---
 
 <small>**English version** (**Version Française** disponible sur [makina corpus][FRENCH]).</small>
@@ -13,14 +13,13 @@ excerpt: Break HTML layouts with only bad HTML and the browsers help.
 
 ## Why?
 
-Have you ever wondered why you cannot enter any HTML on Facebook? It seems so
-easy on a lot of website to contribute with a small HTML subset, why don't they
-allow it?
+Have you ever wondered why you cannot post any HTML on Facebook? It seems so
+easy on a lot of websites to submit content containing a small HTML subset, why doesn't Facebook allow it?
 
-Or maybe you knew that it was possible in Facebook Notes, before April 2014, you
-had a little rich text editor where you could enter some HTML tags (both in
-wysiwyg and raw mode). But, you cannot do that anymore, you are enforced in 
-wysiwyg mode, and even using the API you will see that the very small part of
+Or maybe you knew that it was possible in Facebook Notes, before April 2014. You
+had a little rich text editor where you could type in some HTML tags (both in
+wysiwyg and raw mode). But you cannot do that anymore. Now you are forced to use the 
+wysiwyg mode and even using the API you will see that the very small part of
 HTML you can use will always be very very clean. Very few nested levels,
 very strict opening/closing policy for tags, no attributes, etc.
 
@@ -28,39 +27,39 @@ Well, in this article I'll try to explain why. I'll show you how, by simply
 playing with **bad HTML syntax** on a very small subset of HTML, it is easy
 for contributed HTML to **evade the box** and write everywhere on the page.
 
-This was a 1500 $USD facebook bounty (and a Github T-shirt). So, yes, it's very
+This earned me a 1500 USD facebook bounty (and a Github T-shirt). So, yes, it's very
 simple but it's still very annoying and real.
 
-I like to inspect **very simple things**, and HTML box evasion is something very
+I like to look at **very simple things** and HTML box evasion is something very
 very simple. So simple that most people would not even see why it is a problem.
 
-So, before reading, think about HTML contributions and HTML injection, this is
+So, before reading, keep in mind that this is about HTML contributions and HTML injection, this is
 not about XSS or SQL injection. The problem here is:
 
- * **Can you let the user contribute a small part of your layout with a small subset of HTML?**
+ * **Can you let the user contribute content formatted with a small subset of HTML?**
  * Can you ensure the contributed content will stay *in the box*, in the dedicated layout subset.
 
-This impacts every markup language where the final destination is HTML (like 
-partial HTML, of course, but also markdown, REST, etc.).
+This impacts every markup language that is rendered to HTML (like 
+partial HTML, of course, but also markdown, reStructuredText, etc.).
 
 ## So what?
 
 ### Implicit HTML and the browser fixing your errors
 
 When you feed a browser with some HTML, the browser is very kind and will try to
-fix a big numbers of errors that could be present in the page.
+fix a big number of errors that could be present in the page.
 
-This behavior was a very important part of the web success. If the browsers made a
-*White-Page-Of-Death* at every HTML syntax error, the web would be really
+This behavior was a very important part of the web's success. If browsers made a
+*White-Page-Of-Death* for every HTML syntax error, the web would be really 
 smaller.
 
 **This is cool for the end user.**
 
-**This is cool for the web developper.**
+**This is cool for the web developer.**
 
 **This is bad in terms of security.**
 
-One of the way the browsers will fix the HTML is by adding closing tags when the
+One of the way browsers will fix HTML is by adding closing tags when the
 page clearly forgot to close some tags.
 
 So this:
@@ -163,38 +162,39 @@ Two `</DIV>` are **impliclty added by the browser**, because you cannot close
 the `<LI>` without closing the `<DIV>` inside. And now, on the final page, you have
 2 extras closing divs !
 
-### Ok, too much closing divs, and then?
+### Ok, too many closing divs, and then?
 
 If the contributor can enter `<div>` and `</div>`, and if you count the number
 of closing and opening divs to assume the HTML is correct, **you are wrong**.
 
 The HTML is correct only if **the order** of the opening and closing tags is
-correct, if some tags are closed before some others it may breaks the layout
+correct, if some tags are closed before some others it may break the layout
 (it depends of the tags).
 
 For the contibutors, this means writing outside of the controlled zone (the
 user-comment box for example) and adding content, with the subset of HTML that
-they are allowed to use, on other parts of the page (maybe playing with `<table>`
+they are allowed to use, on other parts of the page, maybe playing with `<table>`
 and `<br/>` to fake content on some parts of your layout that other users will
 trust more than a spam comment box (see last examples at the end of this text).
 
 ## Demo
 
-Here are some iframes using the implicit DIV closing trick, and writing one
+Below are some iframes that use the implicit DIV closing trick to write one
 simple line of text on the `main` div, instead of writing it 3 nested DIV
 deeper.
 
-A nice thing to do is opening one of theses iframes in a new window and looking
-at the source. This is an example for the first iframe, where we cans see in red
-that something was detected as wrong.
+An interesting thing to do is opening these iframes in a new window and looking
+at the source. Here is what you'll see if you view the source of the first iframe:
 
 <img src="/theme/img/posts/t1_html_source.png">
 
-Inspecting the DOM we see the fixed divs
+We can see that something wrong was detected and highlighted in red.
+
+Inspecting the DOM we see how the browser automatcially closes the divs:
 
 <img src="/theme/img/posts/t1_html_dom.png">
 
-Here:
+In these examples:
 
 * the goal is to write something **in red**, in the main div
 * somes tests should fail (using `<P>` or `<TD>` `<TR>` we do not break the divs
@@ -231,22 +231,20 @@ as would most inline tags like `<span>`, `<strong>`, `<sub>`, etc.)
 
 **H1, H2, H3, PRE, LI**
 
-Theses are the tags I prefer.
+These are the tags I prefer because chances are that they are in the list of allowed tags for contributors.
 
-Because chances are that theses tags are in the list of allowed tags for contributors.
-
-### Will it break `<section>` or `<article>` ?
+### Will it break `<section>` or `<article>`?
 
 Yes.
 
 First, if you allow `<section>` or `<article>` in allowed contributors tags, it
-will obviously allow the contributor to close such tags. But this would be a very
+will obviously allow the contributor to close such tags, so this would be a very
 bad move.
 
 More generaly, if you use one `<DIV>` on your layout, closing this tag will also
 close any `<section>` or `<article>` embedded inside.
 
-Let's see it in a more complex layout:
+Let's see this in action in a more complex layout:
 
 Here is a new iframe with a full layout, you can see a div around the article.
 
@@ -258,38 +256,36 @@ And here is this layout after a bad comment closing the comment and main divs (t
 
 ### What if direct HTML is not allowed?
 
-If the only way to contribute is Markdown, Rest, or others wiki-like syntax, you
-cannot directly enter bad HTML, in theory.
+If the only way to contribute is Markdown, reStructuredText or other wiki-like syntaxes, you
+cannot directly insert bad HTML, in theory.
 
-Well, for markdown it depends of the flavor, because you can always enter raw
-HTML in markdown, unless this fonctionnality is removed.
+Well, for Markdown it depends of the flavor. By default, you can include raw
+HTML in Markdown, unless this feature is removed.
 
 Anyway, with a language generating HTML the game is to find strange syntax in
 this language which will generate bad HTML.
 
-Be careful, previews modes are usually made by some js syntax parser, theses
+Be careful, preview modes are usually made with syntax parsers written in JavaScript. These
 parsers are usually less robust than the real final generators. So a bad syntax
 in a preview mode means almost nothing.
 
-I wont give you specific syntax errors example, it depends on the engine, you'll
-have to search on your own. 
+I wont give you specific syntax error examples, it depends on the engine, you'll
+have to research on your own. 
 
 ## Protections
 
 If you want to allow contributions, here are some thoughts:
 
- * why not simply allowing unformatted text?
- * why allowing `<div>`, if you use `<div>` in your layout you could in fact
-   prevent any contributions from using this HTML tag
- * more generally do not allow tags used for your layout structure (like article or section)
- * check your CMS for functions applying HTML syntax cleanup (there is one in
-   Drupal for example)
- * avoid regex to cleanup (filter) the contributed HTML, prefer DOM-based tools
-  when they are available,
-  theses tools will analyze the contributed text stream, build a dom tree, then
+ * Why not simply allowing unformatted text?
+ * Why allowing `<div>`? If you use `<div>` in your layout you could in fact
+   prevent any contributions from using this HTML tag.
+ * More generally do not allow tags used for your layout structure (like article or section)
+ * Check your CMS if you CMS provides HTML syntax cleanup (Drupal does, for example)
+ * Avoid regexps to cleanup (filter) contributed HTML, prefer DOM-based tools
+  when they are available. These tools will analyze text input, build a dom tree, then
   generate HTML output from the tree, so tags will always be in the right order,
   and can even be filtered for attributes and id cleanup.
- * that said, regexp based filters can also work and perform the same filtering
+ * That said, regexp-based filters might also work and perform the same filtering
  task, here is for example [a very good drupal7 module, wysiwyg_filter][WYSIWYGFILTER]
 
   [WYSIWYGFILTER]: https://www.drupal.org/project/wysiwyg_filter "Drupal WYSIWYG filter"
