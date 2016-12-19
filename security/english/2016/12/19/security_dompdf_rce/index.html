@@ -1,0 +1,565 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title> Web Security, Dompdf security issues details |  RBleug</title>
+    <meta name="description" content="Regilero's blog; Mostly tech things about web stuff."/>
+    <meta name="author" content="regilero"/>
+    <link rel="author" href="/contact/" title="who am I?" type="text/html" />
+    <link rel="icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/feed.xml" />
+    <link rel="stylesheet" href="/theme/bootstrap/css/bootstrap.min.css" type="text/css">
+    <link rel="stylesheet" href="/theme/bootstrap/css/bootstrap-theme.min.css" type="text/css">
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+<!--
+    <link rel="stylesheet" href="/theme/blueprint/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/blueprint/print.css" type="text/css" media="print">
+    <link rel="stylesheet" href="/theme/syntax.css" type="text/css" />
+    <!--[if lt IE 8]>
+      <link rel="stylesheet" href="/theme/blueprint/ie.css" type="text/css" media="screen, projection">
+    <![endif]-->
+<!--
+    <link rel="stylesheet" href="/theme/blueprint/plugins/link-icons/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/fontello/css/fontello.css">
+    <!--[if IE 7]><link rel="stylesheet" href="/theme/fontello/css/fontello-ie7.css"><![endif]-->
+    <link href="/theme/syntax.css" rel="stylesheet" type="text/css" />
+    <link href="/theme/style.css" rel="stylesheet" type="text/css" />
+
+  </head>
+  <body>
+    <div class="topNav navbar navbar-inverse navbar-static-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand visible-xs-inline" href="#">Navigation</a>
+        </div>
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li ><a href="/" class="glyphicon glyphicon-home">&nbsp;Home</a></li>
+            <li class="active"><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
+            <li ><a href="/contact/" class="glyphicon glyphicon-earphone">&nbsp;Contact</a></li>
+            <li><a class="glyphicon glyphicon-eye-open" href="/feed.xml">&nbsp;RSS Feed</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </div>
+
+  <div class="container" role="main">
+  
+    <div class="jumbotron">
+      <div class="container">
+         <div id="branding">
+           <h1 class="logo"><a href="/">RBleug</a></h1>
+           <hr/>
+           <h2 class="alt">Regilero's blog; Mostly tech things about web stuff.</h2>
+         </div>
+       </div>
+     </div>
+
+    <div class="row">
+      <div class="col-md-8" id="left-content">
+
+          <article>
+        <header>
+            <div class="page-header">
+            <h1>Web Security, Dompdf security issues details
+            <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="2016-12-19">Dec 19, 2016</time></span>
+            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/english/">english</a> and <a href="/security/">security</a></span>
+            </h1>
+            </div>
+        </header>
+
+        <div class="entry">
+         <div class="col-md-6">
+          <div class="post-excerpt-full">
+          details of december 2015's 3 CVE in dompdf, with one RCE.
+          </div>
+          <div id="post-toc">
+          </div>
+         </div>
+         <div class="col-md-6">
+          <img class="topimg" src="/theme/img/pic/library.jpg" alt="details of december 2015's 3 CVE in dompdf, with one RCE." title="details of december 2015's 3 CVE in dompdf, with one RCE." />
+         </div>
+         <div class="row">
+          <div class="col-md-12" id="post-full">
+       
+          <p><small><strong>English version</strong> (<strong>Version Française</strong> disponible sur <a href="http://www.makina-corpus.com/blog/metier/2016/securite-web-detail-de-failles-de-securite-dompdf">makina corpus</a>).</small>
+<small>estimated read time: 5min</small></p>
+
+<h2>Dompdf?</h2>
+
+<p>If you do not know <a href="https://github.com/dompdf/dompdf">DomPDF</a>, that's a really nice library to render PDF document with PHP scripts.
+I mean it, for anyone which already have had to use some other HTML to PDF converters, this library looks very nice.</p>
+
+<p>Now, this lib made a thing that I consider a huge mistake for a library,
+they provided, for years, a nice gui, directly in the library. From this GUI you
+could check your settings, test the library tools, etc.</p>
+
+<p>This looks like a nice tool, and in term of pure marketing (targeted to
+developers and integrators), that's a really powerful utility.</p>
+
+<p>But in the past this has lead to some security issues, like this <a href="https://www.portcullis-security.com/security-research-and-downloads/security-advisories/cve-2014-2383/">CVE-2014-2383</a>,
+"Information disclosure, arbitrary file read".</p>
+
+<p>And in this post I'll describe 3 new CVE, discovered after this one, first
+reported to the project in june 2014, and fixed in version 0.6.2 in december 2015 (so, almost 2016).</p>
+
+<p>Note that the <strong>0.7 branch is not impacted</strong>. Note also that the CVE year is 2014,
+but anything downloaded before end of december 2015 was quite certainly impacted.</p>
+
+<ul>
+<li><a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-5011">CVE-2014-5011</a> : Information Disclosure</li>
+<li><a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-5012">CVE-2014-5012</a> : DOS (Deny of Service)</li>
+<li><a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-5013">CVE-2014-5013</a> : RCE (Remote Code Execution), complement of CVE-2014-2383</li>
+</ul>
+
+
+<h3>fixed in 0.6.2 ?</h3>
+
+<p>if you check the <a href="https://github.com/dompdf/dompdf/releases">RELEASES</a> page of the project, and download versions 0.6.0, 0.6.1 and 0.6.2,
+to check the differences, you will lose part of the real history.
+Version 0.6.1 has been fixed in github fixed after initial release.
+You can have a different 0.6.1 version if you downloaded it before.</p>
+
+<p>The RCE issue has been removed from 0.6.1 but was in fact present in this
+version if you downloaded it before (quite certainly before december 2015).</p>
+
+<h2>CVE-2014-5011 : Information Disclosure</h2>
+
+<p>This issue is the easy one.</p>
+
+<p>The library has long been releasing a <code>www</code> directory, with some PHP files inside.</p>
+
+<p>Most PHP installation will run any PHP set in the web document root (<strong>note that
+it's a good security thing to avoid that and restrict PHP execution to the bootstrapper
+only -- <code>index.php</code> --</strong>, if you can, and if your application is modern you certainly could, unless
+it's Drupal8, because, because, I don't know why they keep putting all libraries
+and all PHP sources in the document root, please help me close this parenthesis).</p>
+
+<p>So, you have this directory, with a lot of PHP scripts available. And one of these
+scripts is <code>www/setup.php</code>.</p>
+
+<p>This script is the definition of an <strong>information Disclosure</strong>, with real versions
+and paths printed on a public page:</p>
+
+<p><img src="/theme/img/posts/yes1.png" width="1000" height="648" alt="gimme some data"/></p>
+
+<p>Look at some of theses settings:</p>
+
+<p><img src="/theme/img/posts/yes2.png" width="924" height="247" alt="oyeah, gimme more"/></p>
+
+<p>Various fix has been applied on this issue, mainly restricting access on <em>setup</em>
+and some other places to localhost only, so that these pages should not be indexed
+by google anymore, and that no hacker could use it to inspect your application
+security level so easily.</p>
+
+<p>Some other informations leaks were available at <code>www/debugger.php</code> and <code>www/fonts.php</code>.</p>
+
+<p>We'll see below with the RCE that this disclosure is a really big problem if
+some settings are not at the right value.</p>
+
+<h2>CVE-2014-5012: Deny of Service</h2>
+
+<p>The library provide an example of implementation, used in the GUI screens,
+especially on a demonstration page.</p>
+
+<p>This script is <code>dompdf.php</code>.</p>
+
+<p>You can try to use it on some very heavy examples, like the full utf-8 render.
+Costly public script, but not enough for a realy DOS vector.</p>
+
+<p>But a real not-nice-at-all-call is requesting the render of the dompdf configuration file (I first
+tried it to check if I would get a pdf with the library settings rendered):</p>
+
+<pre><code>dompdf/dompdf.php?base_path=&amp;options[Attachment]=0&amp;input_file=dompdf_config.inc.php
+</code></pre>
+
+<p>Something goes wrong while dompdf is trying to render this file, and the
+script will never end his task (not until php max memory is reached).</p>
+
+<p>That's a better Deny of Service vector.</p>
+
+<h2>And now a Remote command execution ...</h2>
+
+<h3>Back to the old CVE-2014-2383</h3>
+
+<p>This previous CVE <a href="https://www.portcullis-security.com/security-research-and-downloads/security-advisories/cve-2014-2383/">CVE-2014-2383</a> (which is not mine) was available on
+version 0.6.0 (now a really old version).</p>
+
+<p>The attack used <code>php://filter</code> to extract any file readable by PHP on the server
+(open_basedir is a limitation on which file are available, and finding path to files is not always easy, but refer to the
+Information Disclosure problem for a full access to open_basedir setting value or paths).</p>
+
+<p>It also used the <code>dompdf.php</code> file, present in the library, which is necessary for
+the gui demonstrations, but is in fact useless for most dompdf integration (it
+means one of the simplest way of fixing this issue, the DOS and the RCE is to
+remove this file).</p>
+
+<p>Say, if you want to read the <code>/etc/passwd</code> file you can try something like
+<code>/dompdf.php?input_file=php://filter/read=convert.base64-encode/resource=/etc/passwd</code> and
+the result, in a PDF document, is this file, simply base64 encoded (use base64
+decode and you have the file content). The <em><code>php://filter+base64</code></em> trick is the
+new way of doing local file inclusions with modern PHP.</p>
+
+<p>This issue was fixed in 0.6.1.</p>
+
+<p>The <code>php://</code> filter support was removed.</p>
+
+<h3>CVE-2014-5013 RCE: exploit data uri instead of php:// filter</h3>
+
+<p>An RCE, or Remote Code Execution is a very bad issue. It means attackers can run
+their own PHP code on your server. From that you cannot do a lot of things.</p>
+
+<p>Before giving the details, I'll give the first counter measures.</p>
+
+<ul>
+<li><strong>Do not allow <code>DOMPDF_ENABLE_PHP</code></strong> : that's the default setting, it's forbidden
+by default, if you ever enabled that please remove it, right now. This setting's default
+protected you from the previous <code>php://</code> filter attack also.</li>
+<li><strong>Do not allow <code>DOMPDF_ENABLE_REMOTE</code></strong> : same thing, default is false, if you
+set true remove it, right now, or set your dompdf version to 0.6.2 or greater.</li>
+</ul>
+
+
+<p>Note that the Information Disclosure issue <strong>will</strong> reveal theses settings to
+everybody, even google.</p>
+
+<p>Let's first have a look at theses strange settings, that you should not allow,
+from the config file:</p>
+
+<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">/**</span>
+<span class="x">* Enable inline PHP</span>
+<span class="x">*</span>
+<span class="x">* If this setting is set to true then DOMPDF will automatically evaluate</span>
+<span class="x">* inline PHP contained within &lt;script type=&quot;text/php&quot;&gt; ... &lt;/script&gt; tags.</span>
+<span class="x">*</span>
+<span class="x">* Attention!</span>
+<span class="x">* Enabling this for documents you do not trust (e.g. arbitrary remote html</span>
+<span class="x">* pages) is a security risk. Inline scripts are run with the same level of</span>
+<span class="x">* system access available to dompdf. Set this option to false (recommended)</span>
+<span class="x">* if you wish to process untrusted documents.</span>
+<span class="x">*</span>
+<span class="x">* @var bool</span>
+<span class="x">*/</span>
+<span class="x">def(&quot;DOMPDF_ENABLE_PHP&quot;, false);</span>
+
+<span class="x">/**</span>
+<span class="x"> * Enable remote file access</span>
+<span class="x"> *</span>
+<span class="x"> * If this setting is set to true, DOMPDF will access remote sites for</span>
+<span class="x"> * images and CSS files as required.</span>
+<span class="x"> * This is required for part of test case www/test/image_variants.html through www/examples.php</span>
+<span class="x"> *</span>
+<span class="x"> * Attention!</span>
+<span class="x"> * This can be a security risk, in particular in combination with DOMPDF_ENABLE_PHP and</span>
+<span class="x"> * allowing remote access to dompdf.php or on allowing remote html code to be passed to</span>
+<span class="x"> * $dompdf = new DOMPDF(); $dompdf-&gt;load_html(...);</span>
+<span class="x"> * This allows anonymous users to download legally doubtful internet content which on</span>
+<span class="x"> * tracing back appears to being downloaded by your server, or allows malicious php code</span>
+<span class="x"> * in remote html pages to be executed by your server with your account privileges.</span>
+<span class="x"> *</span>
+<span class="x"> * @var bool</span>
+<span class="x"> */</span>
+<span class="x">def(&quot;DOMPDF_ENABLE_REMOTE&quot;, false);</span></code></pre></div>
+
+
+<p>Reading that I wonder <strong>why people would activate these settings</strong> ? In fact the
+<em><code>enable_remote</code></em> is the easiest way to have images in your PDF, if you have
+absolute domains uri for images you will need to enable this option to have
+dompdf fetch the image and render it.</p>
+
+<p>The <em><code>enable_php</code></em> part is worst, it is a way of defining PDF specific tasks in a
+php script, using an HTML template. with some provided variables like <code>$pdf</code>,
+<code>$PAGE_NUM</code> and <code>$PAGE_COUNT</code>. The new versions use css markup for such tasks.
+Using a PHP eval to run this sort of task was a bad idea. It leads to a real call to
+<code>eval()</code> in the code, that we will exploit.</p>
+
+<p>The <code>dompdf.php</code> script can render a pdf, the <em>input_file</em> parameter could be a file,
+but also a protocol. Anything detected as a remote protocol will only be available
+in <em>enable_remote</em> mode.</p>
+
+<p>The previous security issue used the <code>php://</code> protocol, which was then filtered.</p>
+
+<p>The <code>data://</code> protocol is not blocked and is sometime used to embed images in the
+PDF by giving the full encoded image as a data uri parameter.</p>
+
+<p>The old trick for dompdf images was using HTML sources in this form:</p>
+
+<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="nt">&lt;img</span> <span class="na">src=</span><span class="s">&quot;data:image/jpeg;base64,HERE_SOME_BASE64_ENCODED_BINARY_THINGS&quot;</span><span class="nt">&gt;</span></code></pre></div>
+
+
+<p>Using <strong>data</strong> to embed images in the PDF is a nice hack, if you have never seen a
+data-uri image check github's 404 pages HTML sources.</p>
+
+<p>But the <a href="https://developer.mozilla.org/fr/docs/Web/HTTP/Basics_of_HTTP/Data_URIs">data-uri</a> protocol is not limited to images support.
+It can embed any mime document. A php script for example is a document with
+mime type <code>application/x-httpd-php</code> (you could also try XML files for XXE issues).</p>
+
+<p>Let's say I have this small PHP script:</p>
+
+<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
+<span class="k">echo</span> <span class="s1">&#39;PHP RCE : &#39;</span> <span class="o">.</span> <span class="nb">phpversion</span><span class="p">();</span>
+<span class="k">echo</span> <span class="s2">&quot;bye&quot;</span><span class="p">;</span>
+<span class="cp">?&gt;</span><span class="x"></span></code></pre></div>
+
+
+<p>Note that I could do some other things in PHP, that's just an example.</p>
+
+<p>In a data URI source this same PHP script content can be written like that (base64 encoding is just a way of rewritting something in ascii-7):</p>
+
+<div class="highlight"><pre><code class="language-html" data-lang="html">data:application/x-httpd-php;charset=utf-8;base64,PD9waHANCmVjaG8gJ1BIUCBSQ0UgOiAnIC4gcGhwdmVyc2lvbigpOw0KZWNobyAiYnllIjsNCj8+</code></pre></div>
+
+
+<p>With some url encoding (because we'll use that on an url) that is:</p>
+
+<div class="highlight"><pre><code class="language-html" data-lang="html">data%3Aapplication%2Fx-httpd-php%3Bcharset%3Dutf-8%3Bbase64%2CPD9waHANCmVjaG8gJ1BIUCBSQ0UgOiAnIC4gcGhwdmVyc2lvbigpOw0KZWNobyAiYnllIjsNCj8%2B</code></pre></div>
+
+
+<p>And the final attack is:</p>
+
+<div class="highlight"><pre><code class="language-html" data-lang="html">http://<span class="nt">&lt;target&gt;</span>/<span class="nt">&lt;path&gt;</span>/dompdf/dompdf.php?base_path=<span class="err">&amp;</span>options[Attachment]=0<span class="err">&amp;</span>input_file=data%3Aapplication%2Fx-httpd-php%3Bcharset%3Dutf-8%3Bbase64%2CPD9waHANCmluY2x1ZGUgKCcvZXRjL3Bhc3N3ZCcpOw0KZWNobyAiYnllIjsNCj8%2B</code></pre></div>
+
+
+<p>If default settings for <code>DOMPDF_ENABLE_PHP</code> and <code>DOMPDF_ENABLE_REMOTE</code> are
+altered (to true) this attack will successfully run the PHP script and render
+the output of this script to a PDF document (which is in fact only an optionnal side-effect).
+This Can be used for local or remote
+file inclusion, but also to edit or create a php file, run a shell script, etc.
+Chances are this exploit would be used to connect your server in a botnet.</p>
+
+<h2>Last words</h2>
+
+<ul>
+<li>Avoid using <code>eval()</code> in your web code</li>
+<li>Avoid adding demonstrations to your libraries, or ensure that they will not
+run in production</li>
+<li>Update your dompdf installation. Version 0.7 is a revolution, it may be hard
+to switch to that version, but moving an old 0.6.0 or 0.6.1 version to 0.6.2
+should be straightforward, if it breaks something revert the code and check next
+point.</li>
+<li>if you use dompdf in a cms, you can safely <strong>remove the <code>www</code> subdirectory
+and the <code>dompdf.php</code> file</strong> in that library, rename it first if you do not
+believe me, the CMS is quite certainly using the library classes, and not the
+demonstration code and runner.</li>
+<li>if you enabled the two dangerous settings, then revert it even if it breaks
+something (choose between breaking a features and giving your server to spammers)</li>
+<li>if you use a modern PHP application, please put PHP libraries outside of the
+web document root.</li>
+</ul>
+
+
+
+          </div>
+         </div>
+        </div>
+        <div class="tag">Tags:&nbsp;<i class="glyphicon glyphicon-tag"></i><a href="/tag/CVE/">CVE</a>, <i class="glyphicon glyphicon-tag"></i><a href="/tag/Injection/">Injection</a>, <i class="glyphicon glyphicon-tag"></i><a href="/tag/Security/">Security</a></div>
+</article>
+<hr/>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: * * */
+    var disqus_shortname = "regilero";
+    var disqus_identifier = '9daab43e-eda2-2abba-312dcba518aa8d0808f';
+    var disqus_title = "Web Security, Dompdf security issues details";
+    var disqus_url = 'http://regilero.github.io/security/english/2016/12/19/security_dompdf_rce/';
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+
+    
+
+      </div>
+      <div class="col-md-4" id="sideBar">
+
+            <div id="sideBarContent"> 
+              
+              <div class="sideBarListBox">
+                <div class="page-header">
+                <h3>Related posts</h3>
+                </div>
+                <div class="list-group" role="navigation">
+                  
+                     <a class="list-group-item" href="/security/english/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     <h4>Web Security, using bad HTML to escape from a DIV</h4>
+                     <p>Break HTML layouts with only bad HTML and the browser's help.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <h4>Checking HTTP Smuggling issues in 2015 - Part1</h4>
+                     <p>First part of the 2015 HTTP Smuggling articles. Injecting HTTP in HTTP, the theory.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/security/english/2015/03/25/nginx-integer_truncation/">
+                     <h4>Nginx Integer Truncation</h4>
+                     <p>Exploitation of Integer Overflow with the HTTP Content length Header</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/security/english/2014/09/19/drupal-details_ofdrupal_sa_core_2014_003_dos/">
+                     <h4>Details of DRUPAL_SA_CORE_2014_003 Deny Of Service</h4>
+                     <p>Analysis of the new DRUPAL_SA_CORE_2014_003 DOS vulnerability (CVE-2014-5019)</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/drupal/english/2011/09/03/Install_drupal_in_php_fpm_fastcgi_and_apache_chroot/">
+                     <h4>Install Drupal in php-fpm (fastcgi) with Apache and a chroot php-fpm</h4>
+                     <p>Step by step Apache+php-fpm installation of Drupal with some explanations on how to use php-fpm chroot while still not having mod_proxy_fcgi.</p>
+                     </a>
+                  
+                </div>
+              </div>
+              
+      
+              <div class="sideBarListBox">
+                <div class="page-header">
+                <h3>Latest posts</h3>
+                </div>
+                <div class="list-group" role="navigation">
+                  
+                     <a class="list-group-item" href="/security/english/2016/12/19/security_dompdf_rce/">
+                     Web Security, Dompdf security issues details
+                     </a>
+                  
+                     <a class="list-group-item" href="/security/english/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     Web Security, using bad HTML to escape from a DIV
+                     </a>
+                  
+                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     Checking HTTP Smuggling issues in 2015 - Part1
+                     </a>
+                  
+                     <a class="list-group-item" href="/security/english/2015/03/25/nginx-integer_truncation/">
+                     Nginx Integer Truncation
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/drupal/2014/10/30/drupal-nginx_apache_php-fpm-guide/">
+                     AirPair, Drupal with PHP-FPM, Apache or Nginx
+                     </a>
+                  
+                </div>
+              </div>
+            
+              <div class="sideBarListBox">
+                <div class="page-header">
+                <h3>Tags</h3>
+                </div>
+
+                <div class="tagcloud">
+                <a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 12px' class='taglink' href='/tag/CVE/'>CVE</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 26px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+
+                </div>
+              </div>
+          </div> <!-- end sideBarContent -->
+            
+            <div class="sideBarMore">
+              <div class="page-header">
+              <h3>About</h3>
+              </div>
+                <a href="https://twitter.com/regilero" target="_blank"><img src="/theme/img/twitter_thumb.png" width="48" height="48" alt="Twitter regilero" title="Twitter regilero"></a>
+                <a href="https://github.com/regilero" target="_blank"><img src="/theme/img/github_thumb.png" width="48" height="48" alt="Github regilero" title="Github regilero"></a>
+                <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
+                <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
+                <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
+                <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+            </div>
+            <div class="sideBarItem">
+              <h3>Some Friends</h3>
+                <ul>
+                  <li><a class="effect" target="_blank" href="http://makina-corpus.com/blog/metier/actu-metier">Blogs Makina Corpus<div class="cover-right"><img src="/theme/img/makinaorg.png" height="30" width="30"><img src="/theme/img/makinaorg_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://www.makina-corpus.com">Makina Corpus<div class="cover-right"><img src="/theme/img/makinacom.png" height="30" width="30"><img src="/theme/img/makinacom_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://blog.processus.org/">Pounard, processus.org<div class="cover-right"><img src="/theme/img/pounard.png" height="30" width="30"><img src="/theme/img/pounard_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://toutpt.github.io/" >Toupt<div class="cover-right"><img src="/theme/img/toupt.png" height="30" width="30"><img src="/theme/img/toupt_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://francoisgaudin.com/">François Gaudin<div class="cover-right"><img src="/theme/img/gaudin.png" height="30" width="30"><img src="/theme/img/gaudin_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://fle.github.io/">Florent Lebreton<div class="cover-right"><img src="/theme/img/fle.png" height="30" width="30"><img src="/theme/img/fle_banner.png" height="30" width="117"></div></a></li>
+                </ul>
+                <div class="clear"></div>
+            </div>
+         </div> <!-- end sidebar -->
+        
+       </div><!-- end row -->
+       <div class="row">
+         <div class="col-md-12" id="footer">
+           <div class="panel panel-default">
+             <div class=panel-footer">
+          <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/"><img alt="Licence Creative Commons" style="border-width:0" src="http://i.creativecommons.org/l/by-sa/3.0/fr/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/Text" property="dct:title" rel="dct:type">regilero's blog</span> est mis à disposition selon les termes de la <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/">licence Creative Commons Attribution -  Partage dans les Mêmes Conditions 3.0 France</a>.<br />Fondé(e) sur une œuvre à <a xmlns:dct="http://purl.org/dc/terms/" href="http://regilero.github.io" rel="dct:source">http://regilero.github.io</a>.
+              </div>
+            </div>
+         </div>
+       </div><!-- end row -->
+  </div>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<!--    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script> -->
+    <script src="/theme/js/toc.min.js" ></script>
+    <script src="/theme/js/effects.js" ></script>
+   <script src="/theme/js/jquery.parallax.min.js"></script>
+    <script src="/theme/bootstrap/js/bootstrap.min.js"></script>
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-40859893-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+    </body>
+</html>

@@ -6,6 +6,277 @@
 		<link>http://regilero.github.io</link>
 		
 			<item>
+				<title>Web Security, Dompdf security issues details</title>
+				<description>&lt;p&gt;&lt;small&gt;&lt;strong&gt;English version&lt;/strong&gt; (&lt;strong&gt;Version Française&lt;/strong&gt; disponible sur &lt;a href=&quot;http://www.makina-corpus.com/blog/metier/2016/securite-web-detail-de-failles-de-securite-dompdf&quot;&gt;makina corpus&lt;/a&gt;).&lt;/small&gt;
+&lt;small&gt;estimated read time: 5min&lt;/small&gt;&lt;/p&gt;
+
+&lt;h2&gt;Dompdf?&lt;/h2&gt;
+
+&lt;p&gt;If you do not know &lt;a href=&quot;https://github.com/dompdf/dompdf&quot;&gt;DomPDF&lt;/a&gt;, that's a really nice library to render PDF document with PHP scripts.
+I mean it, for anyone which already have had to use some other HTML to PDF converters, this library looks very nice.&lt;/p&gt;
+
+&lt;p&gt;Now, this lib made a thing that I consider a huge mistake for a library,
+they provided, for years, a nice gui, directly in the library. From this GUI you
+could check your settings, test the library tools, etc.&lt;/p&gt;
+
+&lt;p&gt;This looks like a nice tool, and in term of pure marketing (targeted to
+developers and integrators), that's a really powerful utility.&lt;/p&gt;
+
+&lt;p&gt;But in the past this has lead to some security issues, like this &lt;a href=&quot;https://www.portcullis-security.com/security-research-and-downloads/security-advisories/cve-2014-2383/&quot;&gt;CVE-2014-2383&lt;/a&gt;,
+&quot;Information disclosure, arbitrary file read&quot;.&lt;/p&gt;
+
+&lt;p&gt;And in this post I'll describe 3 new CVE, discovered after this one, first
+reported to the project in june 2014, and fixed in version 0.6.2 in december 2015 (so, almost 2016).&lt;/p&gt;
+
+&lt;p&gt;Note that the &lt;strong&gt;0.7 branch is not impacted&lt;/strong&gt;. Note also that the CVE year is 2014,
+but anything downloaded before end of december 2015 was quite certainly impacted.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-5011&quot;&gt;CVE-2014-5011&lt;/a&gt; : Information Disclosure&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-5012&quot;&gt;CVE-2014-5012&lt;/a&gt; : DOS (Deny of Service)&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-5013&quot;&gt;CVE-2014-5013&lt;/a&gt; : RCE (Remote Code Execution), complement of CVE-2014-2383&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h3&gt;fixed in 0.6.2 ?&lt;/h3&gt;
+
+&lt;p&gt;if you check the &lt;a href=&quot;https://github.com/dompdf/dompdf/releases&quot;&gt;RELEASES&lt;/a&gt; page of the project, and download versions 0.6.0, 0.6.1 and 0.6.2,
+to check the differences, you will lose part of the real history.
+Version 0.6.1 has been fixed in github fixed after initial release.
+You can have a different 0.6.1 version if you downloaded it before.&lt;/p&gt;
+
+&lt;p&gt;The RCE issue has been removed from 0.6.1 but was in fact present in this
+version if you downloaded it before (quite certainly before december 2015).&lt;/p&gt;
+
+&lt;h2&gt;CVE-2014-5011 : Information Disclosure&lt;/h2&gt;
+
+&lt;p&gt;This issue is the easy one.&lt;/p&gt;
+
+&lt;p&gt;The library has long been releasing a &lt;code&gt;www&lt;/code&gt; directory, with some PHP files inside.&lt;/p&gt;
+
+&lt;p&gt;Most PHP installation will run any PHP set in the web document root (&lt;strong&gt;note that
+it's a good security thing to avoid that and restrict PHP execution to the bootstrapper
+only -- &lt;code&gt;index.php&lt;/code&gt; --&lt;/strong&gt;, if you can, and if your application is modern you certainly could, unless
+it's Drupal8, because, because, I don't know why they keep putting all libraries
+and all PHP sources in the document root, please help me close this parenthesis).&lt;/p&gt;
+
+&lt;p&gt;So, you have this directory, with a lot of PHP scripts available. And one of these
+scripts is &lt;code&gt;www/setup.php&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;This script is the definition of an &lt;strong&gt;information Disclosure&lt;/strong&gt;, with real versions
+and paths printed on a public page:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/theme/img/posts/yes1.png&quot; width=&quot;1000&quot; height=&quot;648&quot; alt=&quot;gimme some data&quot;/&gt;&lt;/p&gt;
+
+&lt;p&gt;Look at some of theses settings:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/theme/img/posts/yes2.png&quot; width=&quot;924&quot; height=&quot;247&quot; alt=&quot;oyeah, gimme more&quot;/&gt;&lt;/p&gt;
+
+&lt;p&gt;Various fix has been applied on this issue, mainly restricting access on &lt;em&gt;setup&lt;/em&gt;
+and some other places to localhost only, so that these pages should not be indexed
+by google anymore, and that no hacker could use it to inspect your application
+security level so easily.&lt;/p&gt;
+
+&lt;p&gt;Some other informations leaks were available at &lt;code&gt;www/debugger.php&lt;/code&gt; and &lt;code&gt;www/fonts.php&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;We'll see below with the RCE that this disclosure is a really big problem if
+some settings are not at the right value.&lt;/p&gt;
+
+&lt;h2&gt;CVE-2014-5012: Deny of Service&lt;/h2&gt;
+
+&lt;p&gt;The library provide an example of implementation, used in the GUI screens,
+especially on a demonstration page.&lt;/p&gt;
+
+&lt;p&gt;This script is &lt;code&gt;dompdf.php&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;You can try to use it on some very heavy examples, like the full utf-8 render.
+Costly public script, but not enough for a realy DOS vector.&lt;/p&gt;
+
+&lt;p&gt;But a real not-nice-at-all-call is requesting the render of the dompdf configuration file (I first
+tried it to check if I would get a pdf with the library settings rendered):&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;dompdf/dompdf.php?base_path=&amp;amp;options[Attachment]=0&amp;amp;input_file=dompdf_config.inc.php
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Something goes wrong while dompdf is trying to render this file, and the
+script will never end his task (not until php max memory is reached).&lt;/p&gt;
+
+&lt;p&gt;That's a better Deny of Service vector.&lt;/p&gt;
+
+&lt;h2&gt;And now a Remote command execution ...&lt;/h2&gt;
+
+&lt;h3&gt;Back to the old CVE-2014-2383&lt;/h3&gt;
+
+&lt;p&gt;This previous CVE &lt;a href=&quot;https://www.portcullis-security.com/security-research-and-downloads/security-advisories/cve-2014-2383/&quot;&gt;CVE-2014-2383&lt;/a&gt; (which is not mine) was available on
+version 0.6.0 (now a really old version).&lt;/p&gt;
+
+&lt;p&gt;The attack used &lt;code&gt;php://filter&lt;/code&gt; to extract any file readable by PHP on the server
+(open_basedir is a limitation on which file are available, and finding path to files is not always easy, but refer to the
+Information Disclosure problem for a full access to open_basedir setting value or paths).&lt;/p&gt;
+
+&lt;p&gt;It also used the &lt;code&gt;dompdf.php&lt;/code&gt; file, present in the library, which is necessary for
+the gui demonstrations, but is in fact useless for most dompdf integration (it
+means one of the simplest way of fixing this issue, the DOS and the RCE is to
+remove this file).&lt;/p&gt;
+
+&lt;p&gt;Say, if you want to read the &lt;code&gt;/etc/passwd&lt;/code&gt; file you can try something like
+&lt;code&gt;/dompdf.php?input_file=php://filter/read=convert.base64-encode/resource=/etc/passwd&lt;/code&gt; and
+the result, in a PDF document, is this file, simply base64 encoded (use base64
+decode and you have the file content). The &lt;em&gt;&lt;code&gt;php://filter+base64&lt;/code&gt;&lt;/em&gt; trick is the
+new way of doing local file inclusions with modern PHP.&lt;/p&gt;
+
+&lt;p&gt;This issue was fixed in 0.6.1.&lt;/p&gt;
+
+&lt;p&gt;The &lt;code&gt;php://&lt;/code&gt; filter support was removed.&lt;/p&gt;
+
+&lt;h3&gt;CVE-2014-5013 RCE: exploit data uri instead of php:// filter&lt;/h3&gt;
+
+&lt;p&gt;An RCE, or Remote Code Execution is a very bad issue. It means attackers can run
+their own PHP code on your server. From that you cannot do a lot of things.&lt;/p&gt;
+
+&lt;p&gt;Before giving the details, I'll give the first counter measures.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Do not allow &lt;code&gt;DOMPDF_ENABLE_PHP&lt;/code&gt;&lt;/strong&gt; : that's the default setting, it's forbidden
+by default, if you ever enabled that please remove it, right now. This setting's default
+protected you from the previous &lt;code&gt;php://&lt;/code&gt; filter attack also.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Do not allow &lt;code&gt;DOMPDF_ENABLE_REMOTE&lt;/code&gt;&lt;/strong&gt; : same thing, default is false, if you
+set true remove it, right now, or set your dompdf version to 0.6.2 or greater.&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;Note that the Information Disclosure issue &lt;strong&gt;will&lt;/strong&gt; reveal theses settings to
+everybody, even google.&lt;/p&gt;
+
+&lt;p&gt;Let's first have a look at theses strange settings, that you should not allow,
+from the config file:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;/**&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* Enable inline PHP&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;*&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* If this setting is set to true then DOMPDF will automatically evaluate&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* inline PHP contained within &amp;lt;script type=&amp;quot;text/php&amp;quot;&amp;gt; ... &amp;lt;/script&amp;gt; tags.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;*&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* Attention!&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* Enabling this for documents you do not trust (e.g. arbitrary remote html&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* pages) is a security risk. Inline scripts are run with the same level of&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* system access available to dompdf. Set this option to false (recommended)&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* if you wish to process untrusted documents.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;*&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* @var bool&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;*/&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;def(&amp;quot;DOMPDF_ENABLE_PHP&amp;quot;, false);&lt;/span&gt;
+
+&lt;span class=&quot;x&quot;&gt;/**&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; * Enable remote file access&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; *&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; * If this setting is set to true, DOMPDF will access remote sites for&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; * images and CSS files as required.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; * This is required for part of test case www/test/image_variants.html through www/examples.php&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; *&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; * Attention!&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; * This can be a security risk, in particular in combination with DOMPDF_ENABLE_PHP and&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; * allowing remote access to dompdf.php or on allowing remote html code to be passed to&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; * $dompdf = new DOMPDF(); $dompdf-&amp;gt;load_html(...);&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; * This allows anonymous users to download legally doubtful internet content which on&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; * tracing back appears to being downloaded by your server, or allows malicious php code&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; * in remote html pages to be executed by your server with your account privileges.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; *&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; * @var bool&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; */&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;def(&amp;quot;DOMPDF_ENABLE_REMOTE&amp;quot;, false);&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Reading that I wonder &lt;strong&gt;why people would activate these settings&lt;/strong&gt; ? In fact the
+&lt;em&gt;&lt;code&gt;enable_remote&lt;/code&gt;&lt;/em&gt; is the easiest way to have images in your PDF, if you have
+absolute domains uri for images you will need to enable this option to have
+dompdf fetch the image and render it.&lt;/p&gt;
+
+&lt;p&gt;The &lt;em&gt;&lt;code&gt;enable_php&lt;/code&gt;&lt;/em&gt; part is worst, it is a way of defining PDF specific tasks in a
+php script, using an HTML template. with some provided variables like &lt;code&gt;$pdf&lt;/code&gt;,
+&lt;code&gt;$PAGE_NUM&lt;/code&gt; and &lt;code&gt;$PAGE_COUNT&lt;/code&gt;. The new versions use css markup for such tasks.
+Using a PHP eval to run this sort of task was a bad idea. It leads to a real call to
+&lt;code&gt;eval()&lt;/code&gt; in the code, that we will exploit.&lt;/p&gt;
+
+&lt;p&gt;The &lt;code&gt;dompdf.php&lt;/code&gt; script can render a pdf, the &lt;em&gt;input_file&lt;/em&gt; parameter could be a file,
+but also a protocol. Anything detected as a remote protocol will only be available
+in &lt;em&gt;enable_remote&lt;/em&gt; mode.&lt;/p&gt;
+
+&lt;p&gt;The previous security issue used the &lt;code&gt;php://&lt;/code&gt; protocol, which was then filtered.&lt;/p&gt;
+
+&lt;p&gt;The &lt;code&gt;data://&lt;/code&gt; protocol is not blocked and is sometime used to embed images in the
+PDF by giving the full encoded image as a data uri parameter.&lt;/p&gt;
+
+&lt;p&gt;The old trick for dompdf images was using HTML sources in this form:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;img&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;src=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;data:image/jpeg;base64,HERE_SOME_BASE64_ENCODED_BINARY_THINGS&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Using &lt;strong&gt;data&lt;/strong&gt; to embed images in the PDF is a nice hack, if you have never seen a
+data-uri image check github's 404 pages HTML sources.&lt;/p&gt;
+
+&lt;p&gt;But the &lt;a href=&quot;https://developer.mozilla.org/fr/docs/Web/HTTP/Basics_of_HTTP/Data_URIs&quot;&gt;data-uri&lt;/a&gt; protocol is not limited to images support.
+It can embed any mime document. A php script for example is a document with
+mime type &lt;code&gt;application/x-httpd-php&lt;/code&gt; (you could also try XML files for XXE issues).&lt;/p&gt;
+
+&lt;p&gt;Let's say I have this small PHP script:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;PHP RCE : &amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;phpversion&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;bye&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Note that I could do some other things in PHP, that's just an example.&lt;/p&gt;
+
+&lt;p&gt;In a data URI source this same PHP script content can be written like that (base64 encoding is just a way of rewritting something in ascii-7):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;data:application/x-httpd-php;charset=utf-8;base64,PD9waHANCmVjaG8gJ1BIUCBSQ0UgOiAnIC4gcGhwdmVyc2lvbigpOw0KZWNobyAiYnllIjsNCj8+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;With some url encoding (because we'll use that on an url) that is:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;data%3Aapplication%2Fx-httpd-php%3Bcharset%3Dutf-8%3Bbase64%2CPD9waHANCmVjaG8gJ1BIUCBSQ0UgOiAnIC4gcGhwdmVyc2lvbigpOw0KZWNobyAiYnllIjsNCj8%2B&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And the final attack is:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;http://&lt;span class=&quot;nt&quot;&gt;&amp;lt;target&amp;gt;&lt;/span&gt;/&lt;span class=&quot;nt&quot;&gt;&amp;lt;path&amp;gt;&lt;/span&gt;/dompdf/dompdf.php?base_path=&lt;span class=&quot;err&quot;&gt;&amp;amp;&lt;/span&gt;options[Attachment]=0&lt;span class=&quot;err&quot;&gt;&amp;amp;&lt;/span&gt;input_file=data%3Aapplication%2Fx-httpd-php%3Bcharset%3Dutf-8%3Bbase64%2CPD9waHANCmluY2x1ZGUgKCcvZXRjL3Bhc3N3ZCcpOw0KZWNobyAiYnllIjsNCj8%2B&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;If default settings for &lt;code&gt;DOMPDF_ENABLE_PHP&lt;/code&gt; and &lt;code&gt;DOMPDF_ENABLE_REMOTE&lt;/code&gt; are
+altered (to true) this attack will successfully run the PHP script and render
+the output of this script to a PDF document (which is in fact only an optionnal side-effect).
+This Can be used for local or remote
+file inclusion, but also to edit or create a php file, run a shell script, etc.
+Chances are this exploit would be used to connect your server in a botnet.&lt;/p&gt;
+
+&lt;h2&gt;Last words&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Avoid using &lt;code&gt;eval()&lt;/code&gt; in your web code&lt;/li&gt;
+&lt;li&gt;Avoid adding demonstrations to your libraries, or ensure that they will not
+run in production&lt;/li&gt;
+&lt;li&gt;Update your dompdf installation. Version 0.7 is a revolution, it may be hard
+to switch to that version, but moving an old 0.6.0 or 0.6.1 version to 0.6.2
+should be straightforward, if it breaks something revert the code and check next
+point.&lt;/li&gt;
+&lt;li&gt;if you use dompdf in a cms, you can safely &lt;strong&gt;remove the &lt;code&gt;www&lt;/code&gt; subdirectory
+and the &lt;code&gt;dompdf.php&lt;/code&gt; file&lt;/strong&gt; in that library, rename it first if you do not
+believe me, the CMS is quite certainly using the library classes, and not the
+demonstration code and runner.&lt;/li&gt;
+&lt;li&gt;if you enabled the two dangerous settings, then revert it even if it breaks
+something (choose between breaking a features and giving your server to spammers)&lt;/li&gt;
+&lt;li&gt;if you use a modern PHP application, please put PHP libraries outside of the
+web document root.&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+				<published>2016-12-19 00:00:00 +0100</published>
+				<link>http://regilero.github.io/security/english/2016/12/19/security_dompdf_rce/</link>
+			</item>
+		
+			<item>
 				<title>Web Security, using bad HTML to escape from a DIV</title>
 				<description>&lt;p&gt;&lt;small&gt;&lt;strong&gt;English version&lt;/strong&gt; (&lt;strong&gt;Version Française&lt;/strong&gt; disponible sur &lt;a href=&quot;http://www.makina-corpus.com/blog/metier/2016/securite-web-utiliser-du-mauvais-html-pour-sevader-dun-div-1&quot;&gt;makina corpus&lt;/a&gt;).&lt;/small&gt;
 &lt;small&gt;estimated read time: 10min&lt;/small&gt;&lt;/p&gt;
@@ -3007,267 +3278,6 @@ Total:     2
 </description>
 				<published>2014-01-20 00:00:00 +0100</published>
 				<link>http://regilero.github.io/saltstack/english/2014/01/20/saltstack_step_by_step_file_blockreplace/</link>
-			</item>
-		
-			<item>
-				<title>Warning Chrooted php-fpm and Apc with multiple pools</title>
-				<description>&lt;p&gt;PHP-fpm used as a fastgi backend for nginx or Apache is a very nice tool.
-And the ability to chroot the php-fpm pool use a nice way to enforce projects separations.
-I once wrote a detailled exemple for Apache (but I really prefer nginx),
-with details on &lt;code&gt;open_basedir&lt;/code&gt; and temporary files
-separation for each PHP project.
-You should really use your PHP projets in such way to avoid having the least secure project
-on your host used to attack other projects.&lt;/p&gt;
-
-&lt;p&gt;But recently I discovered that using several projects on the same host, all using &lt;strong&gt;APC&lt;/strong&gt; opcode and &lt;strong&gt;php-fpm chroot&lt;/strong&gt; I ended up
-with sources files from one project used on the others.. source code &lt;strong&gt;mix&lt;/strong&gt; .. and then really bad things happened...&lt;/p&gt;
-
-&lt;h2&gt;WTF: Why are the conf files mixed between projects?&lt;/h2&gt;
-
-&lt;p&gt;At first we were working with one php-fpm per host. On configurations where you have several hosts for the same project this
-happens more than sharing one host for several projects.&lt;/p&gt;
-
-&lt;p&gt;Then one day on some of theses hosts we deployed a clone of the project. On a different directory, with a second php-fpm pool,
-where the only difference between the 2 projects were the &lt;code&gt;prefix&lt;/code&gt; in the php-fpm pool and the project's application settings
-(where at least the base url name and database backend were different).&lt;/p&gt;
-
-&lt;p&gt;This should be OK, and without APC it was OK. But as soon as APC were used some pages were randomly broken, using domain of
-the first project for css files of the second project, or showing pages of second project in the fist one, a big random mess.
-In our case the random thing was done by the fact several hosts were load balanced between several hosts and did not used the
-same buggy files on each hosts.&lt;/p&gt;
-
-&lt;p&gt;The problem is easy (well, it took me long minutes to find it the fist time),
-APC is storing a compiled version of each file in his opcode cache, and
-&lt;strong&gt;the cache key of this file is  the file name (full path)&lt;/strong&gt;.
-If two chrooted projects &lt;strong&gt;share the same file names, only one version of this file is stored in APC!&lt;/strong&gt;
-Without the chroot this never happens on a regular filesystem. But, by definition, using
-a chroot your projects are using a shorter relative path to files, seing it as the real full path.&lt;/p&gt;
-
-&lt;p&gt;So chances are that the configuration files on two projects where one is the production version and one the
-test version will both be seen as (this is a Drupal setting for example):&lt;/p&gt;
-
-&lt;pre&gt;
-  /www/sites/default/settings.php
-&lt;/pre&gt;
-
-
-&lt;p&gt;Whereas the real filesystem paths are:&lt;/p&gt;
-
-&lt;pre&gt;
-  /var/www/app/production/www/sites/default/settings.php
-  /var/www/app/test/www/sites/default/settings.php
-&lt;/pre&gt;
-
-
-&lt;p&gt;As of course the chroots are &lt;code&gt;var/www/app/production&lt;/code&gt; and &lt;code&gt;/var/www/app/test&lt;/code&gt;.&lt;/p&gt;
-
-&lt;p&gt;Quite easy te see on projects where key files like configuration files gets the same name.
-But it could also happen with several projects having a lot of differences in file naming,
-and where just one or two file names would conflict. It would make the bug harder to detect.&lt;/p&gt;
-
-&lt;h2&gt;Solutions? one process per pool?&lt;/h2&gt;
-
-&lt;p&gt;There is of course one solution for this problem which is either:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;to remove APC&lt;/li&gt;
-&lt;li&gt;or only use one php-fpm pool per host&lt;/li&gt;
-&lt;li&gt;or only use one php-fpm pool per php-fpm process, and run &lt;strong&gt;several php-fpm daemons&lt;/strong&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;So when you want to have 2, 3 or more projects on one host, all using APC and a chrooted php-fpm pools you will duplicate the
-php-fpm daemon for each project to ensure each pool is really independent of the other pools, and that a new APC, with a new shared
-memory segment will be used on this new PHP daemon. You cannot use the default classical way with one daemon and several pools on this daemon.&lt;/p&gt;
-
-&lt;p&gt;You can find examples of this. &lt;strong&gt;But&lt;/strong&gt; the process is not a simple a simply creating a new daemon with a new
-configuration file. On debian, for example, the start/stop init script will likely kill all the php-fpm process running
-on the Hosts, ignoring the fact they are from several different daemons.&lt;/p&gt;
-
-&lt;p&gt;So let's study it in details&lt;/p&gt;
-
-&lt;h3&gt;Duplicate the php-fpm daemon process&lt;/h3&gt;
-
-&lt;p&gt;The first thing to do is to create a new php-fpm configuration for the new php-fpm process. The first process/daemon will be &lt;strong&gt;php-fpm&lt;/strong&gt;,
-we will call the second &lt;strong&gt;php-fpm-test&lt;/strong&gt;. So this new conf file will also have the &lt;strong&gt;-test&lt;/strong&gt; extension.&lt;/p&gt;
-
-&lt;p&gt;Usually, at least on debian, the main configuration file is loading all pools from the pool diectory with
-this instruction:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;include=/etc/php5/fpm/pool.d/*.conf&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;We alter the configuration file to only include one pool. Then we make the copy and alter this name in the second file,
-we also alter the pid setting reference.
-After that a diff should give something like that:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;diff -bBNaur /etc/php5/fpm/php-fpm.conf /etc/php5/fpm/php-fpm-test.conf
---- /etc/php5/fpm/php-fpm.conf  2013-04-10 16:48:23.000000000 +0200
-+++ /etc/php5/fpm/php-fpm-test.conf  2013-04-10 18:34:12.000000000 +0200
-@@ -22,7 +22,7 @@
- &lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; Pid file
- &lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; Note: the default prefix is /var
- &lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; Default Value: none
--pid &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; /var/run/php5-fpm.pid
-+pid &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; /var/run/php5-fpm-test.pid
- 
- &lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; Error log file
- &lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; If it&lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;s &lt;span class=&quot;nb&quot;&gt;set &lt;/span&gt;to &lt;span class=&quot;s2&quot;&gt;&amp;quot;syslog&amp;quot;&lt;/span&gt;, log is sent to syslogd instead of being written
-@@ -118,5 +118,5 @@
- 
- &lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; To configure the pools it is recommended to have one .conf file per
- &lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; pool in the following directory:
--include&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/etc/php5/fpm/pool.d/my-pool.conf
-+include&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/etc/php5/fpm/pool.d/my-pool-test.conf&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Now we need an init script starting a new php-fpm daemon using this &lt;code&gt;php-fpm-test.conf&lt;/code&gt; file.
-Copy the main startup script on a new one with test extension and alter it so that at least you obtain this diff:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;diff -bBNaur /etc/init.d/php5-fpm /etc/init.d/php5-fpm-test
---- /etc/init.d/php5-fpm  2012-07-23 13:59:30.000000000 +0200
-+++ /etc/init.d/php5-fpm-test  2013-04-10 18:56:22.000000000 +0200
-@@ -1,24 +1,24 @@
- &lt;span class=&quot;c&quot;&gt;#!/bin/sh&lt;/span&gt;
- &lt;span class=&quot;c&quot;&gt;### BEGIN INIT INFO&lt;/span&gt;
--# Provides:          php-fpm php5-fpm
-+# Provides:          php-fpm-test php5-fpm-test
- &lt;span class=&quot;c&quot;&gt;# Required-Start:    $remote_fs $network&lt;/span&gt;
- &lt;span class=&quot;c&quot;&gt;# Required-Stop:     $remote_fs $network&lt;/span&gt;
- &lt;span class=&quot;c&quot;&gt;# Default-Start:     2 3 4 5&lt;/span&gt;
- &lt;span class=&quot;c&quot;&gt;# Default-Stop:      0 1 6 &lt;/span&gt;
--# Short-Description: starts php5-fpm
--# Description:       Starts PHP5 FastCGI Process Manager Daemon
-+# Short-Description: starts php5-fpm-test
-+# Description:       Starts PHP5 FastCGI Process Manager Daemon &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;test&lt;/span&gt;
- &lt;span class=&quot;c&quot;&gt;### END INIT INFO&lt;/span&gt;
- 
- &lt;span class=&quot;c&quot;&gt;# Author: Ondrej Sury &amp;lt;ondrej@debian.org&amp;gt;&lt;/span&gt;
- 
- &lt;span class=&quot;nv&quot;&gt;PATH&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/sbin:/usr/sbin:/bin:/usr/bin
- &lt;span class=&quot;nv&quot;&gt;DESC&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;PHP5 FastCGI Process Manager&amp;quot;&lt;/span&gt;
- &lt;span class=&quot;nv&quot;&gt;NAME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;php5-fpm
- &lt;span class=&quot;nv&quot;&gt;DAEMON&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/usr/sbin/&lt;span class=&quot;nv&quot;&gt;$NAME&lt;/span&gt;
--DAEMON_ARGS&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;--fpm-config /etc/php5/fpm/php-fpm.conf&amp;quot;&lt;/span&gt;
--PIDFILE&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/var/run/php5-fpm.pid
-+DAEMON_ARGS&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;--fpm-config /etc/php5/fpm/php-fpm-test.conf&amp;quot;&lt;/span&gt;
-+PIDFILE&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/var/run/php5-fpm-test.pid
- &lt;span class=&quot;nv&quot;&gt;TIMEOUT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;30
--SCRIPTNAME&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/etc/init.d/&lt;span class=&quot;nv&quot;&gt;$NAME&lt;/span&gt;
-+SCRIPTNAME&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/etc/init.d/&lt;span class=&quot;nv&quot;&gt;$NAME&lt;/span&gt;-test
- 
- &lt;span class=&quot;c&quot;&gt;# Exit if the package is not installed&lt;/span&gt;
- &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt; -x &lt;span class=&quot;s2&quot;&gt;&amp;quot;$DAEMON&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;exit &lt;/span&gt;0&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Do not forget to add this script on start/stop levels if you want it after reboot.&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;update-rc.d default php5-fpm-test defaults&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Start this new php-fpm, it should be ok.&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;/etc/init.d/php5-fpm-test start&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Test it with this  &lt;code&gt;ps&lt;/code&gt; command, you sholuld see the two daemons and the children, one pool per daemon
-(number of children depends on your pool's settings):&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;ps auxf&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt;grep php
- 
- &lt;span class=&quot;m&quot;&gt;1005&lt;/span&gt;     &lt;span class=&quot;m&quot;&gt;30688&lt;/span&gt;  0.0  0.0   &lt;span class=&quot;m&quot;&gt;9616&lt;/span&gt;   &lt;span class=&quot;m&quot;&gt;904&lt;/span&gt; pts/0    S+   13:47   0:00              &lt;span class=&quot;se&quot;&gt;\_&lt;/span&gt; grep php
- root     &lt;span class=&quot;m&quot;&gt;17906&lt;/span&gt;  0.0  0.1 &lt;span class=&quot;m&quot;&gt;667208&lt;/span&gt;  &lt;span class=&quot;m&quot;&gt;5236&lt;/span&gt; ?        Ss   May07   0:13 php-fpm: master process &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;/etc/php5/fpm/php-fpm-test.conf&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
- &lt;span class=&quot;m&quot;&gt;1005&lt;/span&gt;      &lt;span class=&quot;m&quot;&gt;9753&lt;/span&gt;  0.0  3.0 &lt;span class=&quot;m&quot;&gt;733316&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;122300&lt;/span&gt; ?       S    04:13   0:06  &lt;span class=&quot;se&quot;&gt;\_&lt;/span&gt; php-fpm: pool my-pool-test
- &lt;span class=&quot;m&quot;&gt;1005&lt;/span&gt;      &lt;span class=&quot;m&quot;&gt;9754&lt;/span&gt;  0.0  1.9 &lt;span class=&quot;m&quot;&gt;691336&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;81188&lt;/span&gt; ?        S    04:13   0:04  &lt;span class=&quot;se&quot;&gt;\_&lt;/span&gt; php-fpm: pool my-pool-test
- &lt;span class=&quot;m&quot;&gt;1005&lt;/span&gt;     &lt;span class=&quot;m&quot;&gt;17920&lt;/span&gt;  0.0  3.0 &lt;span class=&quot;m&quot;&gt;733316&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;123152&lt;/span&gt; ?       S    05:41   0:05  &lt;span class=&quot;se&quot;&gt;\_&lt;/span&gt; php-fpm: pool my-pool-test
- root     &lt;span class=&quot;m&quot;&gt;19130&lt;/span&gt;  0.0  0.1 &lt;span class=&quot;m&quot;&gt;667908&lt;/span&gt;  &lt;span class=&quot;m&quot;&gt;5940&lt;/span&gt; ?        Ss   May07   0:14 php-fpm: master process &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;/etc/php5/fpm/php-fpm.conf&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
- &lt;span class=&quot;m&quot;&gt;1005&lt;/span&gt;     &lt;span class=&quot;m&quot;&gt;10731&lt;/span&gt;  0.1  2.7 &lt;span class=&quot;m&quot;&gt;699296&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;110940&lt;/span&gt; ?       S    May14   1:30  &lt;span class=&quot;se&quot;&gt;\_&lt;/span&gt; php-fpm: pool my-pool
- &lt;span class=&quot;m&quot;&gt;1005&lt;/span&gt;     &lt;span class=&quot;m&quot;&gt;10816&lt;/span&gt;  0.1  2.4 &lt;span class=&quot;m&quot;&gt;688676&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;99048&lt;/span&gt; ?        S    May14   1:35  &lt;span class=&quot;se&quot;&gt;\_&lt;/span&gt; php-fpm: pool my-pool
- &lt;span class=&quot;m&quot;&gt;1005&lt;/span&gt;     &lt;span class=&quot;m&quot;&gt;10817&lt;/span&gt;  0.1  2.5 &lt;span class=&quot;m&quot;&gt;694604&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;104196&lt;/span&gt; ?       S    May14   1:18  &lt;span class=&quot;se&quot;&gt;\_&lt;/span&gt; php-fpm: pool my-pool
- &lt;span class=&quot;m&quot;&gt;1005&lt;/span&gt;     &lt;span class=&quot;m&quot;&gt;10912&lt;/span&gt;  0.1  2.6 &lt;span class=&quot;m&quot;&gt;696708&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;108364&lt;/span&gt; ?       S    May14   1:27  &lt;span class=&quot;se&quot;&gt;\_&lt;/span&gt; php-fpm: pool my-pool&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;h3&gt;Watch the nice crash on start/stop&lt;/h3&gt;
-
-&lt;p&gt;It's not the end!&lt;/p&gt;
-
-&lt;p&gt;If you try to stop one of the 2 daemons you will have a long running stop, and then after 30s the 2 daemons will be down.
-Redo the ps to see it.&lt;/p&gt;
-
-&lt;p&gt;Problem is coming fom the &lt;code&gt;do_stop&lt;/code&gt; function in the init script:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;#&lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;# Function that stops the daemon/service&lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;#&lt;/span&gt;
-do_stop&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
-&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-  &lt;span class=&quot;c&quot;&gt;# Return&lt;/span&gt;
-  &lt;span class=&quot;c&quot;&gt;#   0 if daemon has been stopped&lt;/span&gt;
-  &lt;span class=&quot;c&quot;&gt;#   1 if daemon was already stopped&lt;/span&gt;
-  &lt;span class=&quot;c&quot;&gt;#   2 if daemon could not be stopped&lt;/span&gt;
-  &lt;span class=&quot;c&quot;&gt;#   other if a failure occurred&lt;/span&gt;
-  start-stop-daemon --stop --quiet --retry&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;QUIT/&lt;span class=&quot;nv&quot;&gt;$TIMEOUT&lt;/span&gt;/TERM/5/KILL/5 --pidfile &lt;span class=&quot;nv&quot;&gt;$PIDFILE&lt;/span&gt; --name &lt;span class=&quot;nv&quot;&gt;$NAME&lt;/span&gt;
-  &lt;span class=&quot;nv&quot;&gt;RETVAL&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;$?&amp;quot;&lt;/span&gt;
-  &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;$RETVAL&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;2&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; 2
-  &lt;span class=&quot;c&quot;&gt;# Wait for children to finish too if this is a daemon that forks&lt;/span&gt;
-  &lt;span class=&quot;c&quot;&gt;# and if the daemon is only ever run from this initscript.&lt;/span&gt;
-  &lt;span class=&quot;c&quot;&gt;# If the above conditions are not satisfied then add some other code&lt;/span&gt;
-  &lt;span class=&quot;c&quot;&gt;# that waits for the process to drop all resources that could be&lt;/span&gt;
-  &lt;span class=&quot;c&quot;&gt;# needed by services started subsequently.  A last resort is to&lt;/span&gt;
-  &lt;span class=&quot;c&quot;&gt;# sleep for some time.&lt;/span&gt;
-  start-stop-daemon --stop --quiet --oknodo --retry&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;0/30/TERM/5/KILL/5 --exec &lt;span class=&quot;nv&quot;&gt;$DAEMON&lt;/span&gt;
-  &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;$?&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;2&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; 2
-  &lt;span class=&quot;c&quot;&gt;# Many daemons don&amp;#39;t delete their pidfiles when they exit.&lt;/span&gt;
-  rm -f &lt;span class=&quot;nv&quot;&gt;$PIDFILE&lt;/span&gt;
-  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;$RETVAL&amp;quot;&lt;/span&gt;
-&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;The &lt;code&gt;start-stop-daemon&lt;/code&gt; command is a first stop on the right daemon, based on the pid.
-But after that a second stop is running, ensuring no ghost
-child stay alive, and this second &lt;code&gt;start-stop-daemon&lt;/code&gt; command is running with option &lt;code&gt;--exec&lt;/code&gt; :&lt;/p&gt;
-
-&lt;blockquote&gt;&lt;p&gt;−x, −−exec executable&lt;/p&gt;
-
-&lt;p&gt;Check for processes that are instances of this executable (according to /proc/pid/exe).&lt;/p&gt;&lt;/blockquote&gt;
-
-&lt;p&gt;Let's see whet is this &lt;code&gt;/proc/pid/exe&lt;/code&gt;:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;cat /var/run/php5-fpm.pid 
-1246
-&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;ls -alh /proc/1246/exe
-lrwxrwxrwx &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt; root root &lt;span class=&quot;m&quot;&gt;0&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;15&lt;/span&gt; mai   13:30 /proc/1246/exe -&amp;gt; /usr/sbin/php5-fpm&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;So this second stop is waiting for &lt;strong&gt;any&lt;/strong&gt; process whose executable is &lt;code&gt;/usr/sbin/php5-fpm&lt;/code&gt;,
-and if it do not stop after 30 seconds, a SIGTERM and then a SIGKILL is launched.
-When stopping the php-fpm-test version every other parallel php-daemon running will finally get killed.
-Same for the first daemon.&lt;/p&gt;
-
-&lt;p&gt;That's not very nice.&lt;/p&gt;
-
-&lt;h3&gt;Fix the stop/killal problems&lt;/h3&gt;
-
-&lt;p&gt;First step, indicate a different binary in &lt;strong&gt;/etc/init.d/php5-fpm-test&lt;/strong&gt;:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;-NAME&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;php5-fpm
-+NAME&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;php5-fpm-test&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Then this binary should exists, doing a symbolic link from php5-fpm-test to php5-fpm will not fool
-the  &lt;code&gt;/proc/pid/exe&lt;/code&gt; link. So one ugly solution is to make a real copy of the binary:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;cp /usr/sbin/php5-fpm /usr/sbin/php5-fpm-test&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;One caveat: when upgrading php5-fpm package you will have to redo this manual copy of the binary.&lt;/p&gt;
-
-&lt;p&gt;One other solution is to comment the second start-stop-daemon line, but you'll get a less robust stop script.&lt;/p&gt;
-
-&lt;p&gt;If you can think of a third solution send me an email.&lt;/p&gt;
-</description>
-				<published>2013-05-16 00:00:00 +0200</published>
-				<link>http://regilero.github.io/drupal/english/2013/05/16/Warning_chrooted_php_fpm_and_apc/</link>
 			</item>
 		
 	</channel>
