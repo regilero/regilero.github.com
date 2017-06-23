@@ -1,5 +1,5 @@
-﻿-- http://sqlfiddle.com/#!17/35d44/1
--- http://sqlfiddle.com/#!17/35d44/2
+﻿-- http://sqlfiddle.com/#!17/93004/7
+-- http://sqlfiddle.com/#!17/93004/8
 -- http://sqlfiddle.com/#!17/93004/6
 WITH dates1083 as (
 -- 1083 dates, with 2 other dates following (date_up_to_7_days and date_up_to_3_months)
