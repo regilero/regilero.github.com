@@ -139,7 +139,18 @@ And of course i need these dates in a random order, but with an increment that I
 THe source code of this sub group of 1083 lines each giving 3 dates [is here](
 https://github.com/regilero/regilero.github.com/blob/master/theme/resource/pgserie/generate_date_set.sql) and we can [see it in action with SQLFidlle](http://sqlfiddle.com/#!17/9eecb/193)
 
-This sort of data grouyp can be used in my request like a table by using the keyword `WITH`:
+     rownum |           base_date           |       date_up_to_7_days       |      date_up_to_3_months
+    --------+-------------------------------+-------------------------------+-------------------------------
+          1 | 2016-12-12 11:49:32.811583+01 | 2016-12-15 22:20:32.811583+01 | 2017-06-27 18:34:32.811583+02
+          2 | 2017-02-24 06:21:32.811583+01 | 2017-03-01 07:36:32.811583+01 | 2017-06-27 18:34:32.811583+02
+          3 | 2012-06-28 08:40:32.811583+02 | 2012-07-02 15:06:32.811583+02 | 2014-02-22 07:16:32.811583+01
+          4 | 2007-12-05 17:55:32.811583+01 | 2007-12-10 17:35:32.811583+01 | 2008-07-19 06:27:32.811583+02
+          5 | 2014-01-09 18:48:32.811583+01 | 2014-01-10 22:10:32.811583+01 | 2014-10-25 19:48:32.811583+02
+          6 | 2007-08-23 01:56:32.811583+02 | 2007-08-28 17:25:32.811583+02 | 2007-12-20 02:12:32.811583+01
+          7 | 2017-01-01 00:54:32.811583+01 | 2017-01-05 06:28:32.811583+01 | 2017-06-27 18:34:32.811583+02
+          8 | 2014-05-16 11:14:32.811583+02 | 2014-05-16 21:10:32.811583+02 | 2016-03-24 09:57:32.811583+01
+
+This sort of data group can be used in my request like a table by using the keyword `WITH`:
 
 {% highlight sql %}
 WITH dates1083 AS (
@@ -256,6 +267,19 @@ to get more various profils, to insert some `NULL` sometimes on some non require
 
 We can of course [see it in SQL Fiddle](http://sqlfiddle.com/#!17/ec332/2) where
 the model is already present, as we need the company table to get the right email column.
+
+     id  | con_active | con_first_name |   con_last_name    |                        mail                        |          date_create          |       date_1st_interact       |       date_2nd_interact       |          date_alter           | con_status | comp_id
+    -----+------------+----------------+--------------------+----------------------------------------------------+-------------------------------+-------------------------------+-------------------------------+-------------------------------+------------+---------
+       1 | t          | Coaïco         | Takalaerjac        | coaico.takalaerjac@cocaco-global.com               | 2017-06-16 10:41:28.631596+02 | 2017-06-21 04:01:28.631596+02 | 2017-06-27 18:39:28.631596+02 | 2017-06-27 18:39:28.631596+02 | commercial |    4091
+       2 | t          | Nnn            | Otoerkingchen      | nnn.otoerkingchen@sefrafor-international.com       | 2016-03-12 04:25:28.631596+01 | 2016-03-15 07:34:28.631596+01 | 2016-10-22 05:57:28.631596+02 | 2016-10-22 05:57:28.631596+02 | external   |    6055
+       3 | t          | Cosyso         | Steinroytakavur    | cosyso.steinroytakavur@gecgipfor-global.com        | 2016-12-16 10:35:28.631596+01 | 2016-12-18 18:11:28.631596+01 | 2016-12-18 18:11:28.631596+01 | 2016-12-18 18:11:28.631596+01 | production |     651
+       4 | t          | Michavir       | Ersteinotovur      | michavir.ersteinotovur@gefroca-international.com   | 2012-10-29 12:27:28.631596+01 | 2012-11-03 10:41:28.631596+01 | 2013-06-19 11:21:28.631596+02 | 2013-06-19 11:21:28.631596+02 | external   |    2731
+       6 | t          | Ennathche      | Latakamcata        | ennathche.latakamcata@gecforgim-united.com         | 2016-12-15 12:29:28.631596+01 | 2016-12-19 11:12:28.631596+01 | 2017-06-27 18:39:28.631596+02 | 2017-06-27 18:39:28.631596+02 | external   |    8740
+       8 | f          |                | Durjactakao'       | borob.durjactakao-@forfrafor-gmbh.com              | 2014-01-13 16:36:28.631596+01 | 2014-01-17 19:08:28.631596+01 | 2014-01-17 19:08:28.631596+01 | 2014-01-17 19:08:28.631596+01 | external   |    1902
+       9 | t          | Jamibo         | Jacsteinlason      | jamibo.jacsteinlason@gimgipgim-international.com   | 2011-11-30 08:29:28.631596+01 |                               |                               | 2011-11-30 08:29:28.631596+01 | support    |    3024
+      10 | t          | Nathhnnath     | Vurfürsteinking    | nathhnnath.vurfursteinking@sosegip-sons.com        | 2014-08-29 00:10:28.631596+02 | 2014-09-04 05:25:28.631596+02 | 2014-09-04 05:25:28.631596+02 | 2014-09-04 05:25:28.631596+02 | support    |    6006
+      13 | t          | Chepeche       | Kleindurotoking    | chepeche.kleindurotoking@sogegec-global.com        | 2011-07-25 03:06:28.631596+02 | 2011-07-28 14:17:28.631596+02 | 2013-08-08 10:32:28.631596+02 | 2013-08-08 10:32:28.631596+02 | direction  |     477
+    (...)
 
 We'll then need to insert those lines into the contact table. As we could see before on the above pseudo-query.
 After the `WITH` section we have a `SELECT` query, the `INSERT INTO contact` part has to be paste just before this select.
