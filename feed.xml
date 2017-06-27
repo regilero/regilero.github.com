@@ -6,6 +6,292 @@
 		<link>http://regilero.github.io</link>
 		
 			<item>
+				<title>PostgreSQL, advanced use of generate_series for data generation</title>
+				<description>&lt;p&gt;&lt;small&gt;&lt;strong&gt;English version&lt;/strong&gt; (&lt;strong&gt;Version Française&lt;/strong&gt; disponible sur &lt;a href=&quot;http://www.makina-corpus.com/blog/metier/2017/postgresql-utilisations-avancees-de-generate_series-pour-generer-du-contenu&quot;&gt;makina corpus&lt;/a&gt;).&lt;/small&gt;
+&lt;small&gt;estimated read time: 10-15min&lt;/small&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Generating massive amounts of data can be useful to test queries, indexes and
+complex treatments on more realistics volumes, to get useful approximations of
+production response times.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;In this article we'll study some &lt;code&gt;generate_series()&lt;/code&gt; usages allowing us to feed all types of tables.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;The starting point is that we have two tables to feed (&lt;code&gt;contact&lt;/code&gt; and &lt;code&gt;company&lt;/code&gt;), with some constraints on these tables:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;a &lt;strong&gt;foreign key&lt;/strong&gt; contraint, linking a &lt;code&gt;contact&lt;/code&gt; to one &lt;code&gt;company&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;some constraints on column &lt;strong&gt;sizes&lt;/strong&gt; (like for last name and first name)&lt;/li&gt;
+&lt;li&gt;some specific constraints (CHECK) on &lt;strong&gt;dates&lt;/strong&gt; (like a &lt;code&gt;contact&lt;/code&gt; has some first and last interactions dates,
+and these dates have some constraints between each other, and cannot be in the future, etc.)&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;The other point is that we need to work on several tens of thousands of rows.
+For example to apply a functionnal process that need to be applied in production later and control the speed
+of this process. Or simply to test that our indexation plan is right.&lt;/p&gt;
+
+&lt;p&gt;Some tools exists, able to generate content. In the Dango world, for example,
+you could use &lt;a href=&quot;https://factoryboy.readthedocs.io/en/latest/&quot;&gt;Factory Boy&lt;/a&gt;, or &lt;a href=&quot;https://djangopackages.org/grids/g/fixtures/&quot;&gt;others&lt;/a&gt;. But here we'll show how to generate this same type of data in a quite &lt;em&gt;simple&lt;/em&gt; manne,
+&lt;strong&gt;using SQL&lt;/strong&gt; directly, in a very very fast way (fast enough to be added in a
+functionnal test setUp).&lt;/p&gt;
+
+&lt;p&gt;We first need a realistic model. With a &lt;code&gt;company&lt;/code&gt; table, a &lt;code&gt;contact&lt;/code&gt; table, some
+index, and two or three lines of examples.&lt;/p&gt;
+
+&lt;p&gt;You can download &lt;a href=&quot;https://github.com/regilero/regilero.github.com/blob/master/theme/resource/pgserie/basic_schema.sql&quot;&gt;an example basic_schema.sql script&lt;/a&gt; containing all these elements (&lt;a href=&quot;http://regilero.github.io/theme/resource/pgserie/basic_schema.sql&quot;&gt;direct download&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;And we can also use &lt;strong&gt;SQLFiddle&lt;/strong&gt; to &lt;a href=&quot;http://sqlfiddle.com/#!17/25d75/1&quot;&gt;visualize this structure online&lt;/a&gt;. But my
+advice is to create a test database and to run this SQL inside, it will be easier
+to test the complex queries in your own database.&lt;/p&gt;
+
+&lt;h2&gt;Simple data generation&lt;/h2&gt;
+
+&lt;p&gt;Let's use &lt;code&gt;generate_series&lt;/code&gt; to generate some data :&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;c1&quot;&gt;-- tall numbers between 1 and 100 (step 1 by default)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generate_series&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;-- all dates between 2010/05/10 and now,&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;-- with a step of 78 days, 15 hours and 10 minutes&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generate_series&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;2010-10-05 00:00&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;timestamp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                              &lt;span class=&quot;k&quot;&gt;CURRENT_TIMESTAMP&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                              &lt;span class=&quot;s1&quot;&gt;&amp;#39;8 days 15 hours 12min&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;As we can see this function is quite powerful (&lt;a href=&quot;http://sqlfiddle.com/#!17/9eecb/191&quot;&gt;SQLFidlle1&lt;/a&gt; &lt;a href=&quot;http://sqlfiddle.com/#!17/9eecb/190&quot;&gt;SQLFidlle2&lt;/a&gt;).&lt;/p&gt;
+
+&lt;p&gt;But our goal is to push this usage &lt;strong&gt;further&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;h2&gt;Generating names from syllables&lt;/h2&gt;
+
+&lt;p&gt;Let's start with &lt;a href=&quot;https://github.com/regilero/regilero.github.com/blob/master/theme/resource/pgserie/feeding_company.sql&quot;&gt;this query&lt;/a&gt; which generates a lot of company names, we'll use that to feed the &lt;code&gt;company&lt;/code&gt; table:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;concat_ws&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39; &amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name_first&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name_last&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;generated&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;string_agg&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;start_arr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;25&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt;
+            &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+                &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;{CO,GE,FOR,SO,CO,GIM,SE,CO,GE,CA,FRA,GEC,GE,GA,FRO,GIP}&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;start_arr&lt;/span&gt;
+            &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;syllarr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;c1&quot;&gt;-- need 3 syllabes, and force generator interpretation with the &amp;#39;*0&amp;#39; (else 3 same syllabes)&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;generate_series&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;comp3syl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;comp_name_1st&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name_first&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;25&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;{Ltd,&amp;amp; Co,SARL,SA,Gmbh,United,Brothers,&amp;amp; Sons,International,Ext,Worldwide,Global,2000,3000}&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;z2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;comp_name_last&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name_last&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generate_series&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;10000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;As we &lt;a href=&quot;http://sqlfiddle.com/#!17/9eecb/186&quot;&gt;can see on SQL Fiddle&lt;/a&gt; this somewhat strange query works and generates 10,000 company names, from 3 syllables and a final word (like &quot;SOCOGEC 2000&quot; or &quot;COGEFOR Worldwide&quot;). &lt;strong&gt;The query does not use any table, there's not even a model for this in SQL Fiddle.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;In this query we can find some calls to &lt;code&gt;RANDOM()&lt;/code&gt; allowing choices variations on syllables, the  &lt;code&gt;% 14&lt;/code&gt; and &lt;code&gt;% 16&lt;/code&gt; are importants, they use the array effective size to choose randomly one the record in the array.
+The &lt;strong&gt;most complex part&lt;/strong&gt; of the request is the &lt;code&gt;+ (generator*0)&lt;/code&gt;, reusing the identifier generated in &lt;code&gt;generate_series&lt;/code&gt;,
+multiplied by 0 (so doing nothing with it). Without this call the subquery would be optimized
+and not a correlated one, and only on syllables combination would be generated. We would have 10,000 rows, with 10,000 identifiers, but the same company name for each line.&lt;/p&gt;
+
+&lt;p&gt;Once we have a good &lt;code&gt;SELECT&lt;/code&gt; we just have to &lt;code&gt;INSERT&lt;/code&gt; the result in the table, using an insert query of this form:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;INTO&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;matable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;field1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;field2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.....&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;-- (here the select we just found) ....&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;ON&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CONFLICT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;DO&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOTHING&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The &lt;code&gt;ON CONFLICT&lt;/code&gt; part is ot available before PostgreSQL 9.5, it can be used to
+ignore the unique key errors. On an older PostgreSQL you'll have to generate
+a select without key errors (using disticnt for example), here with this
+&lt;code&gt;DO NOTHING&lt;/code&gt; I won't have any duplicate problem, they'll get rejected silently.&lt;/p&gt;
+
+&lt;p&gt;On our starting schema we add &lt;a href=&quot;http://sqlfiddle.com/#!17/ec332/1&quot;&gt;in SQL Fiddle the generation of some companies&lt;/a&gt;
+and we can see that we effectively loose one third of the companies as they were duplicates and were not inserted in the database.&lt;/p&gt;
+
+&lt;h2&gt;More complex, again&lt;/h2&gt;
+
+&lt;p&gt;We have companies.&lt;/p&gt;
+
+&lt;p&gt;Now we'll try to get a &lt;code&gt;SELECT&lt;/code&gt; query with all the necessary columns for a contact insertion.&lt;/p&gt;
+
+&lt;p&gt;Using the same template as the company names we can quite easily generate last and first names. &lt;a href=&quot;https://github.com/regilero/regilero.github.com/blob/master/theme/resource/pgserie/generating_names1.sql&quot;&gt;HERE, for example, I generate names&lt;/a&gt;&lt;a href=&quot;http://sqlfiddle.com/#!17/9eecb/188&quot;&gt;SQLFiddle&lt;/a&gt;. Note that if I remove the &lt;code&gt;+ (generator*0)&lt;/code&gt;, &lt;a href=&quot;http://sqlfiddle.com/#!17/9eecb/189&quot;&gt;we generate the same name for each line&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;We can generate some fake company identifiers (a random int between 1 and 6300 for example)
+and find back this company to use the comapny name on the email address.
+Email that need to be complete the last and first name (without accents).&lt;/p&gt;
+
+&lt;p&gt;I can choose randomly a status on the contact status &lt;code&gt;ENUM&lt;/code&gt; choices.&lt;/p&gt;
+
+&lt;p&gt;But we'll also need dates, Creation datetime, update datetime, and some interaction dates with these contacts.&lt;/p&gt;
+
+&lt;p&gt;For this task I will start by building a pseudo table with dates. I want to be able, for on contact, to choose one date in this tables and use it as a creation date. I will then have some other dates columns in this same table, where the dates are after the first one (some weeks after for a first date, and some more time for a second one).&lt;/p&gt;
+
+&lt;p&gt;By choosing randomly in this pseudo table I will be able to generate some profiles of contact creation dates and actions dates made on the contact.&lt;/p&gt;
+
+&lt;p&gt;I will use &lt;code&gt;UNION&lt;/code&gt; queries in the dates collection to get different spannings, I want
+a big number of dates on the last year, some others on the last 5 yers, and less on the last 10 years.
+And of course i need these dates in a random order, but with an increment that I can use to match these dates as if it were an identifier.&lt;/p&gt;
+
+&lt;p&gt;THe source code of this sub group of 1083 lines each giving 3 dates &lt;a href=&quot;https://github.com/regilero/regilero.github.com/blob/master/theme/resource/pgserie/generate_date_set.sql&quot;&gt;is here&lt;/a&gt; and we can &lt;a href=&quot;http://sqlfiddle.com/#!17/9eecb/193&quot;&gt;see it in action with SQLFidlle&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;This sort of data grouyp can be used in my request like a table by using the keyword &lt;code&gt;WITH&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;-- here the big dates select ...&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;tbl1&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;INNER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;JOIN&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ON&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tbl1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;foo_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;This avoids creating a temporary table, this table will only be used in the current query.&lt;/p&gt;
+
+&lt;p&gt;This query, with all the dynamic columns, all reusing a base &lt;code&gt;generate_serie&lt;/code&gt;, will be quite big.&lt;/p&gt;
+
+&lt;p&gt;In a simplified version, where the big generators are replaced by [ ... comments blocs .. ] we'll get :&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;..&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Here&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;the&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;whole&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1083&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;  &lt;span class=&quot;n&quot;&gt;columns&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pseudo&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;table&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generation&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;INTO&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;contact&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;con_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;con_active&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;con_firstname&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;con_lastname&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;con_mail&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;date_create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;con_date_first_interaction&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;con_date_last_interaction&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;date_alter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;con_status&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;comp_id&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;con_active&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;CASE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;WHEN&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;show_first_name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;THEN&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name_first&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ELSE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NULL&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;END&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;con_first_name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;CASE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;WHEN&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;show_last_name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;THEN&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name_last&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ELSE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NULL&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;END&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;con_last_name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- con_mail&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;concat_ws&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;@&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;co&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Here&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;manipulations&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;with&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;column&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;company&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;and&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;first&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mail&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- date_create&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;base_date&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;date_create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- con_date_first_interaction&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;CASE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;WHEN&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;has_1st_interact&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;THEN&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;date_up_to_7_days&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ELSE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NULL&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;END&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;date_1st_interact&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- con_date_last_interaction&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;CASE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;WHEN&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;has_2nd_interact&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;true&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AND&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;has_1st_interact&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;THEN&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;date_up_to_3_months&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;WHEN&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;has_2nd_interact&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;false&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AND&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;has_1st_interact&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;THEN&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;date_up_to_7_days&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;ELSE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NULL&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;END&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;date_2nd_interact&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- date_alter&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;CASE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;WHEN&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;has_2nd_interact&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;true&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AND&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;has_1st_interact&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;THEN&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;date_up_to_3_months&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;WHEN&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;has_1st_interact&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;THEN&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;date_up_to_7_days&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ELSE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;base_date&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;END&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;date_alter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- con_status&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;con_status&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- company link&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;main_sub&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;comp_id&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- name_first&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;..&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Here&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;first&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- name_last&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;..&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Here&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;last&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- con_status&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;..&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Here&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;status&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;enum&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;choice&lt;/span&gt;  &lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- comp_id (used for joining company table, adding comp_name on email&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt;  &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;10000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;comp_id&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- base_date_num (used for joining dates1083 pseudo-table, and computing others dates from that&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt;  &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1083&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;base_date_num&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- con_active, something like 10% of false (inactive)&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;10&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;con_active&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- has_1st interaction something like 95%&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;has_1st_interact&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- has_2nd interaction something like 65%&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;35&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;has_2nd_interact&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- let&amp;#39;s hide some non required fields sometimes&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- hiding 5 % of last_names&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;show_last_name&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- hiding 5 % of first_names&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;show_first_name&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;-- id&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generate_series&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;main_sub&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;INNER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;JOIN&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;company&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ON&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;company&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;comp_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;main_sub&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;comp_id&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;INNER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;JOIN&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ON&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rownum&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;main_sub&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;base_date_num&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;-- ignore conflicts of ids, but not any checks constraint failure (on dates for example)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;ON&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CONFLICT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;DO&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOTHING&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Here is &lt;a href=&quot;https://github.com/regilero/regilero.github.com/blob/master/theme/resource/pgserie/generating_contacts.sql&quot;&gt;the full and commented version, without the INSERT part&lt;/a&gt;.
+There's a lot of elements inside, my advice is to copy that in a pgadmin SQL session and to play with the various columns.
+You have siome booleans generated on subqueries, allowing choices adjustemnts with &lt;code&gt;CASE&lt;/code&gt; on the top queries,
+to get more various profils, to insert some &lt;code&gt;NULL&lt;/code&gt; sometimes on some non required columns, etc.&lt;/p&gt;
+
+&lt;p&gt;We can of course &lt;a href=&quot;http://sqlfiddle.com/#!17/ec332/2&quot;&gt;see it in SQL Fiddle&lt;/a&gt; where
+the model is already present, as we need the company table to get the right email column.&lt;/p&gt;
+
+&lt;p&gt;We'll then need to insert those lines into the contact table. As we could see before on the above pseudo-query.
+After the &lt;code&gt;WITH&lt;/code&gt; section we have a &lt;code&gt;SELECT&lt;/code&gt; query, the &lt;code&gt;INSERT INTO contact&lt;/code&gt; part has to be paste just before this select.
+At the end we have &lt;a href=&quot;https://github.com/regilero/regilero.github.com/blob/master/theme/resource/pgserie/contacts_insertion.sql#L40-L52&quot;&gt;this insert query&lt;/a&gt;,
+where we also add the &lt;code&gt;ON CONFLICT DO NOTHING;&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Then I can insert &lt;strong&gt;1,000&lt;/strong&gt;, &lt;strong&gt;10,000&lt;/strong&gt; or &lt;strong&gt;100,000 contacts&lt;/strong&gt; by simply altering the digits in the last &lt;code&gt;generate_series&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;For SQL Fiddle the model definition and these queries reached the size limit (8000)
+so UI had to remove some indexes and some formating and comments, but &lt;a href=&quot;http://sqlfiddle.com/#!17/93004/7&quot;&gt;it works !&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;We can also &lt;a href=&quot;http://sqlfiddle.com/#!17/93004/8&quot;&gt;list some contacts&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Or start to work on &lt;a href=&quot;http://sqlfiddle.com/#!17/93004/6&quot;&gt;some complex query from an application&lt;/a&gt;.
+&lt;strong&gt;Since the goels ois normally to find the right indexes&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;h2&gt;Why, by the way?&lt;/h2&gt;
+
+&lt;p&gt;Generating datas based on a &lt;strong&gt;realistic physiognomy of data&lt;/strong&gt; and on &lt;strong&gt;large assemblies&lt;/strong&gt;
+will help us validate an indexation scheme, and optimize explains.&lt;/p&gt;
+
+&lt;p&gt;The query shown in &lt;a href=&quot;http://sqlfiddle.com/#!17/93004/6&quot;&gt;this previous Fidlle&lt;/a&gt; and also available &lt;a href=&quot;https://github.com/regilero/regilero.github.com/blob/master/theme/resource/pgserie/query_example.sql&quot;&gt;directly here&lt;/a&gt; is quite awful to optimize, with &lt;code&gt;WINDOW&lt;/code&gt; usage, some subselects, etc.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://regilero.github.io/theme/resource/pgserie/explain1.png&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;On the other hand, depending on the presence or absence of certain indexes (like the dates partial indexes),
+we can obtain some very different explain schemes:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://regilero.github.io/theme/resource/pgserie/explain2.png&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;But that's another story.&lt;/p&gt;
+
+&lt;h2&gt;Bonus&lt;/h2&gt;
+
+&lt;p&gt;Of course variations on the examples can be made. Here is a link to a &lt;a href=&quot;https://gist.github.com/regilero/e0066e66e2c505f7a0edddf8bf104bb7&quot;&gt;hoity-toity french names generator&lt;/a&gt;.&lt;/p&gt;
+</description>
+				<published>2017-06-26 00:00:00 +0200</published>
+				<link>http://regilero.github.io/postgresql/english/2017/06/26/postgresql_advanced_generate_series/</link>
+			</item>
+		
+			<item>
 				<title>Web Security, Dompdf security issues details</title>
 				<description>&lt;p&gt;&lt;small&gt;&lt;strong&gt;English version&lt;/strong&gt; (&lt;strong&gt;Version Française&lt;/strong&gt; disponible sur &lt;a href=&quot;http://www.makina-corpus.com/blog/metier/2016/securite-web-detail-de-failles-de-securite-dompdf&quot;&gt;makina corpus&lt;/a&gt;).&lt;/small&gt;
 &lt;small&gt;estimated read time: 5min&lt;/small&gt;&lt;/p&gt;
@@ -2922,362 +3208,6 @@ If you use accumulators you may need to subscribe on this &lt;a href=&quot;https
 </description>
 				<published>2014-01-27 00:00:00 +0100</published>
 				<link>http://regilero.github.io/saltstack/english/2014/01/27/saltstack_use_file_accumulated_accumulators_with_file_managed_and_file_blockreplace/</link>
-			</item>
-		
-			<item>
-				<title>SaltStack, Manage entries in unmanaged files with File Blockreplace</title>
-				<description>&lt;p&gt;Makina Corpus recently started to use Salt-stack, and by using it I mean we also started some contributions.
-Salt-stack is a great set of tools, but sometimes your needs aren't covered yet, and in theses cases you'll find that salt-stack is also very easy to improve. The community is very open to contributions, on this blog post we'll study one of out first addition, &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;&lt;code&gt;file.blockreplace&lt;/code&gt;&lt;/a&gt;.&lt;/p&gt;
-
-&lt;h2&gt;Managed files and unmanaged ones&lt;/h2&gt;
-
-&lt;p&gt;When using salt-stack, one of the most important task is usually to &lt;strong&gt;set some configuration parameters&lt;/strong&gt; for your system services. To do that one of the very useful tool available in the salt-stack toolkit is the
-&lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed&quot;&gt;&lt;code&gt;file.managed&lt;/code&gt;&lt;/a&gt;. This let you use a file, retrieved from the salt server, computed with a template language like jinja. And you can do almost everything with that, you have a very flexible language, some variables coming from your state, and you create the final setting file. You even have some magic tools like &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt; that I will explain in a next post.&lt;/p&gt;
-
-&lt;p&gt;But using this implies that salt will be the &lt;strong&gt;only master&lt;/strong&gt; on this file. On every highstate run from salt the file could be recreated, updated or even removed (not with the managed state, but &lt;code&gt;file.absent&lt;/code&gt; would do that).&lt;/p&gt;
-
-&lt;p&gt;So sometimes &lt;em&gt;managing the whole file is not what you want to do&lt;/em&gt;. Let's see some examples of files that I would not manage with &lt;code&gt;managed&lt;/code&gt;:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;A file inherited from a package, and having a lot of different forms depending on the host, like an apache central configuration file, compare RedHat and Debian versions, Trying to handle that with &lt;code&gt;managed&lt;/code&gt; would maybe mean re-doing the package maintainers job&lt;/li&gt;
-&lt;li&gt;A file where salt is not the only actor, like &lt;code&gt;~/.ssh/authorized_keys&lt;/code&gt; or &lt;code&gt;/etc/hosts&lt;/code&gt;. Theses files may contain previous entries from humans and may get edited later by theses same people.&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;In most cases you have one simple solution for that, a lot of daemons and services allows for an directory-inclusion of configuration files, usually this means a directory &lt;code&gt;foo.d/&lt;/code&gt;.&lt;/p&gt;
-
-&lt;p&gt;If you have a look at a debian system you have for example:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;code&gt;/etc/mysql/conf.d&lt;/code&gt;&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;/etc/apache2/conf.d&lt;/code&gt;&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;/etc/apt/sources.list.d/&lt;/code&gt;&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;/etc/cron.d/&lt;/code&gt;&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;/etc/cron.daily/&lt;/code&gt;&lt;/li&gt;
-&lt;li&gt;(...)&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;And this would let you use a &lt;code&gt;file.managed&lt;/code&gt; state to add your local configuration, without altering the package maintained files. Good thing.&lt;/p&gt;
-
-&lt;p&gt;But still not covering all the needs, there is no &lt;code&gt;/etc/hosts.d/&lt;/code&gt; and no &lt;code&gt;/etc/postgresql/pg_hba.conf.d/&lt;/code&gt;. To edit the postgresql access file or your local hosts file you must work on the existing files.&lt;/p&gt;
-
-&lt;p&gt;You need a way to edit some files, to replace some key values, &lt;strong&gt;while not managing the whole file&lt;/strong&gt;.&lt;/p&gt;
-
-&lt;p&gt;The file module has two tools for such needs:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.replace&quot;&gt;&lt;code&gt;file.replace&lt;/code&gt;&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;&lt;code&gt;file.blockreplace&lt;/code&gt;&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;The first one is a python based replacement for the old &lt;code&gt;file.sed&lt;/code&gt; function, it let you use some regex to find a content and replace it. But there's some drawbacks in its usage, at least on my point of view:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;MULTILINE regex are not supported, even if the documentation says it works, @see &lt;a href=&quot;https://github.com/saltstack/salt/issues/7999&quot;&gt;issue #7999&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;the file is altered at each salt run, errors may break it badly (empyt or partially empty), and access to the file whil salt is editing it should not happen (partial content), @see &lt;a href=&quot;https://github.com/saltstack/salt/issues/8051&quot;&gt;issue #8051&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;the MULTILINE regex issue was a big problem for us, because our first usage of unmanaged files edition was managing hosts files, with several lines added and &lt;em&gt;managed&lt;/em&gt;.
-So we wanted to add a simple way to manage several lines in a file, without regex support (using replace for that), and we made it with blockreplace.&lt;/p&gt;
-
-&lt;h2&gt;File.blockreplace&lt;/h2&gt;
-
-&lt;p&gt;The main idea under &lt;strong&gt;blockreplace&lt;/strong&gt; is to &lt;strong&gt;manage blocks of edited contents&lt;/strong&gt; in files where everything outside of theses blocks is ignored by Salt-stack.&lt;/p&gt;
-
-&lt;p&gt;With this module and/or state salt-stack can :&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;strong&gt;Add&lt;/strong&gt; the block of content (on top or on bottom) if it is not present&lt;/li&gt;
-&lt;li&gt;manage &lt;strong&gt;several lines&lt;/strong&gt; inside the block&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;remove&lt;/strong&gt; content from a block&lt;/li&gt;
-&lt;li&gt;identify &lt;strong&gt;several different blocks&lt;/strong&gt; in the same file&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;Block identity targeting and delimitation is done by a comment. By default it use a &lt;code&gt;bash&lt;/code&gt; type of comment with &lt;code&gt;#&lt;/code&gt; characters. But you can alter it, if your target is an html file you could use &lt;code&gt;&amp;lt;!-- --&amp;gt;&lt;/code&gt; comments, if it's a code file you could use &lt;code&gt;/* */&lt;/code&gt; comments, etc.&lt;/p&gt;
-
-&lt;p&gt;If you need several blocks in the same file you will need a way to identify theses different blocks, so inside theses comments there should be a unique block identifier. The whole marker line is searched, so the whole marker is this unique identifier. But if you make several blocks from the same marker model you should maybe add inside a unique variation, this is why the &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;state documentation&lt;/a&gt; example shows usage of a jinja &lt;code&gt;myvar&lt;/code&gt; variable present in the state id and in the block marker (imagine theses states running in a jinja for loop, with &lt;code&gt;myvar&lt;/code&gt; taking severa values.&lt;/p&gt;
-
-&lt;p&gt;The module documentation shows an example of a managed block content in a file (the result):&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;(...)
-# START managed zone 42 -DO-NOT-EDIT-
-First line of content
-text 2
-text 3
-text 4
-# END managed zone 42 --
-(...)
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Here the block is delimited by the 'markers', the starting marker is &lt;code&gt;# START managed zone 42 -DO-NOT-EDIT-&lt;/code&gt; and the ending one is &lt;code&gt;# END managed zone 42 --&lt;/code&gt;. And the job of the state writer (you) is to keep theses markers unique in the file so that salt could indentify each block without any mistakes. Use long markers, short ones could work, of course, but with long markers you will avoid more easily the bad situation in which a part of your block content may contain the same thing as you end marker.&lt;/p&gt;
-
-&lt;h2&gt;Step by step: Blockreplace real example with hosts&lt;/h2&gt;
-
-&lt;p&gt;So now, to get a little deeper, we'll have a look at a real complete example. All theses examples are available in a github repository &lt;a href=&quot;https://github.com/regilero/regilero-blog-examples/tree/master/blockreplace-step-by-step&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
-
-&lt;p&gt;Note that you can find other examples of usage &lt;a href=&quot;https://github.com/saltstack/salt/blob/develop/tests/unit/modules/file_test.py&quot;&gt;in the module unit test cases&lt;/a&gt;, search for &lt;code&gt;FileBlockReplaceTestCase&lt;/code&gt; class. And feel free to add your test cases (and issues) if you find something wrong.&lt;/p&gt;
-
-&lt;p&gt;Back on our step by step, let's say I want to add some entries in a hosts file. In this example we'll say that the salt minion is building some services and knows several aliases for theses services (db.local.net, http.local.net, etc) that should be added on the hosts file, all targeting the 127.0.0.1 IP.&lt;/p&gt;
-
-&lt;p&gt;The first step is to start with a very simple state, we will use it to see if at least salt can create the block in &lt;code&gt;/etc/hosts&lt;/code&gt;. This state is written in a &lt;code&gt;hostsedit1.sls&lt;/code&gt; file which should be on your salt states root directory (if it's not directly on the root, add &lt;code&gt;path.to.this.state.directory&lt;/code&gt; in the salt-call calls). Here is this state:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;test-etc-hosts-blockreplace-services:
-  file.blockreplace:
-    - name: /etc/hosts
-    - marker_start: &quot;# BLOCK TOP : salt managed zone : local services : please do not edit&quot;
-    - marker_end: &quot;# BLOCK BOTTOM : end of salt managed zone --&quot;
-    - content: '# here be dragons'
-    - show_changes: True
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Here you can see I used a full name for the &lt;strong&gt;state id&lt;/strong&gt; (1st line), and not just the file path, as using full descriptive and unique ids is a very good habit. And using the name shortcut as a state id is maybe more readable in examples but it can lead to states overwrites, bad things. So I won't do that.&lt;/p&gt;
-
-&lt;p&gt;The content is a comment, it's a test. I did &lt;strong&gt;not&lt;/strong&gt; alter manually the &lt;code&gt;/etc/hosts&lt;/code&gt; file to add my markers inside.&lt;/p&gt;
-
-&lt;p&gt;Let's run the test (and not a highstate, only this simple sls), run it with a user having write access on the targeted hosts file, like the root user:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;#$: salt-call state.sls hostsedit1    
-local:
-----------
-    State: - file
-    Name:      /etc/hosts
-    Function:  blockreplace
-    Result:    False
-    Comment:   An exception occurred in this state: Traceback (most recent call last):
-  File &quot;/path/to/salt/state.py&quot;, line 1325, in call
-    *cdata['args'], **cdata['kwargs'])
-  File &quot;path/to/salt/states/file.py&quot;, line 1882, in blockreplace
-    show_changes=show_changes)
-  File &quot;path/to/salt/modules/file.py&quot;, line 1105, in blockreplace
-    raise CommandExecutionError(&quot;Cannot edit marked block. Markers were not found in file.&quot;)
-CommandExecutionError: Cannot edit marked block. Markers were not found in file.
-    Changes:   
-
-Summary
-------------
-Succeeded: 0
-Failed:    1
-------------
-Total:     1
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;And if fails. Because the block is not found in the file. We need to tell salt that in this case the block should be added on top (&lt;code&gt;append_if_not_found&lt;/code&gt;) or on the bottom of the file (&lt;code&gt;prepend_if_not_found&lt;/code&gt;). You're maybe wondering why the state fails badly instead of creating the block by default. The reason is that you may have edited the marker (to add some variables) or you may have edited the file and remove an important thing (like the bottom marker), and you would not want the state to overwrite a part of your file or to duplicate the block. I prefer having exception when something bad happens, and no changes on the targeted file.
-We need to add the append instruction, this is done in hostsedit2 (on this step by step I use different states, but you could edit the same state file)&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;test-etc-hosts-blockreplace-services:
-  file.blockreplace:
-    - name: /etc/hosts
-    - marker_start: &quot;# BLOCK TOP : salt managed zone : local services : please do not edit&quot;
-    - marker_end: &quot;# BLOCK BOTTOM : end of salt managed zone --&quot;
-    - content: '# here be dragons'
-    - show_changes: True
-    - append_if_not_found: True
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Run it:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;#$: salt-call state.sls hostsedit2
- local:
-----------
-    State: - file
-    Name:      /etc/hosts
-    Function:  blockreplace
-        Result:    True
-        Comment:   Changes were made
-        Changes:   Invalid Changes data: --- 
-+++ 
-@@ -45,3 +45,6 @@
- 192.168.1.52.3 toto3.foo.com
- 192.168.1.52.4 toto4.foo.com
- 192.168.1.52.5 toto5.foo.com
-+# BLOCK TOP : salt managed zone : local services : please do not edit
-+# here be dragons
-+# BLOCK BOTTOM : end of salt managed zone --
-
-
-Summary
-------------
-Succeeded: 1
-Failed:    0
-------------
-Total:     1
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;The &lt;code&gt;Invalid Changes data&lt;/code&gt; is a known bug that should get fixed soon, is a false positive (changes should be a list of changes and not just the string I think, something like that), the changes are in fact OK. You can chek the hosts file, the block of text was added at the end of the file.&lt;/p&gt;
-
-&lt;p&gt;And if you launch the state a second time you will see that no changes were detected, so the file is untouched.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;local:
-----------
-    State: - file
-    Name:      /etc/hosts
-    Function:  blockreplace
-        Result:    True
-        Comment:   No changes were made
-        Changes:   
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Note that using an empty content argument would empty your block in /etc/hosts, while leaving in place the block markers comments.&lt;/p&gt;
-
-&lt;p&gt;So now we'll add some more realistic content in the hosts file, some IP and DNS data. We'll do that in a &lt;code&gt;hostedit3.sls&lt;/code&gt; file:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;test-etc-hosts-blockreplace-services:
-  file.blockreplace:
-    - name: /etc/hosts
-    - marker_start: &quot;# BLOCK TOP : salt managed zone : local services : please do not edit&quot;
-    - marker_end: &quot;# BLOCK BOTTOM : end of salt managed zone --&quot; 
-    - content: |
-        127.0.0.1 db.local.net
-        127.0.0.1 http.local.net
-        127.0.0.1 foo bar foo.local.net bar.local.net
-        127.0.0.1 foobar # with a comment
-    - show_changes: True
-    - append_if_not_found: True
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Look at the &lt;code&gt;|&lt;/code&gt; this is used for multiline input in yaml, with newlines preservation.
-Spaces, as always in yaml, are very important, If I show the first spaces with &lt;code&gt;x&lt;/code&gt; you can see that you need 4 more spaces after this pipe:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;test-etc-hosts-blockreplace-services:
-xxfile.blockreplace:
-xxxx- name: /etc/hosts
-xxxx- marker_start: &quot;# BLOCK TOP : salt managed zone : local services : please do not edit&quot;
-xxxx- marker_end: &quot;# BLOCK BOTTOM : end of salt managed zone --&quot; 
-xxxx- content: |
-xxxxxxxx127.0.0.1 db.local.net
-xxxxxxxx127.0.0.1 http.local.net
-xxxxxxxx127.0.0.1 foo bar foo.local.net bar.local.net
-xxxxxxxx127.0.0.1 foobar # with a comment
-xxxx- show_changes: True
-xxxx- append_if_not_found: True
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;And run it:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;#$: salt-call state.sls hostsedit3
- local:
-----------
-    State: - file
-    Name:      /etc/hosts
-    Function:  blockreplace
-        Result:    True
-        Comment:   Changes were made
-        Changes:   Invalid Changes data: --- 
-+++ 
-@@ -46,5 +46,9 @@
-
- #-- end salt managed zoneend --
- # BLOCK TOP : salt managed zone : local services : please do not edit
--# here be dragons
-+127.0.0.1 db.local.net
-+127.0.0.1 http.local.net
-+127.0.0.1 foo bar foo.local.net bar.local.net
-+127.0.0.1 foobar # with a comment
-+
- # BLOCK BOTTOM : end of salt managed zone --
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;And we will end this first example by managing two different blocks in the same file.&lt;/p&gt;
-
-&lt;p&gt;Let's say we will now manage two different blocks on the file, one with local services, and one with external services, this is &lt;code&gt;hostedit4.sls&lt;/code&gt;&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;test-etc-hosts-blockreplace-services-local:
-  file.blockreplace:
-    - name: /etc/hosts
-    - marker_start: &quot;# BLOCK TOP : salt managed zone : local services : please do not edit&quot;
-    - marker_end: &quot;# BLOCK BOTTOM : local : end of salt managed zone --&quot; 
-    - content: |
-        127.0.0.1 db.local.net
-        127.0.0.1 http.local.net
-        127.0.0.1 foo bar foo.local.net bar.local.net
-        127.0.0.1 foobar # with a comment
-    - show_changes: True
-    - append_if_not_found: True
-
-test-etc-hosts-blockreplace-services-central:
-  file.blockreplace:
-    - name: /etc/hosts
-    - marker_start: &quot;# BLOCK TOP : salt managed zone : central services : please do not edit&quot;
-    - marker_end: &quot;# BLOCK BOTTOM : central : end of salt managed zone --&quot; 
-    - content: |
-        8.8.8.8 ns1.dns.net
-        8.8.4.4 ns2.dns.net
-    - show_changes: True
-    - append_if_not_found: True
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;The states ids are altered with &lt;code&gt;-local&lt;/code&gt; and &lt;code&gt;-central&lt;/code&gt; and the second state uses a different marker message. If I had used the same marker messages the second would have overwritten the first one. You may also see that I have added a  &lt;code&gt;central&lt;/code&gt; and a  &lt;code&gt;local&lt;/code&gt; keyword on the &lt;code&gt;marker_end&lt;/code&gt; sections. This way end markers are also uniques, the states could work with non unique end marker, the block end is detected on the first match of the end marker. But with unique end markers you will detect more easily broken blocks.&lt;/p&gt;
-
-&lt;p&gt;And if I do not alter the &lt;code&gt;/etc/hosts&lt;/code&gt; file before running theses states I should see an example of broken block, because I altered the end marker for the first block, and salt cannot find this end marker on the current file, let's test it (let's be mad):&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;#$: salt-call state.sls hostsedit4
-local:
-----------
-    State: - file
-    Name:      /etc/hosts
-    Function:  blockreplace
-        Result:    False
-        Comment:   An exception occurred in this state: Traceback (most recent call last):
-  File &quot;/path/to/salt/state.py&quot;, line 1325, in call
-    *cdata['args'], **cdata['kwargs'])
-  File &quot;/path/to/salt/states/file.py&quot;, line 1882, in blockreplace
-    show_changes=show_changes)
-  File &quot;/path/to/salt/modules/file.py&quot;, line 1095, in blockreplace
-    raise CommandExecutionError(&quot;Unterminated marked block. End of file reached before marker_end.&quot;)
-CommandExecutionError: Unterminated marked block. End of file reached before marker_end.
-
- Changes:   
-----------
-    State: - file
-    Name:      /etc/hosts
-    Function:  blockreplace
-        Result:    True
-        Comment:   Changes were made
-        Changes:   Invalid Changes data: --- 
-+++ 
-@@ -52,3 +52,6 @@
- 127.0.0.1 foobar # with a comment
-
- # BLOCK BOTTOM : end of salt managed zone --
-    +# BLOCK TOP : salt managed zone : central services : please do not edit
-+8.8.8.8 ns1.dns.net
-8.8.4.4 ns2.dns.net
-
-+# BLOCK BOTTOM : central : end of salt managed zone --
-
-
-Summary
-------------
-Succeeded: 1
-Failed:    1
-------------
-Total:     2
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Perfect, the second block was added and salt detected that the first state's block was now invalid &lt;code&gt;Unterminated marked block. End of file reached before marker_end&lt;/code&gt;. The block was not removed from the hosts file, simply salt is now unable to manage it.&lt;/p&gt;
-
-&lt;p&gt;The fix here is either:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;to edit the /etc/hosts and replace the marker end comment of the first block from &lt;code&gt;# BLOCK BOTTOM : end of salt managed zone --&lt;/code&gt; to &lt;code&gt;# BLOCK BOTTOM : local : end of salt managed zone --&lt;/code&gt;&lt;/li&gt;
-&lt;li&gt;to do the contrary in the state, let the first block end on the &lt;code&gt;# BLOCK BOTTOM : end of salt managed zone --&lt;/code&gt; marker.&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;You can test it, You'll get two working salt states, both editing the same hosts file and managing two different sections of the file.&lt;/p&gt;
-
-&lt;h2&gt;Next?&lt;/h2&gt;
-
-&lt;p&gt;A next post will cover &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt; examples with managed files and also with blockreplace. I hope you feel now how powerful could be the combination of harvested data accumulated other several states with multiple edited text blocks.&lt;/p&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://twitter.com/regilero&quot;&gt;Stay tuned on twitter, @regilero&lt;/a&gt;, &lt;a href=&quot;https://twitter.com/makinacorpus&quot;&gt;@makinacorpus&lt;/a&gt;&lt;/p&gt;
-</description>
-				<published>2014-01-20 00:00:00 +0100</published>
-				<link>http://regilero.github.io/saltstack/english/2014/01/20/saltstack_step_by_step_file_blockreplace/</link>
 			</item>
 		
 	</channel>
