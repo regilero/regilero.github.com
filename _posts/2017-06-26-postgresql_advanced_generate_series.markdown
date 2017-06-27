@@ -28,7 +28,7 @@ The other point is that we need to work on several tens of thousands of rows.
 For example to apply a functionnal process that need to be applied in production later and control the speed
 of this process. Or simply to test that our indexation plan is right.
 
-Some tools exists, able to generate content. In the Dango world, for example,
+Some tools exists, able to generate content. In the Django world, for example,
 you could use [Factory Boy](https://factoryboy.readthedocs.io/en/latest/), or [others](https://djangopackages.org/grids/g/fixtures/). But here we'll show how to generate this same type of data in a quite *simple* manne,
 **using SQL** directly, in a very very fast way (fast enough to be added in a
 functionnal test setUp).
