@@ -294,7 +294,7 @@ so UI had to remove some indexes and some formating and comments, but [it works 
 We can also [list some contacts](http://sqlfiddle.com/#!17/93004/8).
 
 Or start to work on [some complex query from an application](http://sqlfiddle.com/#!17/93004/6).
-**Since the goels ois normally to find the right indexes**.
+**Since the goal is normally to find the right indexes**.
 
 ## Why, by the way?
 
