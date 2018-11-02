@@ -201,32 +201,32 @@ In these examples:
 as would most inline tags like `<span>`, `<strong>`, `<sub>`, etc.)
 
 <table>
-<tr><td><small><a href="///theme/resource/t1.html">direct link</a></small></td><td><small><a href="///theme/resource/t2.html">direct link</a></small></td></tr><td>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t1.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t2.html">direct link</a></small></td></tr><td>
 <iframe src=/theme/resource/t1.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
 <iframe src=/theme/resource/t2.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
-<tr><td><small><a href="///theme/resource/t3.html">direct link</a></small></td><td><small><a href="///theme/resource/t4.html">direct link</a></small></td></tr><td>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t3.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t4.html">direct link</a></small></td></tr><td>
 <iframe src=/theme/resource/t3.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
 <iframe src=/theme/resource/t4.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
-<tr><td><small><a href="///theme/resource/t5.html">direct link</a></small></td><td><small><a href="///theme/resource/t6.html">direct link</a></small></td></tr><td>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t5.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t6.html">direct link</a></small></td></tr><td>
 <iframe src=/theme/resource/t5.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
 <iframe src=/theme/resource/t6.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
-<tr><td><small><a href="///theme/resource/t7.html">direct link</a></small></td><td><small><a href="///theme/resource/t8.html">direct link</a></small></td></tr><td>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t7.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t8.html">direct link</a></small></td></tr><td>
 <iframe src=/theme/resource/t7.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
 <iframe src=/theme/resource/t8.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
-<tr><td><small><a href="///theme/resource/t9.html">direct link</a></small></td><td><small><a href="///theme/resource/t10.html">direct link</a></small></td></tr><td>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t9.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t10.html">direct link</a></small></td></tr><td>
 <iframe src=/theme/resource/t9.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
 <iframe src=/theme/resource/t10.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
-<tr><td><small><a href="///theme/resource/t11.html">direct link</a></small></td><td><small><a href="///theme/resource/t12.html">direct link</a></small></td></tr><td>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t11.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t12.html">direct link</a></small></td></tr><td>
 <iframe src=/theme/resource/t11.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
 <iframe src=/theme/resource/t12.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
-<tr><td><small><a href="///theme/resource/t13.html">direct link</a></small></td><td><small><a href="///theme/resource/t14.html">direct link</a></small></td></tr><td>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t13.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t14.html">direct link</a></small></td></tr><td>
 <iframe src=/theme/resource/t13.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
 <iframe src=/theme/resource/t14.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
-<tr><td><small><a href="///theme/resource/t15.html">direct link</a></small></td><td><small><a href="///theme/resource/t16.html">direct link</a></small></td></tr><td>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t15.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t16.html">direct link</a></small></td></tr><td>
 <iframe src=/theme/resource/t15.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
 <iframe src=/theme/resource/t16.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
-<tr><td><small><a href="///theme/resource/t17.html">direct link</a></small></td><td>&nbsp;</td></tr><td>
-<iframe src=/theme/resource/t17.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td></td></tr>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t17.html">direct link</a></small></td><td>&nbsp;</td></tr><td>
+<iframe src=//regilero.github.io/theme/resource/t17.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td></td></tr>
 </table>
 
 **H1, H2, H3, PRE, LI**
