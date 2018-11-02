@@ -2,7 +2,7 @@
 layout: post
 uuid: 2ab25658-9a43-868f-eabe-eab656823b42
 title: AirPair, Drupal with PHP-FPM, Apache or Nginx
-categories: [english, Drupal]
+categories: [English, drupal]
 tags: [Drupal, Nginx, Apache, PHP]
 pic: old1.jpg
 excerpt: Some very detailled posts on Installing Drupal with php-fpm with Apache2.4 or Nginx
