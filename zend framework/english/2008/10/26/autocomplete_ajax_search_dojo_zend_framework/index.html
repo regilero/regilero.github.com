@@ -49,7 +49,7 @@
         <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
             <li ><a href="/" class="glyphicon glyphicon-home">&nbsp;Home</a></li>
-            <li class="active"><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
+            <li ><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
             <li ><a href="/contact/" class="glyphicon glyphicon-earphone">&nbsp;Contact</a></li>
             <li><a class="glyphicon glyphicon-eye-open" href="/feed.xml">&nbsp;RSS Feed</a></li>
           </ul>
@@ -77,7 +77,7 @@
             <div class="page-header">
             <h1>Autocomplete Ajax search with Dojo and Zend Framework
             <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="2008-10-26">Oct 26, 2008</time></span>
-            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/english/">english</a> and <a href="/zend framework/">zend framework</a></span>
+            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/Zend Framework/">Zend Framework</a> and <a href="/english/">english</a></span>
             </h1>
             </div>
         </header>
@@ -106,7 +106,7 @@ and that acl verifications are done elsewhere, on your Controller plugins for ex
 
 <p>First let's see HTML code (in your view):</p>
 
-<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
+<p><figure class="highlight"><pre><code class="language-html" data-lang="html">  <span class="p">&lt;</span><span class="nt">script</span> <span class="na">type</span><span class="o">=</span><span class="s">&quot;text/javascript&quot;</span><span class="p">&gt;</span>
     <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dojo.parser&quot;</span><span class="p">);</span>
     <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dojox.data.QueryReadStore&quot;</span><span class="p">);</span>
     <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dijit.form.ComboBox&quot;</span><span class="p">);</span>
@@ -114,21 +114,20 @@ and that acl verifications are done elsewhere, on your Controller plugins for ex
     <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;custom.FindAutoCompleteReadStore&quot;</span><span class="p">);</span>
     <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dijit.form.Form&quot;</span><span class="p">);</span>
     <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dijit.form.Button&quot;</span><span class="p">);</span>
-  <span class="nt">&lt;/script&gt;</span>
-  <span class="nt">&lt;form</span> <span class="na">id=</span><span class="s">&quot;Find_Form&quot;</span> <span class="na">action=</span><span class="s">&quot;/module/foo/edit&quot;</span> <span class="na">method=</span><span class="s">&quot;get&quot;</span> <span class="na">dojoType=</span><span class="s">&quot;dijit.form.Form&quot;</span><span class="nt">&gt;</span>
-    <span class="nt">&lt;div</span> <span class="na">dojoType=</span><span class="s">&quot;custom.FindAutoCompleteReadStore&quot;</span> <span class="na">jsId=</span><span class="s">&quot;NameStore&quot;</span> <span class="na">url=</span><span class="s">&quot;/module/foo/find/format/json&quot;</span> <span class="na">requestMethod=</span><span class="s">&quot;get&quot;</span><span class="nt">&gt;&lt;/div&gt;</span>
-    <span class="nt">&lt;label</span> <span class="na">for=</span><span class="s">&quot;id&quot;</span> <span class="na">class=</span><span class="s">&quot;optional&quot;</span><span class="nt">&gt;</span>Recherchez un nom:<span class="nt">&lt;/label&gt;</span>
-    <span class="nt">&lt;span</span> <span class="na">class=</span><span class="s">&quot;formelement&quot;</span><span class="nt">&gt;&lt;select</span> <span class="na">name=</span><span class="s">&quot;id&quot;</span> <span class="na">id=</span><span class="s">&quot;FindByName&quot;</span> <span class="na">hasDownArrow=</span><span class="s">&quot;&quot;</span> <span class="na">store=</span><span class="s">&quot;NameStore&quot;</span> <span class="na">size=</span><span class="s">&quot;25&quot;</span> <span class="na">tabindex=</span><span class="s">&quot;99&quot;</span> <span class="na">autocomplete=</span><span class="s">&quot;1&quot;</span> <span class="na">dojoType=</span><span class="s">&quot;dijit.form.FilteringSelect&quot;</span> <span class="na">pageSize=</span><span class="s">&quot;10&quot;</span> <span class="nt">&gt;&lt;/select&gt;&lt;/span&gt;</span>
-    <span class="nt">&lt;span</span> <span class="na">class=</span><span class="s">&quot;actionbuttons&quot;</span><span class="nt">&gt;&lt;input</span> <span class="na">id=</span><span class="s">&quot;Find_go&quot;</span> <span class="na">name=</span><span class="s">&quot;Find_go&quot;</span> <span class="na">value=</span><span class="s">&quot;Go:&quot;</span> <span class="na">type=</span><span class="s">&quot;submit&quot;</span> <span class="na">label=</span><span class="s">&quot;go:&quot;</span><span class="na">dojoType=</span><span class="s">&quot;dijit.form.Button&quot;</span> <span class="nt">/&gt;&lt;/span&gt;</span>
-  <span class="nt">&lt;/form&gt;</span></code></pre></div>
-
+  <span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+  <span class="p">&lt;</span><span class="nt">form</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;Find_Form&quot;</span> <span class="na">action</span><span class="o">=</span><span class="s">&quot;/module/foo/edit&quot;</span> <span class="na">method</span><span class="o">=</span><span class="s">&quot;get&quot;</span> <span class="na">dojoType</span><span class="o">=</span><span class="s">&quot;dijit.form.Form&quot;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">dojoType</span><span class="o">=</span><span class="s">&quot;custom.FindAutoCompleteReadStore&quot;</span> <span class="na">jsId</span><span class="o">=</span><span class="s">&quot;NameStore&quot;</span> <span class="na">url</span><span class="o">=</span><span class="s">&quot;/module/foo/find/format/json&quot;</span> <span class="na">requestMethod</span><span class="o">=</span><span class="s">&quot;get&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">label</span> <span class="na">for</span><span class="o">=</span><span class="s">&quot;id&quot;</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;optional&quot;</span><span class="p">&gt;</span>Recherchez un nom:<span class="p">&lt;/</span><span class="nt">label</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;formelement&quot;</span><span class="p">&gt;&lt;</span><span class="nt">select</span> <span class="na">name</span><span class="o">=</span><span class="s">&quot;id&quot;</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;FindByName&quot;</span> <span class="na">hasDownArrow</span><span class="o">=</span><span class="s">&quot;&quot;</span> <span class="na">store</span><span class="o">=</span><span class="s">&quot;NameStore&quot;</span> <span class="na">size</span><span class="o">=</span><span class="s">&quot;25&quot;</span> <span class="na">tabindex</span><span class="o">=</span><span class="s">&quot;99&quot;</span> <span class="na">autocomplete</span><span class="o">=</span><span class="s">&quot;1&quot;</span> <span class="na">dojoType</span><span class="o">=</span><span class="s">&quot;dijit.form.FilteringSelect&quot;</span> <span class="na">pageSize</span><span class="o">=</span><span class="s">&quot;10&quot;</span> <span class="p">&gt;&lt;/</span><span class="nt">select</span><span class="p">&gt;&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;actionbuttons&quot;</span><span class="p">&gt;&lt;</span><span class="nt">input</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;Find_go&quot;</span> <span class="na">name</span><span class="o">=</span><span class="s">&quot;Find_go&quot;</span> <span class="na">value</span><span class="o">=</span><span class="s">&quot;Go:&quot;</span> <span class="na">type</span><span class="o">=</span><span class="s">&quot;submit&quot;</span> <span class="na">label</span><span class="o">=</span><span class="s">&quot;go:&quot;</span><span class="na">dojoType</span><span class="o">=</span><span class="s">&quot;dijit.form.Button&quot;</span> <span class="p">/&gt;&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+  <span class="p">&lt;/</span><span class="nt">form</span><span class="p">&gt;</span></code></pre></figure></p>
 
 <p>As we can see you'll need an additional custom js: <strong>custom.FindAutoCompleteReadStore</strong>.</p>
 
 <p>This is a really simple js to write, create your custom directory in the same level
 as dojo or dijit directory and create <code>FindAutoCompleteReadStore.js</code> like that:</p>
 
-<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="nx">dojo</span><span class="p">.</span><span class="nx">provide</span><span class="p">(</span><span class="s2">&quot;custom.FindAutoCompleteReadStore&quot;</span><span class="p">);</span>
+<p><figure class="highlight"><pre><code class="language-js" data-lang="js"><span class="nx">dojo</span><span class="p">.</span><span class="nx">provide</span><span class="p">(</span><span class="s2">&quot;custom.FindAutoCompleteReadStore&quot;</span><span class="p">);</span>
 <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dojox.data.QueryReadStore&quot;</span><span class="p">);</span>
 <span class="nx">dojo</span><span class="p">.</span><span class="nx">declare</span><span class="p">(</span><span class="s2">&quot;custom.FindAutoCompleteReadStore&quot;</span><span class="p">,</span> <span class="nx">dojox</span><span class="p">.</span><span class="nx">data</span><span class="p">.</span><span class="nx">QueryReadStore</span><span class="p">,</span> <span class="p">{</span>
   <span class="nx">fetch</span><span class="o">:</span><span class="kd">function</span> <span class="p">(</span><span class="nx">request</span><span class="p">)</span> <span class="p">{</span>
@@ -136,31 +135,29 @@ as dojo or dijit directory and create <code>FindAutoCompleteReadStore.js</code> 
     <span class="c1">// cal superclass fecth</span>
     <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">inherited</span><span class="p">(</span><span class="s2">&quot;fetch&quot;</span><span class="p">,</span> <span class="nx">arguments</span><span class="p">);</span>
   <span class="p">}</span>
-<span class="p">});</span></code></pre></div>
-
+<span class="p">});</span></code></pre></figure></p>
 
 <p>Now you'll need to serve the requested Ajax query
 (requested by the Dojo store linked with our FilteringSelect or Combobox) : <code>/module/foo/find/format/json</code><br/>
 This is the method <strong>'findAction'</strong> in the Controller <strong>'foo'</strong> on module <strong>'module'</strong>.<br/>
 But first let's see the preDispatch function of this controller where we handle the <code>format/json</code> instruction to switch in Ajax mode:</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">public function preDispatch()</span>
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">public function preDispatch()</span>
 <span class="x">{</span>
 <span class="x">    $contextSwitch =   $this-&gt;_helper-&gt;getHelper(&#39;contextSwitch&#39;);</span>
 <span class="x">    $contextSwitch-&gt;setAutoJsonSerialization( true );</span>
 <span class="x">    $contextSwitch-&gt;addActionContext(&#39;find&#39;, &#39;json&#39;);</span>
 <span class="x">    $contextSwitch-&gt;initContext();</span>
-<span class="x">}</span></code></pre></div>
-
+<span class="x">}</span></code></pre></figure></p>
 
 <p>So now let's write the find function:</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">public function findAction()</span>
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">  public function findAction()</span>
 <span class="x">  {</span>
 <span class="x">      // handle filtering of recieved data</span>
-<span class="x">      $replacer = new Zend_Filter_pregReplace(&#39;/\*/&#39;,&#39;%&#39;);</span>
+<span class="x">      $replacer = new Zend_Filter_pregReplace(&#39;/*/&#39;,&#39;%&#39;);</span>
 <span class="x">      // emulate alpha+num filter with some more characters enabled</span>
-<span class="x">      //**** &lt;a href=&quot;http://www.regular-expressions.info/unicode.html&quot; title=&quot;http://www.regular-expressions.info/unicode.html&quot;&gt;http://www.regular-expressions.info/unicode.html&lt;/a&gt; ****</span>
+<span class="x">      //<strong><strong> &lt;a href=&quot;http://www.regular-expressions.info/unicode.html&quot; title=&quot;http://www.regular-expressions.info/unicode.html&quot;&gt;http://www.regular-expressions.info/unicode.html&lt;/a&gt; </strong></strong></span>
 <span class="x">      // \p{N} --&gt; numeric chars of any language</span>
 <span class="x">      // \s -&gt; withespace</span>
 <span class="x">      //\x0027 : APOSTROPHE</span>
@@ -168,8 +165,8 @@ But first let's see the preDispatch function of this controller where we handle 
 <span class="x">      //\x0025% : % in UTF-8 and not in utf-8</span>
 <span class="x">      //\x002D : HYPHEN / MINUS</span>
 <span class="x">      //\x005F : UNDERSCORE</span>
-<span class="x">      //\. DOT</span>
-<span class="x">      $mylimit = new Zend_Filter_pregReplace(&#39;/[^\p{L}\p{N}\s\x0027\x002C\x002D\x005F\x0025%\.]/u&#39;,&#39;&#39;);</span>
+<span class="x">      //. DOT</span>
+<span class="x">      $mylimit = new Zend_Filter_pregReplace(&#39;/[^\p{L}\p{N}\s\x0027\x002C\x002D\x005F\x0025%.]/u&#39;,&#39;&#39;);</span>
 <span class="x">      $filters = array(</span>
 <span class="x">              &#39;*&#39; =&gt; &#39;StringTrim&#39;</span>
 <span class="x">              ,&#39;Find&#39; =&gt; array(</span>
@@ -182,7 +179,7 @@ But first let's see the preDispatch function of this controller where we handle 
 <span class="x">          ,&#39;count&#39; =&gt; &#39;Int&#39;</span>
 <span class="x">      );</span>
 <span class="x">      $validators =array();</span>
-<span class="x">      $input = new Zend_Filter_Input($filters, $validators, $_GET);</span>
+<span class="x">      $input = new Zend_Filter_Input($filters, $validators, $<em>GET);</span>
 <span class="x">      $find = $input-&gt;getUnescaped(&#39;Find&#39;);</span>
 <span class="x">      if (empty($find)) $find = &#39;%&#39;;</span>
 <span class="x">      $start = intval($input-&gt;getUnescaped(&#39;start&#39;));</span>
@@ -191,14 +188,14 @@ But first let's see the preDispatch function of this controller where we handle 
 <span class="x">      if (empty($count)) $count = 3;</span>
 <span class="x">      // get the model, here you should adjust with the way you work</span>
 <span class="x">      // then make your query with limits</span>
-<span class="x">      $this-&gt;_modeltable = new My_Zend_Db_Table_Foo($this-&gt;db)</span>
+<span class="x">      $this-&gt;</em>modeltable = new My_Zend_Db_Table_Foo($this-&gt;db)</span>
 <span class="x">      $fieldid = &#39;my_id_field&#39;;</span>
 <span class="x">      $fieldident = &#39;my_name_field&#39;;</span>
-<span class="x">      $select = $this-&gt;_modeltable-&gt;select();</span>
-<span class="x">      $db = $this-&gt;_modeltable-&gt;getAdapter();</span>
+<span class="x">      $select = $this-&gt;<em>modeltable-&gt;select();</span>
+<span class="x">      $db = $this-&gt;</em>modeltable-&gt;getAdapter();</span>
 <span class="x">      $select-&gt;where($db-&gt;quoteinto($db-&gt;quoteIdentifier($fieldident).&#39; LIKE ?&#39;, $find));</span>
 <span class="x">      $select-&gt;limit($count, $start);</span>
-<span class="x">      $rows= $this-&gt;_modeltable-&gt;fetchAll($select);</span>
+<span class="x">      $rows= $this-&gt;<em>modeltable-&gt;fetchAll($select);</span>
 <span class="x">      $rowsarray = $rows-&gt;ToArray();</span>
 <span class="x">      $finalarray=array();</span>
 <span class="x">      foreach ($rowsarray as $row)</span>
@@ -207,10 +204,9 @@ But first let's see the preDispatch function of this controller where we handle 
 <span class="x">          $finalarray[$key] = $row[$fieldident];</span>
 <span class="x">      }</span>
 <span class="x">      //Zend_Debug::dump($finalarray);</span>
-<span class="x">      //die(__METHOD__);</span>
-<span class="x">      $this-&gt;_helper-&gt;autoCompleteDojo($finalarray);</span>
-<span class="x">  }</span></code></pre></div>
-
+<span class="x">      //die(<strong>METHOD</strong>);</span>
+<span class="x">      $this-&gt;</em>helper-&gt;autoCompleteDojo($finalarray);</span>
+<span class="x">  }</span></code></pre></figure></p>
 
 <p>And it should be sufficient, pffiuu.<br/>
 But... there's one remaining problem after that.
@@ -226,7 +222,7 @@ We put the search autocomplete inside a form and we wanted the <strong>'go'</str
 
 <p>To get it done I had to change one thing in Zend Framework library on the Zend/Controller/Action/Helper/AutoCompleteDojo.php Helper:</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">public function prepareAutoCompletion($data, $keepLayouts = false)</span>
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">  public function prepareAutoCompletion($data, $keepLayouts = false)</span>
 <span class="x">  {</span>
 <span class="x">    $items = array();</span>
 <span class="x">    foreach ($data as $key =&gt; $value) {</span>
@@ -237,8 +233,7 @@ We put the search autocomplete inside a form and we wanted the <strong>'go'</str
 <span class="x">      &#39;items&#39; =&gt; $items,</span>
 <span class="x">     );</span>
 <span class="x">    return $this-&gt;encodeJson($final, $keepLayouts);</span>
-<span class="x">  }</span></code></pre></div>
-
+<span class="x">  }</span></code></pre></figure></p>
 
 <p>Line 66 <code>'key'</code> is added on the item and line 69 <code>'identifier'</code> is set to <code>'key'</code> and not <code>'name'</code>.<br/>
 <code>'identifier'</code> is used by the Dojo Filtering Select to decide which field will be used for the form,
@@ -285,6 +280,31 @@ to get other solutions or info on the way it will be fixed later look <a href="h
                 </div>
                 <div class="list-group" role="navigation">
                   
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
+                     <h4>Security: HTTP Smuggling, Apsis Pound load balancer</h4>
+                     <p>details of CVE-2016-10711 (published feb 2018).</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
+                     <h4>PostgreSQL, advanced use of generate_series for data generation</h4>
+                     <p>filling thousands of random realistic data rows.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
+                     <h4>Web Security, Dompdf security issues details</h4>
+                     <p>details of december 2015's 3 CVE in dompdf, with one RCE.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     <h4>Web Security, using bad HTML to escape from a DIV</h4>
+                     <p>Break HTML layouts with only bad HTML and the browser's help.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <h4>Checking HTTP Smuggling issues in 2015 - Part1</h4>
+                     <p>First part of the 2015 HTTP Smuggling articles. Injecting HTTP in HTTP, the theory.</p>
+                     </a>
+                  
                 </div>
               </div>
               
@@ -295,23 +315,23 @@ to get other solutions or info on the way it will be fixed later look <a href="h
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/security/english/2018/07/03/security_pound_http_smuggling/">
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
                      Security: HTTP Smuggling, Apsis Pound load balancer
                      </a>
                   
-                     <a class="list-group-item" href="/postgresql/english/2017/06/26/postgresql_advanced_generate_series/">
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
                      PostgreSQL, advanced use of generate_series for data generation
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2016/12/19/security_dompdf_rce/">
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
                      Web Security, Dompdf security issues details
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     <a class="list-group-item" href="/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
                      Web Security, using bad HTML to escape from a DIV
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <a class="list-group-item" href="/english/security/2015/10/04/http_smuggling_in_2015_part_one/">
                      Checking HTTP Smuggling issues in 2015 - Part1
                      </a>
                   
@@ -324,46 +344,46 @@ to get other solutions or info on the way it will be fixed later look <a href="h
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+                <a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
 <a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 31px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 30px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
 <a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
 <a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 28px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
 <a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
 
                 </div>
               </div>
@@ -378,7 +398,7 @@ to get other solutions or info on the way it will be fixed later look <a href="h
                 <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
                 <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
                 <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
-                <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+                <a href="https://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
             </div>
             <div class="sideBarItem">
               <h3>Some Friends</h3>

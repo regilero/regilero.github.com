@@ -49,7 +49,7 @@
         <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
             <li ><a href="/" class="glyphicon glyphicon-home">&nbsp;Home</a></li>
-            <li class="active"><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
+            <li ><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
             <li ><a href="/contact/" class="glyphicon glyphicon-earphone">&nbsp;Contact</a></li>
             <li><a class="glyphicon glyphicon-eye-open" href="/feed.xml">&nbsp;RSS Feed</a></li>
           </ul>
@@ -77,7 +77,7 @@
             <div class="page-header">
             <h1>PostgreSQL, advanced use of generate_series for data generation
             <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="2017-06-26">Jun 26, 2017</time></span>
-            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/english/">english</a> and <a href="/postgresql/">postgresql</a></span>
+            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/PostgreSQL/">PostgreSQL</a> and <a href="/english/">english</a></span>
             </h1>
             </div>
         </header>
@@ -137,14 +137,13 @@ to test the complex queries in your own database.</p>
 
 <p>Let's use <code>generate_series</code> to generate some data :</p>
 
-<div class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="c1">-- tall numbers between 1 and 100 (step 1 by default)</span>
+<p><figure class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="c1">-- tall numbers between 1 and 100 (step 1 by default)</span>
 <span class="k">SELECT</span> <span class="n">generate_series</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">100</span><span class="p">);</span>
 <span class="c1">-- all dates between 2010/05/10 and now,</span>
 <span class="c1">-- with a step of 78 days, 15 hours and 10 minutes</span>
 <span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">generate_series</span><span class="p">(</span><span class="s1">&#39;2010-10-05 00:00&#39;</span><span class="p">::</span><span class="k">timestamp</span><span class="p">,</span>
                               <span class="k">CURRENT_TIMESTAMP</span><span class="p">,</span>
-                              <span class="s1">&#39;8 days 15 hours 12min&#39;</span><span class="p">);</span></code></pre></div>
-
+                              <span class="s1">&#39;8 days 15 hours 12min&#39;</span><span class="p">);</span></code></pre></figure></p>
 
 <p>As we can see this function is quite powerful (<a href="http://sqlfiddle.com/#!17/9eecb/191">SQLFidlle1</a> <a href="http://sqlfiddle.com/#!17/9eecb/190">SQLFidlle2</a>).</p>
 
@@ -154,29 +153,28 @@ to test the complex queries in your own database.</p>
 
 <p>Let's start with <a href="https://github.com/regilero/regilero.github.com/blob/master/theme/resource/pgserie/feeding_company.sql">this query</a> which generates a lot of company names, we'll use that to feed the <code>company</code> table:</p>
 
-<div class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="k">SELECT</span><span class="p">(</span>
+<p><figure class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="k">SELECT</span><span class="p">(</span>
     <span class="k">SELECT</span> <span class="n">concat_ws</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span><span class="n">name_first</span><span class="p">,</span> <span class="n">name_last</span><span class="p">)</span> <span class="k">as</span> <span class="k">generated</span>
     <span class="k">FROM</span> <span class="p">(</span>
         <span class="k">SELECT</span> <span class="n">string_agg</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
         <span class="k">FROM</span> <span class="p">(</span>
-            <span class="k">select</span> <span class="n">start_arr</span><span class="p">[</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span> <span class="p">(</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="mi">25</span><span class="p">)::</span><span class="nb">int</span><span class="p">)</span> <span class="o">%</span> <span class="mi">16</span> <span class="p">]</span>
+            <span class="k">select</span> <span class="n">start_arr</span><span class="p">[</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span> <span class="p">(</span><span class="n">random</span><span class="p">()</span> <span class="o"><em></span> <span class="mi">25</span><span class="p">)::</span><span class="nb">int</span><span class="p">)</span> <span class="o">%</span> <span class="mi">16</span> <span class="p">]</span>
             <span class="k">FROM</span>
             <span class="p">(</span>
                 <span class="k">select</span> <span class="s1">&#39;{CO,GE,FOR,SO,CO,GIM,SE,CO,GE,CA,FRA,GEC,GE,GA,FRO,GIP}&#39;</span><span class="p">::</span><span class="nb">text</span><span class="p">[]</span> <span class="k">as</span> <span class="n">start_arr</span>
             <span class="p">)</span> <span class="n">syllarr</span><span class="p">,</span>
-            <span class="c1">-- need 3 syllabes, and force generator interpretation with the &#39;*0&#39; (else 3 same syllabes)</span>
-            <span class="n">generate_series</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span> <span class="o">+</span> <span class="p">(</span><span class="n">generator</span><span class="o">*</span><span class="mi">0</span><span class="p">))</span>
+            <span class="c1">-- need 3 syllabes, and force generator interpretation with the &#39;</em>0&#39; (else 3 same syllabes)</span>
+            <span class="n">generate_series</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span> <span class="o">+</span> <span class="p">(</span><span class="n">generator</span><span class="o"><em></span><span class="mi">0</span><span class="p">))</span>
         <span class="p">)</span> <span class="k">AS</span> <span class="n">comp3syl</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
     <span class="p">)</span> <span class="k">AS</span> <span class="n">comp_name_1st</span><span class="p">(</span><span class="n">name_first</span><span class="p">),</span>
     <span class="p">(</span>
-        <span class="k">SELECT</span> <span class="n">x</span><span class="p">[</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span> <span class="p">(</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="mi">25</span><span class="p">)::</span><span class="nb">int</span><span class="p">)</span> <span class="o">%</span> <span class="mi">14</span> <span class="p">]</span>
+        <span class="k">SELECT</span> <span class="n">x</span><span class="p">[</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span> <span class="p">(</span><span class="n">random</span><span class="p">()</span> <span class="o"></em></span> <span class="mi">25</span><span class="p">)::</span><span class="nb">int</span><span class="p">)</span> <span class="o">%</span> <span class="mi">14</span> <span class="p">]</span>
         <span class="k">FROM</span> <span class="p">(</span>
             <span class="k">select</span> <span class="s1">&#39;{Ltd,&amp; Co,SARL,SA,Gmbh,United,Brothers,&amp; Sons,International,Ext,Worldwide,Global,2000,3000}&#39;</span><span class="p">::</span><span class="nb">text</span><span class="p">[]</span>
         <span class="p">)</span> <span class="k">AS</span> <span class="n">z2</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
     <span class="p">)</span> <span class="k">AS</span> <span class="n">comp_name_last</span><span class="p">(</span><span class="n">name_last</span><span class="p">)</span>
     <span class="p">)</span>
-<span class="k">FROM</span> <span class="n">generate_series</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">10000</span><span class="p">)</span> <span class="k">as</span> <span class="n">generator</span></code></pre></div>
-
+<span class="k">FROM</span> <span class="n">generate_series</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">10000</span><span class="p">)</span> <span class="k">as</span> <span class="n">generator</span></code></pre></figure></p>
 
 <p>As we <a href="http://sqlfiddle.com/#!17/9eecb/186">can see on SQL Fiddle</a> this somewhat strange query works and generates 10,000 company names, from 3 syllables and a final word (like "SOCOGEC 2000" or "COGEFOR Worldwide"). <strong>The query does not use any table, there's not even a model for this in SQL Fiddle.</strong></p>
 
@@ -187,10 +185,9 @@ and not a correlated one, and only on syllables combination would be generated. 
 
 <p>Once we have a good <code>SELECT</code> we just have to <code>INSERT</code> the result in the table, using an insert query of this form:</p>
 
-<div class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">matable</span><span class="p">(</span><span class="n">field1</span><span class="p">,</span> <span class="n">field2</span><span class="p">)</span>
+<p><figure class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">matable</span><span class="p">(</span><span class="n">field1</span><span class="p">,</span> <span class="n">field2</span><span class="p">)</span>
     <span class="k">SELECT</span> <span class="p">.....</span> <span class="c1">-- (here the select we just found) ....</span>
-<span class="k">ON</span> <span class="n">CONFLICT</span> <span class="k">DO</span> <span class="k">NOTHING</span><span class="p">;</span></code></pre></div>
-
+<span class="k">ON</span> <span class="n">CONFLICT</span> <span class="k">DO</span> <span class="k">NOTHING</span><span class="p">;</span></code></pre></figure></p>
 
 <p>The <code>ON CONFLICT</code> part is ot available before PostgreSQL 9.5, it can be used to
 ignore the unique key errors. On an older PostgreSQL you'll have to generate
@@ -240,13 +237,12 @@ And of course i need these dates in a random order, but with an increment that I
 
 <p>This sort of data group can be used in my request like a table by using the keyword <code>WITH</code>:</p>
 
-<div class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="k">WITH</span> <span class="n">dates1083</span> <span class="k">AS</span> <span class="p">(</span>
+<p><figure class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="k">WITH</span> <span class="n">dates1083</span> <span class="k">AS</span> <span class="p">(</span>
     <span class="p">...</span> <span class="c1">-- here the big dates select ...</span>
 <span class="p">)</span>
 <span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span>
     <span class="n">tbl1</span>
-    <span class="k">INNER</span> <span class="k">JOIN</span> <span class="n">dates1083</span> <span class="k">ON</span> <span class="n">tbl1</span><span class="p">.</span><span class="n">foo_id</span> <span class="o">=</span> <span class="n">dates1083</span><span class="p">.</span><span class="n">id</span></code></pre></div>
-
+    <span class="k">INNER</span> <span class="k">JOIN</span> <span class="n">dates1083</span> <span class="k">ON</span> <span class="n">tbl1</span><span class="p">.</span><span class="n">foo_id</span> <span class="o">=</span> <span class="n">dates1083</span><span class="p">.</span><span class="n">id</span></code></pre></figure></p>
 
 <p>This avoids creating a temporary table, this table will only be used in the current query.</p>
 
@@ -254,11 +250,11 @@ And of course i need these dates in a random order, but with an increment that I
 
 <p>In a simplified version, where the big generators are replaced by [ ... comments blocs .. ] we'll get :</p>
 
-<div class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="k">WITH</span> <span class="n">dates1083</span> <span class="k">as</span> <span class="p">(</span>
+<p><figure class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="k">WITH</span> <span class="n">dates1083</span> <span class="k">as</span> <span class="p">(</span>
     <span class="p">[</span> <span class="p">..</span> <span class="n">Here</span> <span class="n">the</span> <span class="n">whole</span> <span class="mi">1083</span> <span class="o">*</span><span class="mi">3</span>  <span class="n">columns</span> <span class="n">pseudo</span> <span class="k">table</span> <span class="n">generation</span> <span class="p">...</span> <span class="p">]</span>
-<span class="p">)</span>
+<span class="p">)</span></p>
 
-<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">contact</span><span class="p">(</span>
+<p><span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">contact</span><span class="p">(</span>
     <span class="n">con_id</span><span class="p">,</span>
     <span class="n">con_active</span><span class="p">,</span>
     <span class="n">con_firstname</span><span class="p">,</span>
@@ -308,32 +304,32 @@ And of course i need these dates in a random order, but with an increment that I
     <span class="p">),</span>
     <span class="c1">-- comp_id (used for joining company table, adding comp_name on email</span>
     <span class="p">(</span>
-        <span class="k">select</span>  <span class="p">(</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="mi">10000</span><span class="p">)::</span><span class="nb">int</span> <span class="o">+</span> <span class="p">(</span><span class="n">generator</span><span class="o">*</span><span class="mi">0</span><span class="p">)</span> <span class="k">as</span> <span class="n">comp_id</span>
+        <span class="k">select</span>  <span class="p">(</span><span class="n">random</span><span class="p">()</span> <span class="o"><em></span> <span class="mi">10000</span><span class="p">)::</span><span class="nb">int</span> <span class="o">+</span> <span class="p">(</span><span class="n">generator</span><span class="o"></em></span><span class="mi">0</span><span class="p">)</span> <span class="k">as</span> <span class="n">comp_id</span>
     <span class="p">),</span>
     <span class="c1">-- base_date_num (used for joining dates1083 pseudo-table, and computing others dates from that</span>
     <span class="p">(</span>
-        <span class="k">select</span>  <span class="p">(</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="mi">1083</span><span class="p">)::</span><span class="nb">int</span> <span class="o">+</span> <span class="p">(</span><span class="n">generator</span><span class="o">*</span><span class="mi">0</span><span class="p">)</span> <span class="k">as</span> <span class="n">base_date_num</span>
+        <span class="k">select</span>  <span class="p">(</span><span class="n">random</span><span class="p">()</span> <span class="o"><em></span> <span class="mi">1083</span><span class="p">)::</span><span class="nb">int</span> <span class="o">+</span> <span class="p">(</span><span class="n">generator</span><span class="o"></em></span><span class="mi">0</span><span class="p">)</span> <span class="k">as</span> <span class="n">base_date_num</span>
     <span class="p">),</span>
     <span class="c1">-- con_active, something like 10% of false (inactive)</span>
     <span class="p">(</span>
-        <span class="k">select</span> <span class="p">((</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">+</span> <span class="p">(</span><span class="n">generator</span><span class="o">*</span><span class="mi">0</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)::</span><span class="nb">boolean</span> <span class="k">as</span> <span class="n">con_active</span>
+        <span class="k">select</span> <span class="p">((</span><span class="n">random</span><span class="p">()</span> <span class="o"><em></span> <span class="mi">10</span> <span class="o">+</span> <span class="p">(</span><span class="n">generator</span><span class="o"></em></span><span class="mi">0</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)::</span><span class="nb">boolean</span> <span class="k">as</span> <span class="n">con_active</span>
     <span class="p">),</span>
     <span class="c1">-- has_1st interaction something like 95%</span>
     <span class="p">(</span>
-        <span class="k">select</span> <span class="p">((</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">+</span> <span class="p">(</span><span class="n">generator</span><span class="o">*</span><span class="mi">0</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">)::</span><span class="nb">boolean</span> <span class="k">as</span> <span class="n">has_1st_interact</span>
+        <span class="k">select</span> <span class="p">((</span><span class="n">random</span><span class="p">()</span> <span class="o"><em></span> <span class="mi">100</span> <span class="o">+</span> <span class="p">(</span><span class="n">generator</span><span class="o"></em></span><span class="mi">0</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">)::</span><span class="nb">boolean</span> <span class="k">as</span> <span class="n">has_1st_interact</span>
     <span class="p">),</span>
     <span class="c1">-- has_2nd interaction something like 65%</span>
     <span class="p">(</span>
-        <span class="k">select</span> <span class="p">((</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">+</span> <span class="p">(</span><span class="n">generator</span><span class="o">*</span><span class="mi">0</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">35</span><span class="p">)::</span><span class="nb">boolean</span> <span class="k">as</span> <span class="n">has_2nd_interact</span>
+        <span class="k">select</span> <span class="p">((</span><span class="n">random</span><span class="p">()</span> <span class="o"><em></span> <span class="mi">100</span> <span class="o">+</span> <span class="p">(</span><span class="n">generator</span><span class="o"></em></span><span class="mi">0</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">35</span><span class="p">)::</span><span class="nb">boolean</span> <span class="k">as</span> <span class="n">has_2nd_interact</span>
     <span class="p">),</span>
     <span class="c1">-- let&#39;s hide some non required fields sometimes</span>
     <span class="c1">-- hiding 5 % of last_names</span>
     <span class="p">(</span>
-        <span class="k">select</span> <span class="p">((</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">+</span> <span class="p">(</span><span class="n">generator</span><span class="o">*</span><span class="mi">0</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">)::</span><span class="nb">boolean</span> <span class="k">as</span> <span class="n">show_last_name</span>
+        <span class="k">select</span> <span class="p">((</span><span class="n">random</span><span class="p">()</span> <span class="o"><em></span> <span class="mi">100</span> <span class="o">+</span> <span class="p">(</span><span class="n">generator</span><span class="o"></em></span><span class="mi">0</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">)::</span><span class="nb">boolean</span> <span class="k">as</span> <span class="n">show_last_name</span>
     <span class="p">),</span>
     <span class="c1">-- hiding 5 % of first_names</span>
     <span class="p">(</span>
-        <span class="k">select</span> <span class="p">((</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">+</span> <span class="p">(</span><span class="n">generator</span><span class="o">*</span><span class="mi">0</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">)::</span><span class="nb">boolean</span> <span class="k">as</span> <span class="n">show_first_name</span>
+        <span class="k">select</span> <span class="p">((</span><span class="n">random</span><span class="p">()</span> <span class="o"><em></span> <span class="mi">100</span> <span class="o">+</span> <span class="p">(</span><span class="n">generator</span><span class="o"></em></span><span class="mi">0</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">)::</span><span class="nb">boolean</span> <span class="k">as</span> <span class="n">show_first_name</span>
     <span class="p">),</span>
     <span class="c1">-- id</span>
     <span class="n">generator</span> <span class="k">as</span> <span class="n">id</span>
@@ -342,8 +338,7 @@ And of course i need these dates in a random order, but with an increment that I
     <span class="k">INNER</span> <span class="k">JOIN</span> <span class="n">company</span> <span class="k">ON</span> <span class="n">company</span><span class="p">.</span><span class="n">comp_id</span> <span class="o">=</span> <span class="n">main_sub</span><span class="p">.</span><span class="n">comp_id</span>
     <span class="k">INNER</span> <span class="k">JOIN</span> <span class="n">dates1083</span> <span class="k">ON</span> <span class="n">dates1083</span><span class="p">.</span><span class="n">rownum</span> <span class="o">=</span> <span class="n">main_sub</span><span class="p">.</span><span class="n">base_date_num</span>
 <span class="c1">-- ignore conflicts of ids, but not any checks constraint failure (on dates for example)</span>
-<span class="k">ON</span> <span class="n">CONFLICT</span> <span class="k">DO</span> <span class="k">NOTHING</span><span class="p">;</span></code></pre></div>
-
+<span class="k">ON</span> <span class="n">CONFLICT</span> <span class="k">DO</span> <span class="k">NOTHING</span><span class="p">;</span></code></pre></figure></p>
 
 <p>Here is <a href="https://github.com/regilero/regilero.github.com/blob/master/theme/resource/pgserie/generating_contacts.sql">the full and commented version, without the INSERT part</a>.
 There's a lot of elements inside, my advice is to copy that in a pgadmin SQL session and to play with the various columns.
@@ -380,7 +375,7 @@ so UI had to remove some indexes and some formating and comments, but <a href="h
 <p>We can also <a href="http://sqlfiddle.com/#!17/93004/8">list some contacts</a>.</p>
 
 <p>Or start to work on <a href="http://sqlfiddle.com/#!17/93004/6">some complex query from an application</a>.
-<strong>Since the goels ois normally to find the right indexes</strong>.</p>
+<strong>Since the goal is normally to find the right indexes</strong>.</p>
 
 <h2>Why, by the way?</h2>
 
@@ -440,14 +435,29 @@ we can obtain some very different explain schemes:</p>
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/postgresql/francais/2010/10/14/requetes_recursives_avec_postgresql_8_4/">
-                     <h4>Requêtes récursives avec PostgreSQL 8.4 (WITH RECURSIVE)</h4>
-                     <p>Obtenir directement un résultat arborescent avec du SQL est un graal qui est désormais accessible sur PostgreSQL, et un exemple détaillé vaut mieux qu'un long discours.</p>
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
+                     <h4>Security: HTTP Smuggling, Apsis Pound load balancer</h4>
+                     <p>details of CVE-2016-10711 (published feb 2018).</p>
                      </a>
                   
-                     <a class="list-group-item" href="/postgresql/english/2008/10/30/6_nice_things_not_known_enough_about_postgresql/">
-                     <h4>6 nice things not know enough about PostgreSQL</h4>
-                     <p>Let's explore FillFactor, Returning inserts, TOAST, table inheritance, table partitionning and Notify/listen features.</p>
+                     <a class="list-group-item" href="/security/english/2016/12/19/security_dompdf_rce/">
+                     <h4>Web Security, Dompdf security issues details</h4>
+                     <p>details of december 2015's 3 CVE in dompdf, with one RCE.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/security/english/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     <h4>Web Security, using bad HTML to escape from a DIV</h4>
+                     <p>Break HTML layouts with only bad HTML and the browser's help.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <h4>Checking HTTP Smuggling issues in 2015 - Part1</h4>
+                     <p>First part of the 2015 HTTP Smuggling articles. Injecting HTTP in HTTP, the theory.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/security/english/2015/03/25/nginx-integer_truncation/">
+                     <h4>Nginx Integer Truncation</h4>
+                     <p>Exploitation of Integer Overflow with the HTTP Content length Header</p>
                      </a>
                   
                 </div>
@@ -460,7 +470,7 @@ we can obtain some very different explain schemes:</p>
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/security/english/2018/07/03/security_pound_http_smuggling/">
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
                      Security: HTTP Smuggling, Apsis Pound load balancer
                      </a>
                   
@@ -489,46 +499,46 @@ we can obtain some very different explain schemes:</p>
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+                <a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 30px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
 <a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
 <a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 31px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
 <a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 28px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
 <a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
 
                 </div>
               </div>
@@ -543,7 +553,7 @@ we can obtain some very different explain schemes:</p>
                 <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
                 <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
                 <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
-                <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+                <a href="https://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
             </div>
             <div class="sideBarItem">
               <h3>Some Friends</h3>

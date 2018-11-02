@@ -49,7 +49,7 @@
         <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
             <li ><a href="/" class="glyphicon glyphicon-home">&nbsp;Home</a></li>
-            <li class="active"><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
+            <li ><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
             <li ><a href="/contact/" class="glyphicon glyphicon-earphone">&nbsp;Contact</a></li>
             <li><a class="glyphicon glyphicon-eye-open" href="/feed.xml">&nbsp;RSS Feed</a></li>
           </ul>
@@ -77,7 +77,7 @@
             <div class="page-header">
             <h1>Install Drupal in php-fpm (fastcgi) with Apache and a chroot php-fpm
             <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="2011-09-03">Sep 03, 2011</time></span>
-            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/drupal/">drupal</a> and <a href="/english/">english</a></span>
+            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/Drupal/">Drupal</a> and <a href="/english/">english</a></span>
             </h1>
             </div>
         </header>
@@ -176,59 +176,50 @@ Installing php-fpm on a server where mod_php with Apache in mpm_prefork is still
 
 <p>Add this line in /etc/apt/sources.list</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">deb http://packages.dotdeb.org stable all</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">    deb http://packages.dotdeb.org stable all</code></pre></figure></p>
 
 <p>then add the GnuPG key</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">wget http://www.dotdeb.org/dotdeb.gpg
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">    wget http://www.dotdeb.org/dotdeb.gpg
     cat dotdeb.gpg <span class="p">|</span> sudo apt-key add -
-    rm dotdeb.gpg</code></pre></div>
-
+    rm dotdeb.gpg</code></pre></figure></p>
 
 <p>Apache mod_fcgi is needed to link php-fpm (and not apache-fcgid) so add the non-free repository</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c"># need non-free packages for FCGI (not FCGID)</span>
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">  <span class="c1"># need non-free packages for FCGI (not FCGID)</span>
   deb http://ftp.fr.debian.org/debian/ squeeze contrib non-free
-  deb-src http://ftp.fr.debian.org/debian/ squeeze contrib non-free</code></pre></div>
-
+  deb-src http://ftp.fr.debian.org/debian/ squeeze contrib non-free</code></pre></figure></p>
 
 <p>Then add contrib and non-free tags to the squeeze-update line to get:</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c"># squeeze-updates, previously known as &#39;volatile&#39;</span>
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">  <span class="c1"># squeeze-updates, previously known as &#39;volatile&#39;</span>
   deb http://ftp.fr.debian.org/debian/ squeeze-updates main contrib non-free
-  deb-src http://ftp.fr.debian.org/debian/ squeeze-updates main contrib non-free</code></pre></div>
-
+  deb-src http://ftp.fr.debian.org/debian/ squeeze-updates main contrib non-free</code></pre></figure></p>
 
 <p>And now that we set all the sources reload the sources informations</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">apt-get update</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">  apt-get update</code></pre></figure></p>
 
 <h3>Adding packages</h3>
 
 <p>For PHP we'll need some packages, do that before installing apache packages, simplier</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">apt-get install php5 php5-fpm php-pear php5-common php5-mcrypt <span class="se">\</span>
-    php5-mysql php5-cli php5-gd php5-curl php5-apc</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">  apt-get install php5 php5-fpm php-pear php5-common php5-mcrypt <span class="se">\</span>
+    php5-mysql php5-cli php5-gd php5-curl php5-apc</code></pre></figure></p>
 
 <p>And now enforce Apache with the worker mode (using php-fpm with apache in prefork is useless)</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">apt-get install apache2-mpm-worker libapache2-mod-fastcgi</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">  apt-get install apache2-mpm-worker libapache2-mod-fastcgi</code></pre></figure></p>
 
 <h3>Apache modules configuration</h3>
 
 <p>We activate the apache modules fascgi and actions</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">a2enmod fastcgi actions</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">    a2enmod fastcgi actions</code></pre></figure></p>
 
 <p>We add some more useful modules, headers, expires, status and rewrite</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">a2enmod expires headers status rewrite</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">   a2enmod expires headers status rewrite</code></pre></figure></p>
 
 <p>And while we are working with apache modules let's removed some useles ones (this will reduce the memory footprint of Apache).
 But check that in your own installation you do not need them.</p>
@@ -241,25 +232,21 @@ it could also choose to use a file with same name as the request but not the rig
 </ul>
 
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">a2dismod autoindex cgid negotiation</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">    a2dismod autoindex cgid negotiation</code></pre></figure></p>
 
 <p>We add cronolog to avoid apache slowing because of log tasks. But this is not something required for php-fpm :-)</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">apt-get install cronolog</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">apt-get install cronolog</code></pre></figure></p>
 
 <p>Usage of cronolog in your apache configuration is quite simple, instead of writing this:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">ErrorLog</span> <span class="sx">/var/www/myproject/var/log/error-myproject.log</span>
-<span class="nb">CustomLog</span> <span class="sx">/var/www/myproject/var/log/access-myproject.log</span> combined</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">ErrorLog</span> <span class="sx">/var/www/myproject/var/log/error-myproject.log</span>
+<span class="nb">CustomLog</span> <span class="sx">/var/www/myproject/var/log/access-myproject.log</span> combined</code></pre></figure></p>
 
 <p>You will use that:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">ErrorLog</span> <span class="s2">&quot;|nice -n 10 /usr/bin/cronolog /var/www/myproject/var/log/%Y/%W/%d-myproject-error.log</span>
-<span class="s2">CustomLog &quot;</span>|nice -n <span class="m">10</span> <span class="sx">/usr/bin/cronolog</span> <span class="sx">/var/www/myproject/var/log/</span>%Y/%W/%d-myproject-access.log<span class="err">&quot;</span> combined</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">ErrorLog</span> <span class="s2">&quot;|nice -n 10 /usr/bin/cronolog /var/www/myproject/var/log/%Y/%W/%d-myproject-error.log</span>
+<span class="s2">CustomLog &quot;</span>|nice -n <span class="m">10</span> <span class="sx">/usr/bin/cronolog</span> <span class="sx">/var/www/myproject/var/log/</span>%Y/%W/%d-myproject-access.log<span class="err">&quot;</span> combined</code></pre></figure></p>
 
 <h3>Project Tree</h3>
 
@@ -277,18 +264,16 @@ an <code>etc/</code> directory for configuration files, a <code>var/</code> dire
 
 <p>The first thing to edit is the <code>fastcgi.conf</code> file in <code>/etc/apache2/mods-available/fastcgi.conf</code></p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;ifmodule</span> <span class="s">mod_fastcgi.c=&quot;&quot;</span><span class="nt">&gt;</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;ifmodule</span> <span class="s">mod_fastcgi.c=&quot;&quot;</span><span class="nt">&gt;</span>
          <span class="nb">FastCgiIpcDir</span> <span class="sx">/var/www/makina/mydrupal/var/fcgi/</span>
-<span class="nt">&lt;/ifmodule&gt;</span></code></pre></div>
-
+<span class="nt">&lt;/ifmodule&gt;</span></code></pre></figure></p>
 
 <p>Which may be smaller than thee default one you may have. Most of these things will be set in the VirtualHost configuration instead.</p>
 
 <p>As you can see we need a <code>var/fcgi</code> directory in our project tree.<br/>
 It will be used to store the <strong>socket</strong> making the connection between apache and php-fpm.</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">mkdir -p /var/www/makina/mydrupal/var/fcgi/</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">    mkdir -p /var/www/makina/mydrupal/var/fcgi/</code></pre></figure></p>
 
 <p>We will leave the Apache configuration for a while and start the configuration of <strong>php-fpm</strong>,
 we'll get back on Apache with the VirtualHost, later.</p>
@@ -299,14 +284,13 @@ we'll get back on Apache with the VirtualHost, later.</p>
 
 <p>Backup conf example</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">mv /etc/php5/fpm/pool.d/www.conf /etc/php5/fpm/pool.d/www.conf.orig
-    cp /etc/php5/fpm/php-fpm.conf /etc/php5/fpm/php-fpm.conf.bak</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">    mv /etc/php5/fpm/pool.d/www.conf /etc/php5/fpm/pool.d/www.conf.orig
+    cp /etc/php5/fpm/php-fpm.conf /etc/php5/fpm/php-fpm.conf.bak</code></pre></figure></p>
 
 <p>Now edit the main php-fpm configuration file <code>/etc/php5/fpm/php-fpm.conf</code> and alter it to get this content
 (the most important thing is to really get the include of the <strong>pool.d directory</strong> at the end, and only files ending in <code>.conf</code>):</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">;;;;;;;;;;;;;;;;;;;;;</span>
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">;;;;;;;;;;;;;;;;;;;;;</span>
 <span class="x">; FPM Configuration ;</span>
 <span class="x">;;;;;;;;;;;;;;;;;;;;;</span>
 <span class="x"> </span>
@@ -320,7 +304,7 @@ we'll get back on Apache with the VirtualHost, later.</p>
 <span class="x">; Relative path can also be used. They will be prefixed by:</span>
 <span class="x">;  - the global prefix if it&#39;s been set (-p arguement)</span>
 <span class="x">;  - /usr otherwise</span>
-<span class="x">;include=/etc/php5/fpm/*.conf</span>
+<span class="x">;include=/etc/php5/fpm/<em>.conf</span>
 <span class="x"> </span>
 <span class="x">;;;;;;;;;;;;;;;;;;</span>
 <span class="x">; Global Options ;</span>
@@ -377,8 +361,7 @@ we'll get back on Apache with the VirtualHost, later.</p>
 <span class="x"> </span>
 <span class="x">; To configure the pools it is recommended to have one .conf file per</span>
 <span class="x">; pool in the following directory:</span>
-<span class="x">include=/etc/php5/fpm/pool.d/*.conf</span></code></pre></div>
-
+<span class="x">include=/etc/php5/fpm/pool.d/</em>.conf</span></code></pre></figure></p>
 
 <h3>php-fpm Pool configuration</h3>
 
@@ -410,13 +393,12 @@ Well we're already quite there, we would like just a move to <code>www/</code>, 
 <p>So in our working project <code>/var/www/makina/mydrupal</code> where php files are in <code>www/</code> we do <strong>a symbolic link</strong> of this too long path
 to the short one we would like to have:</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nb">export</span> <span class="nv">$pool</span><span class="o">=</span>mydrupal
-    <span class="nb">cd</span> /var/www/makina/<span class="nv">$pool</span>
-    mkdir -p var/www/makina/<span class="nv">$pool</span>
-    <span class="c"># warn, not absolute /var... but relative var/....</span>
-    <span class="nb">cd </span>var/www/makina/<span class="nv">$pool</span>
-    ln -s ../../../../www/ www</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">    <span class="nb">export</span> $<span class="nv">pool</span><span class="o">=</span>mydrupal
+    <span class="nb">cd</span> /var/www/makina/$pool
+    mkdir -p var/www/makina/$pool
+    <span class="c1"># warn, not absolute /var... but relative var/....</span>
+    <span class="nb">cd</span> var/www/makina/$pool
+    ln -s ../../../../www/ www</code></pre></figure></p>
 
 <p>Yes, <strong>that's ugly</strong>, but at least we can now have a working php-fpm pool which is chrooted in <code>/var/www/makina/mydrupal</code>.<br/>
 Wait for <strong>mod_proxy_fcgi</strong> or avoid using chroot in php-fpm if you do not want that.</p>
@@ -446,17 +428,17 @@ Wait for <strong>mod_proxy_fcgi</strong> or avoid using chroot in php-fpm if you
 
 <p>Let's have a look at this pool configuration file (<code>/etc/php5/fpm/pool.d/mydrupal.conf</code>):</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">; Start a new pool named &#39;mydrupal&#39;.</span>
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">    ; Start a new pool named &#39;mydrupal&#39;.</span>
 <span class="x">    ; the variable $pool can we used in any directive and will be replaced by the</span>
 <span class="x">    ; pool name (&#39;mydrupal&#39; here)</span>
-<span class="x">    [mydrupal]</span>
+<span class="x">    [mydrupal]</span></p>
 
-<span class="x">    ; Per pool prefix</span>
+<p><span class="x">    ; Per pool prefix</span>
 <span class="x">    ; It only applies on the following directives:</span>
 <span class="x">    ; - &#39;slowlog&#39;, &#39;listen&#39;,&#39;chroot&#39;,&#39;chdir&#39;,&#39;php_values&#39;,&#39;php_admin_values&#39;</span>
-<span class="x">    prefix = /var/www/makina/$pool</span>
+<span class="x">    prefix = /var/www/makina/$pool</span></p>
 
-<span class="x">    ; The address on which to accept FastCGI requests.</span>
+<p><span class="x">    ; The address on which to accept FastCGI requests.</span>
 <span class="x">    ;without prefix: listen = /var/www/makina/$pool/var/fcgi/$pool.sock</span>
 <span class="x">    listen = var/fcgi/$pool.sock</span>
 <span class="x">    listen.allowed_clients = 127.0.0.1</span>
@@ -490,17 +472,17 @@ Wait for <strong>mod_proxy_fcgi</strong> or avoid using chroot in php-fpm if you
 <span class="x">    ; Additional php.ini defines, specific to this pool of workers. These settings</span>
 <span class="x">   </span>
 <span class="x">    php_admin_value[open_basedir] = &quot;.:/www:/var/tmp&quot;</span>
-<span class="x">    php_value[include_path]=&quot;.:/www:/www/include&quot;</span>
+<span class="x">    php_value[include_path]=&quot;.:/www:/www/include&quot;</span></p>
 
-<span class="x">    ; UPLOAD</span>
+<p><span class="x">    ; UPLOAD</span>
 <span class="x">    php_admin_flag[file_uploads]=1</span>
 <span class="x">    php_admin_value[upload_tmp_dir]=&quot;/var/tmp&quot;</span>
 <span class="x">    ;Maximum allowed size for uploaded files.</span>
 <span class="x">    php_admin_value[upload_max_filesize]=&quot;50M&quot;</span>
 <span class="x">    php_admin_value[max_input_time]=120</span>
-<span class="x">    php_admin_value[post_max_size]=&quot;50M&quot;</span>
+<span class="x">    php_admin_value[post_max_size]=&quot;50M&quot;</span></p>
 
-<span class="x">    ;#### LOGS</span>
+<p><span class="x">    ;#### LOGS</span>
 <span class="x">    php_admin_flag[log_errors] = on</span>
 <span class="x">    php_admin_value[log_errors]=1</span>
 <span class="x">    ;php_flag[display_errors] = on</span>
@@ -514,14 +496,14 @@ Wait for <strong>mod_proxy_fcgi</strong> or avoid using chroot in php-fpm if you
 <span class="x">    ; Maximum amount of time each script may spend parsing request data</span>
 <span class="x">    php_value[max_execution_time]=&quot;300&quot;</span>
 <span class="x">    ; Maximum amount of memory a script may consume (8MB)</span>
-<span class="x">    php_value[memory_limit]=&quot;100M&quot;</span>
+<span class="x">    php_value[memory_limit]=&quot;100M&quot;</span></p>
 
-<span class="x">    ; Sessions: IMPORTANT reactivate garbage collector on Debian!!!</span>
+<p><span class="x">    ; Sessions: IMPORTANT reactivate garbage collector on Debian!!!</span>
 <span class="x">    php_value[session.gc_maxlifetime]=3600</span>
 <span class="x">    php_admin_value[session.gc_probability]=1</span>
-<span class="x">    php_admin_value[session.gc_divisor]=100</span>
+<span class="x">    php_admin_value[session.gc_divisor]=100</span></p>
 
-<span class="x">    ; SECURITY</span>
+<p><span class="x">    ; SECURITY</span>
 <span class="x">    php_admin_value[magic_quotes_gpc]=0</span>
 <span class="x">    php_admin_value[register_globals]=0</span>
 <span class="x">    php_admin_value[session.auto_start]=0</span>
@@ -531,23 +513,23 @@ Wait for <strong>mod_proxy_fcgi</strong> or avoid using chroot in php-fpm if you
 <span class="x">    php_admin_value[expose_php]=0</span>
 <span class="x">    php_admin_value[allow_url_fopen]=1</span>
 <span class="x">    php_admin_value[safe_mode]=0</span>
-<span class="x">    php_admin_value[expose_php]=0</span>
+<span class="x">    php_admin_value[expose_php]=0</span></p>
 
-<span class="x">    ; enforce filling PATH_INFO &amp; PATH_TRANSLATED</span>
+<p><span class="x">    ; enforce filling PATH_INFO &amp; PATH_TRANSLATED</span>
 <span class="x">    ; and not only SCRIPT_FILENAME</span>
 <span class="x">    php_admin_value[cgi.fix_pathinfo]=1</span>
 <span class="x">    ; 1: will use PATH_TRANSLATED instead of SCRIPT_FILENAME</span>
-<span class="x">    php_admin_value[cgi.discard_path]=0</span>
+<span class="x">    php_admin_value[cgi.discard_path]=0</span></p>
 
-<span class="x">    ; FASTCGI chrooted - HACKING SCRIPT_FILENAME</span>
-<span class="x">    ; if any script in the project try to access some $_SERVER</span>
+<p><span class="x">    ; FASTCGI chrooted - HACKING SCRIPT_FILENAME</span>
+<span class="x">    ; if any script in the project try to access some $<em>SERVER</span>
 <span class="x">    ; keys that are not ok in php-fpm mode, then use this</span>
-<span class="x">    ; script to alter/move the $_SERVER array</span>
+<span class="x">    ; script to alter/move the $</em>SERVER array</span>
 <span class="x">    ; the script should be at the root of the project (before the www)</span>
 <span class="x">    ; in the chrooted project</span>
-<span class="x">    ;php_admin_value[auto_prepend_file]=&quot;/fix_phpfpm_env.php&quot;</span>
+<span class="x">    ;php_admin_value[auto_prepend_file]=&quot;/fix_phpfpm_env.php&quot;</span></p>
 
-<span class="x">    ; APC settings ###################</span>
+<p><span class="x">    ; APC settings ###################</span>
 <span class="x">    ; package given from dotdeb is recent</span>
 <span class="x">    ; if you don&#39;t like it:</span>
 <span class="x">    ; apt-get install php-dev php-pear make libpcre3-dev; pecl install apc;</span>
@@ -576,8 +558,7 @@ Wait for <strong>mod_proxy_fcgi</strong> or avoid using chroot in php-fpm if you
 <span class="x">    # last time I&#39;ve checked this made a WOD on Drupal...</span>
 <span class="x">    php_admin_value[apc.lazy_classes]=0</span>
 <span class="x">    # better use cli optimizations in fpm mode, no?</span>
-<span class="x">    php_admin_value[apc.enable_cli]=1</span></code></pre></div>
-
+<span class="x">    php_admin_value[apc.enable_cli]=1</span></code></pre></figure></p>
 
 <h3>Application VirtualHost</h3>
 
@@ -586,50 +567,50 @@ You may need to tests things while creating all theses things. So I'll give you 
 
 <h4>testing apache configuration:</h4>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c">#loading apache env variables (see the dot-space)</span>
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">  <span class="c1">#loading apache env variables (see the dot-space)</span>
   . /etc/apache2/envvars
-  <span class="c"># test apache configuration</span>
+  <span class="c1"># test apache configuration</span>
   apache2 -t
-  <span class="c"># list apache virtualhosts</span>
+  <span class="c1"># list apache virtualhosts</span>
   apache2 -S
-  <span class="c"># list apache modules</span>
+  <span class="c1"># list apache modules</span>
   apache2 -M
-  <span class="c"># restarting php-fpm (yes, not done via apache restart)</span>
-  /etc/init.php5-fpm restart</code></pre></div>
-
+  <span class="c1"># restarting php-fpm (yes, not done via apache restart)</span>
+  /etc/init.php5-fpm restart</code></pre></figure></p>
 
 <p>We need to creat the Apache VirtualHost for our current project.<br/>
 We'll put the source in our project directory <code>etc/</code> and link it to the main apache virtualhosts repository.<br/>
 But you could edit it directly in <code>/etc/apache2/sites-available</code> if you want
 (I'm in fact even storing the pool configuration here and linking it to <code>/etc/php5/fpm/pool.d</code>).</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">touch /var/www/makina/mydrupal/etc/apache.conf
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">    touch /var/www/makina/mydrupal/etc/apache.conf
     ln -s /var/www/makina/mydrupal/etc/apache.conf /etc/apache2/site-available/101-mydrupal
-    a2ensite 101-mydrupal</code></pre></div>
-
+    a2ensite 101-mydrupal</code></pre></figure></p>
 
 <p>And now we need to write some content inside this <code>/var/www/makina/mydrupal/etc/apache.conf</code>.<br/>
 And in this Virtualhost we'll need to connect the PHP scripts to the php-fpm.
 So I'll first gives you a complete VirtualHost and then we will detail how the php-fpm is managed inside.</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;virtualHost</span> <span class="s">*:80</span><span class="nt">&gt;</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;virtualHost</span> <span class="s">*:80</span><span class="nt">&gt;</span>
     <span class="nb">ServerName</span> mydrupal.example.com
     <span class="nb">DocumentRoot</span> <span class="sx">/var/www/makina/mydrupal/www</span>
     <span class="nb">LogLevel</span> <span class="k">debug</span>
     <span class="c">#LogLevel warn</span>
-    <span class="c">#LogLevel notice</span>
- 
-    <span class="c"># Debug mod_rewrite</span>
-    <span class="c">#RewriteEngine On</span>
-    <span class="c">#RewriteLogLevel 9</span>
-    <span class="c">#RewriteLog /tmp/rewritelog.log</span>
- 
-    <span class="c"># classic</span>
-    <span class="c">#ErrorLog /var/www/makina/mydrupal/var/log/error.log</span>
-    <span class="c">#CustomLog /var/www/makina/mydrupal/var/log/access.log combined</span>
-    <span class="c"># or via cronolog</span>
-    <span class="nb">ErrorLog</span> <span class="s2">&quot;|nice -n 10 /usr/bin/cronolog /var/www/makina/mydrupal/var/log/%Y/%W/%d-mydrupal-error.log</span>
-<span class="s2">    CustomLog &quot;</span>|nice -n <span class="m">10</span> <span class="sx">/usr/bin/cronolog</span> <span class="sx">/var/www/makina/mydrupal/var/log/</span>%Y/%W/%d-mydrupal-access.log<span class="s2">&quot; combined</span>
+    <span class="c">#LogLevel notice</span></p>
+
+<pre><code>&lt;span class="c"&gt;# Debug mod_rewrite&lt;/span&gt;
+&lt;span class="c"&gt;#RewriteEngine On&lt;/span&gt;
+&lt;span class="c"&gt;#RewriteLogLevel 9&lt;/span&gt;
+&lt;span class="c"&gt;#RewriteLog /tmp/rewritelog.log&lt;/span&gt;
+
+&lt;span class="c"&gt;# classic&lt;/span&gt;
+&lt;span class="c"&gt;#ErrorLog /var/www/makina/mydrupal/var/log/error.log&lt;/span&gt;
+&lt;span class="c"&gt;#CustomLog /var/www/makina/mydrupal/var/log/access.log combined&lt;/span&gt;
+&lt;span class="c"&gt;# or via cronolog&lt;/span&gt;
+&lt;span class="nb"&gt;ErrorLog&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;|nice -n 10 /usr/bin/cronolog /var/www/makina/mydrupal/var/log/%Y/%W/%d-mydrupal-error.log&lt;/span&gt;
+</code></pre>
+
+<p><span class="s2">    CustomLog &quot;</span>|nice -n <span class="m">10</span> <span class="sx">/usr/bin/cronolog</span> <span class="sx">/var/www/makina/mydrupal/var/log/</span>%Y/%W/%d-mydrupal-access.log<span class="s2">&quot; combined</span>
 <span class="s2"> </span>
 <span class="s2">    &lt;Directory / &gt;</span>
 <span class="s2">            Order deny,allow</span>
@@ -639,8 +620,8 @@ So I'll first gives you a complete VirtualHost and then we will detail how the p
 <span class="s2">            AllowOverride None</span>
 <span class="s2"> </span>
 <span class="s2">            #.svn &amp; .git directories must be avoided!!</span>
-<span class="s2">            RedirectMatch 404 /\.svn(/|$)</span>
-<span class="s2">            RedirectMatch 404 /\.git(/|$)</span>
+<span class="s2">            RedirectMatch 404 /.svn(/|$)</span>
+<span class="s2">            RedirectMatch 404 /.git(/|$)</span>
 <span class="s2">    &lt;/Directory&gt;</span>
 <span class="s2"> </span>
 <span class="s2">    # phpfpm/fastcgi</span>
@@ -714,7 +695,7 @@ So I'll first gives you a complete VirtualHost and then we will detail how the p
 <span class="s2">                RewriteCond %{QUERY_STRING} (^|&amp;|%26|%20)(q|Q|%71|%51)(=|%3D). [NC]</span>
 <span class="s2"> </span>
 <span class="s2">                # 403 FORBIDDEN !</span>
-<span class="s2">                RewriteRule .* - [F,L]</span>
+<span class="s2">                RewriteRule .<em> - [F,L]</span>
 <span class="s2">                ########## END RULE 1 ###################</span>
 <span class="s2"> </span>
 <span class="s2">                ########## START RULE 2 ###################</span>
@@ -737,13 +718,13 @@ So I'll first gives you a complete VirtualHost and then we will detail how the p
 <span class="s2">                # [L]= stop rewriting here for matching rules</span>
 <span class="s2">                # [QSA]=Appends any query string created in the rewrite target</span>
 <span class="s2">                # to any query string that was in the original request URL</span>
-<span class="s2">                RewriteRule ^(.*)$ index.php?q=$1 [L,QSA]</span>
+<span class="s2">                RewriteRule ^(.</em>)$ index.php?q=$1 [L,QSA]</span>
 <span class="s2">                ########## END RULE 2 ###################</span>
 <span class="s2">        &lt;/IfModule&gt;</span>
 <span class="s2"> </span>
 <span class="s2">        ### DRUPAL ###</span>
 <span class="s2">        # Protect files and directories from prying eyes.</span>
-<span class="s2">        &lt;FilesMatch &quot;</span>\.(engine|inc|info|install|make|module|profile|test|po|sh|.*sql|theme|tpl(\.php)?|xtmpl)$|^(\..*|Entries.*|Repository|Root|Tag|Template)$<span class="s2">&quot;&gt;</span>
+<span class="s2">        &lt;FilesMatch &quot;</span>.(engine|inc|info|install|make|module|profile|test|po|sh|.<em>sql|theme|tpl(.php)?|xtmpl)$|^(..</em>|Entries.*|Repository|Root|Tag|Template)$<span class="s2">&quot;&gt;</span>
 <span class="s2">          Order allow,deny</span>
 <span class="s2">        &lt;/FilesMatch&gt;</span>
 <span class="s2">         </span>
@@ -753,76 +734,77 @@ So I'll first gives you a complete VirtualHost and then we will detail how the p
 <span class="s2">        &lt;Files favicon.ico&gt;</span>
 <span class="s2">          # There is no end quote below, for compatibility with Apache 1.3.</span>
 <span class="s2">          ErrorDocument 404 &quot;</span>The requested file favicon.ico was not found.
-        <span class="nt">&lt;/Files&gt;</span>
-         
-        <span class="c"># Requires mod_expires to be enabled.</span>
-        <span class="nt">&lt;IfModule</span> <span class="s">mod_expires.c</span><span class="nt">&gt;</span>
-            <span class="c"># Enable expirations.</span>
-            <span class="nb">ExpiresActive</span> <span class="k">On</span>
-            <span class="c"># Cache all files for 2 weeks after access (A).</span>
-            <span class="nb">ExpiresDefault</span> A1209600
-            <span class="nt">&lt;FilesMatch</span> <span class="s">\.php$</span><span class="nt">&gt;</span>
-                <span class="c"># Do not allow PHP scripts to be cached unless they explicitly send cache</span>
-                <span class="c"># headers themselves. Otherwise all scripts would have to overwrite the</span>
-                <span class="c"># headers set by mod_expires if they want another caching behavior. This may</span>
-                <span class="c"># fail if an error occurs early in the bootstrap process, and it may cause</span>
-                <span class="c"># problems if a non-Drupal PHP file is installed in a subdirectory.</span>
-                <span class="nb">ExpiresActive</span> <span class="k">Off</span>
-            <span class="nt">&lt;/FilesMatch&gt;</span>
-        <span class="nt">&lt;/IfModule&gt;</span>
+        <span class="nt">&lt;/Files&gt;</span></p>
 
-        <span class="c"># Rules to correctly serve gzip compressed CSS and JS files.</span>
-          <span class="c"># Requires both mod_rewrite and mod_headers to be enabled.</span>
-          <span class="nt">&lt;IfModule</span> <span class="s">mod_headers.c</span><span class="nt">&gt;</span>
-            <span class="c"># Serve gzip compressed CSS files if they exist and the client accepts gzip.</span>
-            <span class="nb">RewriteCond</span> %{HTTP:Accept-encoding} gzip
-            <span class="nb">RewriteCond</span> %{REQUEST_FILENAME}\.gz -s
-            <span class="nb">RewriteRule</span> ^(.*)\.css $1\.css\.gz [QSA]
- 
-            <span class="c"># Serve gzip compressed JS files if they exist and the client accepts gzip.</span>
-            <span class="nb">RewriteCond</span> %{HTTP:Accept-encoding} gzip
-            <span class="nb">RewriteCond</span> %{REQUEST_FILENAME}\.gz -s
-            <span class="nb">RewriteRule</span> ^(.*)\.js $1\.js\.gz [QSA]
-         
-            <span class="c"># Serve correct content types, and prevent mod_deflate double gzip.</span>
-            <span class="nb">RewriteRule</span> \.css\.gz$ - [T=text/css,E=no-gzip:1]
-            <span class="nb">RewriteRule</span> \.js\.gz$ - [T=text/javascript,E=no-gzip:1]
-         
-            <span class="nt">&lt;FilesMatch</span> <span class="s">&quot;(\.js\.gz|\.css\.gz)$&quot;</span><span class="nt">&gt;</span>
-              <span class="c"># Serve correct encoding type.</span>
-              <span class="nb">Header</span> append Content-Encoding gzip
-              <span class="c"># Force proxies to cache gzipped &amp; non-gzipped css/js files separately.</span>
-              <span class="nb">Header</span> append Vary Accept-Encoding
-            <span class="nt">&lt;/FilesMatch&gt;</span>
-          <span class="nt">&lt;/IfModule&gt;</span>
-    <span class="nt">&lt;/Directory&gt;</span>
- 
-   <span class="nt">&lt;Directory</span> <span class="s">/var/www/makina/mydrupal/var/tmp</span><span class="nt">&gt;</span>
+<pre><code>    &lt;span class="c"&gt;# Requires mod_expires to be enabled.&lt;/span&gt;
+    &lt;span class="nt"&gt;&amp;lt;IfModule&lt;/span&gt; &lt;span class="s"&gt;mod_expires.c&lt;/span&gt;&lt;span class="nt"&gt;&amp;gt;&lt;/span&gt;
+        &lt;span class="c"&gt;# Enable expirations.&lt;/span&gt;
+        &lt;span class="nb"&gt;ExpiresActive&lt;/span&gt; &lt;span class="k"&gt;On&lt;/span&gt;
+        &lt;span class="c"&gt;# Cache all files for 2 weeks after access (A).&lt;/span&gt;
+        &lt;span class="nb"&gt;ExpiresDefault&lt;/span&gt; A1209600
+        &lt;span class="nt"&gt;&amp;lt;FilesMatch&lt;/span&gt; &lt;span class="s"&gt;\.php$&lt;/span&gt;&lt;span class="nt"&gt;&amp;gt;&lt;/span&gt;
+            &lt;span class="c"&gt;# Do not allow PHP scripts to be cached unless they explicitly send cache&lt;/span&gt;
+            &lt;span class="c"&gt;# headers themselves. Otherwise all scripts would have to overwrite the&lt;/span&gt;
+            &lt;span class="c"&gt;# headers set by mod_expires if they want another caching behavior. This may&lt;/span&gt;
+            &lt;span class="c"&gt;# fail if an error occurs early in the bootstrap process, and it may cause&lt;/span&gt;
+            &lt;span class="c"&gt;# problems if a non-Drupal PHP file is installed in a subdirectory.&lt;/span&gt;
+            &lt;span class="nb"&gt;ExpiresActive&lt;/span&gt; &lt;span class="k"&gt;Off&lt;/span&gt;
+        &lt;span class="nt"&gt;&amp;lt;/FilesMatch&amp;gt;&lt;/span&gt;
+    &lt;span class="nt"&gt;&amp;lt;/IfModule&amp;gt;&lt;/span&gt;
+
+    &lt;span class="c"&gt;# Rules to correctly serve gzip compressed CSS and JS files.&lt;/span&gt;
+      &lt;span class="c"&gt;# Requires both mod_rewrite and mod_headers to be enabled.&lt;/span&gt;
+      &lt;span class="nt"&gt;&amp;lt;IfModule&lt;/span&gt; &lt;span class="s"&gt;mod_headers.c&lt;/span&gt;&lt;span class="nt"&gt;&amp;gt;&lt;/span&gt;
+        &lt;span class="c"&gt;# Serve gzip compressed CSS files if they exist and the client accepts gzip.&lt;/span&gt;
+        &lt;span class="nb"&gt;RewriteCond&lt;/span&gt; %{HTTP:Accept-encoding} gzip
+        &lt;span class="nb"&gt;RewriteCond&lt;/span&gt; %{REQUEST_FILENAME}\.gz -s
+        &lt;span class="nb"&gt;RewriteRule&lt;/span&gt; ^(.*)\.css $1\.css\.gz [QSA]
+
+        &lt;span class="c"&gt;# Serve gzip compressed JS files if they exist and the client accepts gzip.&lt;/span&gt;
+        &lt;span class="nb"&gt;RewriteCond&lt;/span&gt; %{HTTP:Accept-encoding} gzip
+        &lt;span class="nb"&gt;RewriteCond&lt;/span&gt; %{REQUEST_FILENAME}\.gz -s
+        &lt;span class="nb"&gt;RewriteRule&lt;/span&gt; ^(.*)\.js $1\.js\.gz [QSA]
+
+        &lt;span class="c"&gt;# Serve correct content types, and prevent mod_deflate double gzip.&lt;/span&gt;
+        &lt;span class="nb"&gt;RewriteRule&lt;/span&gt; \.css\.gz$ - [T=text/css,E=no-gzip:1]
+        &lt;span class="nb"&gt;RewriteRule&lt;/span&gt; \.js\.gz$ - [T=text/javascript,E=no-gzip:1]
+
+        &lt;span class="nt"&gt;&amp;lt;FilesMatch&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;(\.js\.gz|\.css\.gz)$&amp;quot;&lt;/span&gt;&lt;span class="nt"&gt;&amp;gt;&lt;/span&gt;
+          &lt;span class="c"&gt;# Serve correct encoding type.&lt;/span&gt;
+          &lt;span class="nb"&gt;Header&lt;/span&gt; append Content-Encoding gzip
+          &lt;span class="c"&gt;# Force proxies to cache gzipped &amp;amp; non-gzipped css/js files separately.&lt;/span&gt;
+          &lt;span class="nb"&gt;Header&lt;/span&gt; append Vary Accept-Encoding
+        &lt;span class="nt"&gt;&amp;lt;/FilesMatch&amp;gt;&lt;/span&gt;
+      &lt;span class="nt"&gt;&amp;lt;/IfModule&amp;gt;&lt;/span&gt;
+&lt;span class="nt"&gt;&amp;lt;/Directory&amp;gt;&lt;/span&gt;
+</code></pre>
+
+<p>   <span class="nt">&lt;Directory</span> <span class="s">/var/www/makina/mydrupal/var/tmp</span><span class="nt">&gt;</span>
         <span class="nb">AllowOverride</span> <span class="k">None</span>
         <span class="nb">Order</span> allow,deny
         <span class="nb">Allow</span> from <span class="k">all</span>
         <span class="c"># avoid execution of PHP scripts in upload directory</span>
         <span class="nb">AddType</span> text/plain .php
         <span class="nb">AddType</span> text/plain .phps
-    <span class="nt">&lt;/Directory&gt;</span>
- 
+    <span class="nt">&lt;/Directory&gt;</span></p>
 
-   <span class="nt">&lt;Directory</span> <span class="s">/var/www/makina/mydrupal/www/sites/default/files</span><span class="nt">&gt;</span>
+<p>   <span class="nt">&lt;Directory</span> <span class="s">/var/www/makina/mydrupal/www/sites/default/files</span><span class="nt">&gt;</span>
         <span class="nb">AllowOverride</span> <span class="k">None</span>
         <span class="nb">Order</span> allow,deny
         <span class="nb">Allow</span> from <span class="k">all</span>
         <span class="c"># avoid execution of PHP scripts in uploaded files</span>
         <span class="nb">AddType</span> text/plain .php
         <span class="nb">AddType</span> text/plain .phps
-    <span class="nt">&lt;/Directory&gt;</span>
- 
-    <span class="nt">&lt;Location</span> <span class="s">/cron.php</span><span class="nt">&gt;</span>
-        <span class="nb">Order</span> deny,allow
-        <span class="nb">deny</span> from <span class="k">all</span>
-        <span class="nb">allow</span> from <span class="m">127.0.0.1</span>
-    <span class="nt">&lt;/Location&gt;</span>
-<span class="nt">&lt;/VirtualHost&gt;</span></code></pre></div>
+    <span class="nt">&lt;/Directory&gt;</span></p>
 
+<pre><code>&lt;span class="nt"&gt;&amp;lt;Location&lt;/span&gt; &lt;span class="s"&gt;/cron.php&lt;/span&gt;&lt;span class="nt"&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class="nb"&gt;Order&lt;/span&gt; deny,allow
+    &lt;span class="nb"&gt;deny&lt;/span&gt; from &lt;span class="k"&gt;all&lt;/span&gt;
+    &lt;span class="nb"&gt;allow&lt;/span&gt; from &lt;span class="m"&gt;127.0.0.1&lt;/span&gt;
+&lt;span class="nt"&gt;&amp;lt;/Location&amp;gt;&lt;/span&gt;
+</code></pre>
+
+<p><span class="nt">&lt;/VirtualHost&gt;</span></code></pre></figure></p>
 
 <p>This VirtualHost contains some parts of the <a href="/drupal/english/2011/09/01/better_rewrite_rules_for_drupal/">previous article</a>
 (like extended rewrite rules) but the main php-fpm things are:</p>
@@ -851,12 +833,12 @@ Basically the www-user needs <strong>read access</strong> to the Web Document Ro
 
 <p>Here is a list of commands that should do the trick, could certainly be done in other ways (like more restrictive, I'll update it one day).</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nb">echo</span> <span class="s2">&quot;apply ownership&quot;</span>
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash"> <span class="nb">echo</span> <span class="s2">&quot;apply ownership&quot;</span>
  chown -R root:www-data /var/www/makina/mydrupal/*
  <span class="nb">echo</span> <span class="s2">&quot;default directories read rights&quot;</span>
- find /var/www/makina/mydrupal/www <span class="se">\(</span> -type d -wholename <span class="s2">&quot;/var/www/makina/mydrupal/www/sites/default/files&quot;</span> -prune <span class="se">\)</span> -o -type d -exec chmod <span class="m">2750</span> <span class="o">{}</span> <span class="se">\;</span>
+ find /var/www/makina/mydrupal/www <span class="se">(</span> -type d -wholename <span class="s2">&quot;/var/www/makina/mydrupal/www/sites/default/files&quot;</span> -prune <span class="se">)</span> -o -type d -exec chmod <span class="m">2750</span> <span class="o">{}</span> <span class="se">\;</span>
  <span class="nb">echo</span> <span class="s2">&quot;default files read rights&quot;</span>
- find /var/www/makina/mydrupal/www  <span class="se">\(</span> -type f -wholename <span class="s2">&quot;/var/www/makina/mydrupal/www/sites/default/files&quot;</span> -prune <span class="se">\)</span> -o -type f -exec chmod <span class="m">0640</span> <span class="o">{}</span> <span class="se">\;</span>
+ find /var/www/makina/mydrupal/www  <span class="se">(</span> -type f -wholename <span class="s2">&quot;/var/www/makina/mydrupal/www/sites/default/files&quot;</span> -prune <span class="se">)</span> -o -type f -exec chmod <span class="m">0640</span> <span class="o">{}</span> <span class="se">\;</span>
  <span class="nb">echo</span> <span class="s2">&quot;directories write rights&quot;</span>
  find /var/www/makina/mydrupal/www/sites/default/files -type d -exec chmod <span class="m">2770</span> <span class="o">{}</span> <span class="se">\;</span>
  <span class="nb">echo</span> <span class="s2">&quot;files write rights&quot;</span>
@@ -865,20 +847,17 @@ Basically the www-user needs <strong>read access</strong> to the Web Document Ro
  chown root:www-data /var/www/makina/mydrupal/var/fcgi
  chmod <span class="m">2770</span> /var/www/makina/mydrupal/var/fcgi
  chown -R root:www-data /var/www/makina/mydrupal/var/tmp
- chmod <span class="m">2770</span> /var/www/makina/mydrupal/var/tmp</code></pre></div>
-
+ chmod <span class="m">2770</span> /var/www/makina/mydrupal/var/tmp</code></pre></figure></p>
 
 <h3>Starting &amp; Stoping Apache &amp; PHP</h3>
 
 <p>Remember that php-fpm is not anymore linked to apache, so you'have an init script for php as well.</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">/etc/init.d/php5-fpm <span class="o">[</span>start<span class="p">|</span>stop<span class="o">]</span></code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">    /etc/init.d/php5-fpm <span class="o">[</span>start<span class="p">|</span>stop<span class="o">]</span></code></pre></figure></p>
 
 <p>Exactly like mysql or apache2. You may check that the /etc/rc*/ files are there for the startup scripts</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">ls -alh /etc/rc*.d/???php5-fpm</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">    ls -alh /etc/rc*.d/???php5-fpm</code></pre></figure></p>
 
 <h2>Final steps, Database &amp; Settings</h2>
 
@@ -886,41 +865,35 @@ Basically the www-user needs <strong>read access</strong> to the Web Document Ro
 
 <p>Well, in fact you may have one surprise in the settings.php</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">apt-get install mysql-server-5.1</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">    apt-get install mysql-server-5.1</code></pre></figure></p>
 
 <p>Create database and user for application (alter the default passwords and users of course):</p>
 
-<div class="highlight"><pre><code class="language-sql" data-lang="sql"><span class="n">mysql</span> <span class="o">-</span><span class="n">u</span> <span class="n">root</span> <span class="o">-</span><span class="n">p</span>
+<p><figure class="highlight"><pre><code class="language-sql" data-lang="sql">    <span class="n">mysql</span> <span class="o">-</span><span class="n">u</span> <span class="n">root</span> <span class="o">-</span><span class="n">p</span>
     <span class="o">&gt;</span> <span class="k">CREATE</span> <span class="k">DATABASE</span> <span class="n">mydrupal</span> <span class="nb">CHARACTER</span> <span class="k">SET</span> <span class="n">utf8</span> <span class="k">COLLATE</span> <span class="n">utf8_bin</span><span class="p">;</span>
     <span class="o">&gt;</span> <span class="k">GRANT</span> <span class="k">ALL</span> <span class="k">PRIVILEGES</span> <span class="k">ON</span> <span class="n">mydrupal</span><span class="p">.</span><span class="o">*</span> <span class="k">TO</span> <span class="n">mydrupaluser</span><span class="o">@</span><span class="n">localhost</span> <span class="n">IDENTIFIED</span> <span class="k">BY</span> <span class="s1">&#39;mydrupaluserpassord&#39;</span><span class="p">;</span>
-    <span class="o">&gt;</span> <span class="n">FLUSH</span> <span class="k">PRIVILEGES</span><span class="p">;</span></code></pre></div>
-
+    <span class="o">&gt;</span> <span class="n">FLUSH</span> <span class="k">PRIVILEGES</span><span class="p">;</span></code></pre></figure></p>
 
 <p>Alter application conf to use real database user and paths. For drupal it's usually in <code>[project root]/www/sites/default/settings.php</code>.</p>
 
 <p>Import the project dump if it's already available, or get to the <code>http://mydrupal.example.com/install.php</code> url (or use <code>drush install</code>).</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">mysql -u mydrupaluser --password<span class="o">=</span><span class="s2">&quot;mydrupaluserpassord&quot;</span> --character-set<span class="o">=</span>utf8 mydrupal &lt; /var/www/makina/mydrupal/sql/dump.sql</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">   mysql -u mydrupaluser --password<span class="o">=</span><span class="s2">&quot;mydrupaluserpassord&quot;</span> --character-set<span class="o">=</span>utf8 mydrupal &lt; /var/www/makina/mydrupal/sql/dump.sql</code></pre></figure></p>
 
 <h3>Where's my surprise in the settings.php?</h3>
 
 <p>Yes, if you defined previously the temporary directory in the settings file, which is a very good place to define it
 (I'm not a very good fan of configuration stored in database), you may have something like:</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">$conf[&#39;file_directory_temp&#39;] = &#39;/var/www/makina/mydrupal/var/tmp&#39;;</span></code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">    $conf[&#39;file_directory_temp&#39;] = &#39;/var/www/makina/mydrupal/var/tmp&#39;;</span></code></pre></figure></p>
 
 <p>Or even</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">$conf[&#39;file_directory_temp&#39;] = &#39;/tmp&#39;;</span></code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">    $conf[&#39;file_directory_temp&#39;] = &#39;/tmp&#39;;</span></code></pre></figure></p>
 
 <p>But now we're in a chroot, the new path is:</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">$conf[&#39;file_directory_temp&#39;] = &#39;/var/tmp&#39;;</span></code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">    $conf[&#39;file_directory_temp&#39;] = &#39;/var/tmp&#39;;</span></code></pre></figure></p>
 
 <p>And the same thing apply for any filesystem related setting in drupal (but you should not have a lot of them).</p>
 
@@ -982,29 +955,29 @@ Basically the www-user needs <strong>read access</strong> to the Web Document Ro
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/drupal/english/2013/05/16/Warning_chrooted_php_fpm_and_apc/">
-                     <h4>Warning Chrooted php-fpm and Apc with multiple pools</h4>
-                     <p>Using several chrooted php-fpm pools with APC opcode may break all your websites (and chroot jails). Step by step of cloning php-fpm daemons.</p>
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
+                     <h4>Security: HTTP Smuggling, Apsis Pound load balancer</h4>
+                     <p>details of CVE-2016-10711 (published feb 2018).</p>
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2015/03/25/nginx-integer_truncation/">
-                     <h4>Nginx Integer Truncation</h4>
-                     <p>Exploitation of Integer Overflow with the HTTP Content length Header</p>
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
+                     <h4>PostgreSQL, advanced use of generate_series for data generation</h4>
+                     <p>filling thousands of random realistic data rows.</p>
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2014/09/19/drupal-details_ofdrupal_sa_core_2014_003_dos/">
-                     <h4>Details of DRUPAL_SA_CORE_2014_003 Deny Of Service</h4>
-                     <p>Analysis of the new DRUPAL_SA_CORE_2014_003 DOS vulnerability (CVE-2014-5019)</p>
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
+                     <h4>Web Security, Dompdf security issues details</h4>
+                     <p>details of december 2015's 3 CVE in dompdf, with one RCE.</p>
                      </a>
                   
-                     <a class="list-group-item" href="/drupal/english/2011/09/02/Tune_your_php_settings_for_drupal/">
-                     <h4>Tune your php settings for Drupal</h4>
-                     <p>How to make a clean Apache Virtualhost for each drupal project, with PHP settings altered for each project</p>
+                     <a class="list-group-item" href="/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     <h4>Web Security, using bad HTML to escape from a DIV</h4>
+                     <p>Break HTML layouts with only bad HTML and the browser's help.</p>
                      </a>
                   
-                     <a class="list-group-item" href="/drupal/english/2011/09/01/better_rewrite_rules_for_drupal/">
-                     <h4>Better rewriteRules for Drupal</h4>
-                     <p>A big re-think of rewrite rules for Drupal, preventing acess from index.php?q=foo default url, no .htaccess, and some other security stuff</p>
+                     <a class="list-group-item" href="/english/security/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <h4>Checking HTTP Smuggling issues in 2015 - Part1</h4>
+                     <p>First part of the 2015 HTTP Smuggling articles. Injecting HTTP in HTTP, the theory.</p>
                      </a>
                   
                 </div>
@@ -1017,23 +990,23 @@ Basically the www-user needs <strong>read access</strong> to the Web Document Ro
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/security/english/2018/07/03/security_pound_http_smuggling/">
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
                      Security: HTTP Smuggling, Apsis Pound load balancer
                      </a>
                   
-                     <a class="list-group-item" href="/postgresql/english/2017/06/26/postgresql_advanced_generate_series/">
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
                      PostgreSQL, advanced use of generate_series for data generation
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2016/12/19/security_dompdf_rce/">
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
                      Web Security, Dompdf security issues details
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     <a class="list-group-item" href="/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
                      Web Security, using bad HTML to escape from a DIV
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <a class="list-group-item" href="/english/security/2015/10/04/http_smuggling_in_2015_part_one/">
                      Checking HTTP Smuggling issues in 2015 - Part1
                      </a>
                   
@@ -1046,46 +1019,46 @@ Basically the www-user needs <strong>read access</strong> to the Web Document Ro
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
-<a style='font-size: 28px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+                <a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
 <a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 30px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
 <a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
 <a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
 <a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
 <a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
 <a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 31px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
 
                 </div>
               </div>
@@ -1100,7 +1073,7 @@ Basically the www-user needs <strong>read access</strong> to the Web Document Ro
                 <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
                 <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
                 <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
-                <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+                <a href="https://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
             </div>
             <div class="sideBarItem">
               <h3>Some Friends</h3>

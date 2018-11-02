@@ -49,7 +49,7 @@
         <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
             <li ><a href="/" class="glyphicon glyphicon-home">&nbsp;Home</a></li>
-            <li class="active"><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
+            <li ><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
             <li ><a href="/contact/" class="glyphicon glyphicon-earphone">&nbsp;Contact</a></li>
             <li><a class="glyphicon glyphicon-eye-open" href="/feed.xml">&nbsp;RSS Feed</a></li>
           </ul>
@@ -77,7 +77,7 @@
             <div class="page-header">
             <h1>Force HTTP/1.0 Apache response when PHP is there...
             <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="2008-08-29">Aug 29, 2008</time></span>
-            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/apache/">apache</a> and <a href="/english/">english</a></span>
+            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/Apache/">Apache</a> and <a href="/english/">english</a></span>
             </h1>
             </div>
         </header>
@@ -104,20 +104,18 @@ And so giving me a nice Sax exception "content not allowed in prolog".</p>
 Better trying to talk to this special User Agent in <code>HTTP/1.0,</code> he might handle it in a better way.<br/>
 Here's what a <strong>chunked</strong> content looks like. See the <strong>306c</strong> hexa lenght code before the body of the response?</p>
 
-<div class="highlight"><pre><code class="language-http" data-lang="http"><span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span> <span class="m">207</span> <span class="ne">Multi-Status</span>
+<p><figure class="highlight"><pre><code class="language-http" data-lang="http"><span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span> <span class="m">207</span> <span class="ne">Multi-Status</span>
 <span class="err">(...</span> <span class="l">lot of headers, but no lenght one ...)</span>
-<span class="na">Content-Type</span><span class="o">:</span> <span class="l">text/xml; charset=&quot;utf-8&quot;</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">text/xml; charset=&quot;utf-8&quot;</span></p>
 
-306c
+<p>306c
 <span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
-(... here the content ...)</code></pre></div>
-
+(... here the content ...)</code></pre></figure></p>
 
 <p>So I have the user agent of this Java HTTP Client, let's call it 'NoobieJavaParser'.<br/>
 I simply wrote in my apache virtualhost config file:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">BrowserMatch</span> <span class="s2">&quot;^NoobieJavaParser&quot;</span> nokeepalive force-response-1.0 downgrade-1.0</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">BrowserMatch</span> <span class="s2">&quot;^NoobieJavaParser&quot;</span> nokeepalive force-response-1.0 downgrade-1.0</code></pre></figure></p>
 
 <p>And it <strong>should be sufficient</strong>.<br/>
 In fact it's not because of a <strong>very old PHP bug</strong> (saw first bug report in 2004, <a href="https://bugs.php.net/bug.php?id=16218">#16218</a>,<a href="https://bugs.php.net/bug.php?id=39927">#39927</a>,<a href="https://bugs.php.net/bug.php?id=45947">#45947</a>).
@@ -125,22 +123,20 @@ PHP is building is <code>$_SERVER</code> variable by reading Apache env, and PHP
 dot in this parsed content. The <code>downgrade-1.0</code> env name seem malicious for PHP.<br/>
 So the env setting looks like that in PHP:</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">echo $_SERVER[&#39;downgrade-1_0&#39;];</span>
-<span class="x">-&gt; 1</span></code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">echo $_SERVER[&#39;downgrade-1_0&#39;];</span>
+<span class="x">-&gt; 1</span></code></pre></figure></p>
 
 <p>See the dots is now a <code>_</code>. It should not hurt anyone, except <strong>PHP changed this env name in Apache as well</strong>.<br/>
 So when apache is sending the response, he does not care anymore about this <code>downgrade-1_0</code> settings.
 If you want Apache to have the real behaviour, i.e: sending <code>HTTP/1.0</code> responses for this 'NoobieJavaParser' User Agent
 you must <strong>re-set the env</strong> of Apache in PHP, with something like that:</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">if ($_SERVER[&#39;downgrade-1_0&#39;]){</span>
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">if ($<em>SERVER[&#39;downgrade-1_0&#39;]){</span>
 <span class="x">        apache_setenv(&#39;downgrade-1.0&#39;,&#39;true&#39;);</span>
 <span class="x">}</span>
-<span class="x">if ($_SERVER[&#39;force-response-1_0&#39;]){</span>
+<span class="x">if ($</em>SERVER[&#39;force-response-1_0&#39;]){</span>
 <span class="x">        apache_setenv(&#39;force-response-1.0&#39;,&#39;true&#39;);</span>
-<span class="x">}</span></code></pre></div>
-
+<span class="x">}</span></code></pre></figure></p>
 
 <p>Ugly, but it's PHP's fault.<br/>
 And no more chunked content after that.
@@ -184,29 +180,29 @@ And the nice thing is that apache_setenv is not changing $_SERVER, so PHP still 
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/apache/english/2009/06/03/relative_absolute_urls_and_proxies/">
-                     <h4>Relative/Absolute URL and Proxies</h4>
-                     <p>Understanding absolute and relative urls problems when playing with several domains from the same web application.</p>
-                     </a>
-                  
-                     <a class="list-group-item" href="/monitoring/francais/2008/05/25/temps_de_reponse_reel_d_une_page_web_avec_netcat/">
-                     <h4>Temps de réponse réél d'une page web avec ... netcat</h4>
-                     <p>Comment obtenir le temps de réponse d'un site avec une ligne de commande concise, sans wget et sans telnet (mais avec netcat)</p>
-                     </a>
-                  
-                     <a class="list-group-item" href="/security/english/2018/07/03/security_pound_http_smuggling/">
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
                      <h4>Security: HTTP Smuggling, Apsis Pound load balancer</h4>
                      <p>details of CVE-2016-10711 (published feb 2018).</p>
                      </a>
                   
-                     <a class="list-group-item" href="/apache/english/2009/11/06/more_on_static_file_redirector/">
-                     <h4>More on Static file redirector</h4>
-                     <p>Complements on the previous article. hash the file map, use a /static url, and avoid security problems with tis new mode.</p>
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
+                     <h4>PostgreSQL, advanced use of generate_series for data generation</h4>
+                     <p>filling thousands of random realistic data rows.</p>
                      </a>
                   
-                     <a class="list-group-item" href="/apache/english/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/">
-                     <h4>Use RewriteMap to prevent proxying for some static contents</h4>
-                     <p>How to use the not well known RewriteMap Apache feature to proxy static resources on a web app without clean url separation between static and dynamic content (here Plone).</p>
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
+                     <h4>Web Security, Dompdf security issues details</h4>
+                     <p>details of december 2015's 3 CVE in dompdf, with one RCE.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     <h4>Web Security, using bad HTML to escape from a DIV</h4>
+                     <p>Break HTML layouts with only bad HTML and the browser's help.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <h4>Checking HTTP Smuggling issues in 2015 - Part1</h4>
+                     <p>First part of the 2015 HTTP Smuggling articles. Injecting HTTP in HTTP, the theory.</p>
                      </a>
                   
                 </div>
@@ -219,23 +215,23 @@ And the nice thing is that apache_setenv is not changing $_SERVER, so PHP still 
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/security/english/2018/07/03/security_pound_http_smuggling/">
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
                      Security: HTTP Smuggling, Apsis Pound load balancer
                      </a>
                   
-                     <a class="list-group-item" href="/postgresql/english/2017/06/26/postgresql_advanced_generate_series/">
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
                      PostgreSQL, advanced use of generate_series for data generation
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2016/12/19/security_dompdf_rce/">
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
                      Web Security, Dompdf security issues details
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     <a class="list-group-item" href="/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
                      Web Security, using bad HTML to escape from a DIV
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <a class="list-group-item" href="/english/security/2015/10/04/http_smuggling_in_2015_part_one/">
                      Checking HTTP Smuggling issues in 2015 - Part1
                      </a>
                   
@@ -249,45 +245,45 @@ And the nice thing is that apache_setenv is not changing $_SERVER, so PHP still 
 
                 <div class="tagcloud">
                 <a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
 <a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 30px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
 <a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
 <a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
+<a style='font-size: 31px' class='taglink' href='/tag/PHP/'>PHP</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
 <a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 28px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
 <a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
 
                 </div>
               </div>
@@ -302,7 +298,7 @@ And the nice thing is that apache_setenv is not changing $_SERVER, so PHP still 
                 <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
                 <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
                 <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
-                <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+                <a href="https://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
             </div>
             <div class="sideBarItem">
               <h3>Some Friends</h3>

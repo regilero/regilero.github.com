@@ -49,7 +49,7 @@
         <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
             <li ><a href="/" class="glyphicon glyphicon-home">&nbsp;Home</a></li>
-            <li class="active"><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
+            <li ><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
             <li ><a href="/contact/" class="glyphicon glyphicon-earphone">&nbsp;Contact</a></li>
             <li><a class="glyphicon glyphicon-eye-open" href="/feed.xml">&nbsp;RSS Feed</a></li>
           </ul>
@@ -77,7 +77,7 @@
             <div class="page-header">
             <h1>Details of DRUPAL_SA_CORE_2014_003 Deny Of Service
             <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="2014-09-19">Sep 19, 2014</time></span>
-            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/english/">english</a> and <a href="/security/">security</a></span>
+            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/Security/">Security</a> and <a href="/english/">english</a></span>
             </h1>
             </div>
         </header>
@@ -181,58 +181,58 @@ Host: www.example.com
 
 <p>One of the early step done while bootstraping Drupal is to load the configuration file. This file will give you, for example, access to the database, or the <code>$base_url</code> enforced setting.</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
-    <span class="sd">/**</span>
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">    </span><span class="cp">&lt;?php</span>
+    <span class="sd">/<em>*</span>
 <span class="sd">     * Sets the base URL, cookie domain, and session name from configuration.</span>
-<span class="sd">     */</span>
+<span class="sd">     </em>/</span>
     <span class="k">function</span> <span class="nf">drupal_settings_initialize</span><span class="p">()</span> <span class="p">{</span>
-      <span class="k">global</span> <span class="nv">$base_url</span><span class="p">,</span> <span class="nv">$base_path</span><span class="p">,</span> <span class="nv">$base_root</span><span class="p">;</span>
-    
-      <span class="c1">// Export these settings.php variables to the global namespace.</span>
-      <span class="k">global</span> <span class="nv">$databases</span><span class="p">,</span> <span class="nv">$cookie_domain</span><span class="p">,</span> <span class="nv">$conf</span><span class="p">,</span> <span class="nv">$installed_profile</span><span class="p">,</span>     <span class="nv">$update_free_access</span><span class="p">,</span> <span class="nv">$db_url</span><span class="p">,</span> <span class="nv">$db_prefix</span><span class="p">,</span> <span class="nv">$drupal_hash_salt</span><span class="p">,</span> <span class="nv">$is_https</span><span class="p">,</span> <span class="nv">$base_secure_url</span><span class="p">,</span> <span class="nv">$base_insecure_url</span><span class="p">;</span>
-      <span class="nv">$conf</span> <span class="o">=</span> <span class="k">array</span><span class="p">();</span>
-    
-      <span class="k">if</span> <span class="p">(</span><span class="nb">file_exists</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nx">conf_path</span><span class="p">()</span> <span class="o">.</span> <span class="s1">&#39;/settings.php&#39;</span><span class="p">))</span> <span class="p">{</span>
-        <span class="k">include_once</span> <span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nx">conf_path</span><span class="p">()</span> <span class="o">.</span> <span class="s1">&#39;/settings.php&#39;</span><span class="p">;</span>
-      <span class="p">}</span></code></pre></div>
+      <span class="k">global</span> <span class="nv">$base_url</span><span class="p">,</span> <span class="nv">$base_path</span><span class="p">,</span> <span class="nv">$base_root</span><span class="p">;</span></p>
 
+<pre><code>  &lt;span class="c1"&gt;// Export these settings.php variables to the global namespace.&lt;/span&gt;
+  &lt;span class="k"&gt;global&lt;/span&gt; &lt;span class="nv"&gt;$databases&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nv"&gt;$cookie_domain&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nv"&gt;$conf&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nv"&gt;$installed_profile&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;     &lt;span class="nv"&gt;$update_free_access&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nv"&gt;$db_url&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nv"&gt;$db_prefix&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nv"&gt;$drupal_hash_salt&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nv"&gt;$is_https&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nv"&gt;$base_secure_url&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nv"&gt;$base_insecure_url&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+  &lt;span class="nv"&gt;$conf&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;array&lt;/span&gt;&lt;span class="p"&gt;();&lt;/span&gt;
+
+  &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;file_exists&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;DRUPAL_ROOT&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="nx"&gt;conf_path&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/settings.php&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="k"&gt;include_once&lt;/span&gt; &lt;span class="nx"&gt;DRUPAL_ROOT&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="nx"&gt;conf_path&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/settings.php&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+  &lt;span class="p"&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+</code></pre>
 
 <p>Here we see that the settings path depends on the <code>conf_path()</code> call. This function is quite short, there's a <code>drupal_static</code> thing which is simply a way to avoid re-doing stuff after the first call (in the same HTTP request), it's basically a lazy-loading-run-only-once shortcut.</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">    </span><span class="cp">&lt;?php</span>
     <span class="k">function</span> <span class="nf">conf_path</span><span class="p">(</span><span class="nv">$require_settings</span> <span class="o">=</span> <span class="k">TRUE</span><span class="p">,</span> <span class="nv">$reset</span> <span class="o">=</span> <span class="k">FALSE</span><span class="p">)</span> <span class="p">{</span>
-      <span class="nv">$conf</span> <span class="o">=</span> <span class="o">&amp;</span><span class="nx">drupal_static</span><span class="p">(</span><span class="nx">__FUNCTION__</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">);</span>
-    
-      <span class="k">if</span> <span class="p">(</span><span class="nv">$conf</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nv">$reset</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">return</span> <span class="nv">$conf</span><span class="p">;</span> <span class="c1">//&lt;-- here is the run-only-once thing I was talking about</span>
-      <span class="p">}</span>
-    
-      <span class="nv">$confdir</span> <span class="o">=</span> <span class="s1">&#39;sites&#39;</span><span class="p">;</span>
-    
-      <span class="nv">$sites</span> <span class="o">=</span> <span class="k">array</span><span class="p">();</span>
-      <span class="k">if</span> <span class="p">(</span><span class="nb">file_exists</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$confdir</span> <span class="o">.</span> <span class="s1">&#39;/sites.php&#39;</span><span class="p">))</span> <span class="p">{</span>
-        <span class="c1">// This will overwrite $sites with the desired mappings.</span>
-        <span class="k">include</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$confdir</span> <span class="o">.</span> <span class="s1">&#39;/sites.php&#39;</span><span class="p">);</span>
-      <span class="p">}</span>
-    
-      <span class="nv">$uri</span> <span class="o">=</span> <span class="nb">explode</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;SCRIPT_NAME&#39;</span><span class="p">]</span> <span class="o">?</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;SCRIPT_NAME&#39;</span><span class="p">]</span> <span class="o">:</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;SCRIPT_FILENAME&#39;</span><span class="p">]);</span>
-      <span class="nv">$server</span> <span class="o">=</span> <span class="nb">explode</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="nb">implode</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="nb">array_reverse</span><span class="p">(</span><span class="nb">explode</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="nb">rtrim</span><span class="p">(</span><span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;HTTP_HOST&#39;</span><span class="p">],</span> <span class="s1">&#39;.&#39;</span><span class="p">)))));</span>
-      <span class="k">for</span> <span class="p">(</span><span class="nv">$i</span> <span class="o">=</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$uri</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span> <span class="nv">$i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$i</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">for</span> <span class="p">(</span><span class="nv">$j</span> <span class="o">=</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$server</span><span class="p">);</span> <span class="nv">$j</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$j</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
-          <span class="nv">$dir</span> <span class="o">=</span> <span class="nb">implode</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="nb">array_slice</span><span class="p">(</span><span class="nv">$server</span><span class="p">,</span> <span class="o">-</span><span class="nv">$j</span><span class="p">))</span> <span class="o">.</span> <span class="nb">implode</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="nb">array_slice</span><span class="p">(</span><span class="nv">$uri</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nv">$i</span><span class="p">));</span>
-          <span class="k">if</span> <span class="p">(</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$sites</span><span class="p">[</span><span class="nv">$dir</span><span class="p">])</span> <span class="o">&amp;&amp;</span> <span class="nb">file_exists</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$confdir</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$sites</span><span class="p">[</span><span class="nv">$dir</span><span class="p">]))</span> <span class="p">{</span>
-            <span class="nv">$dir</span> <span class="o">=</span> <span class="nv">$sites</span><span class="p">[</span><span class="nv">$dir</span><span class="p">];</span>
-          <span class="p">}</span>
-          <span class="k">if</span> <span class="p">(</span><span class="nb">file_exists</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$confdir</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$dir</span> <span class="o">.</span> <span class="s1">&#39;/settings.php&#39;</span><span class="p">)</span> <span class="o">||</span> <span class="p">(</span><span class="o">!</span><span class="nv">$require_settings</span> <span class="o">&amp;&amp;</span> <span class="nb">file_exists</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$confdir</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$dir</span><span class="p">)))</span> <span class="p">{</span>
-            <span class="nv">$conf</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">$confdir</span><span class="s2">/</span><span class="si">$dir</span><span class="s2">&quot;</span><span class="p">;</span>
-            <span class="k">return</span> <span class="nv">$conf</span><span class="p">;</span>
-          <span class="p">}</span>
-        <span class="p">}</span>
-      <span class="p">}</span>
-      <span class="nv">$conf</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">$confdir</span><span class="s2">/default&quot;</span><span class="p">;</span>
-      <span class="k">return</span> <span class="nv">$conf</span><span class="p">;</span>
-    <span class="p">}</span></code></pre></div>
+      <span class="nv">$conf</span> <span class="o">=</span> <span class="o">&amp;</span><span class="nx">drupal_static</span><span class="p">(</span><span class="nx"><strong>FUNCTION</strong></span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">);</span></p>
 
+<pre><code>  &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$conf&lt;/span&gt; &lt;span class="o"&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class="o"&gt;!&lt;/span&gt;&lt;span class="nv"&gt;$reset&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;$conf&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt; &lt;span class="c1"&gt;//&amp;lt;-- here is the run-only-once thing I was talking about&lt;/span&gt;
+  &lt;span class="p"&gt;}&lt;/span&gt;
+
+  &lt;span class="nv"&gt;$confdir&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;sites&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+  &lt;span class="nv"&gt;$sites&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;array&lt;/span&gt;&lt;span class="p"&gt;();&lt;/span&gt;
+  &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;file_exists&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;DRUPAL_ROOT&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="nv"&gt;$confdir&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/sites.php&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="c1"&gt;// This will overwrite $sites with the desired mappings.&lt;/span&gt;
+    &lt;span class="k"&gt;include&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;DRUPAL_ROOT&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="nv"&gt;$confdir&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/sites.php&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
+  &lt;span class="p"&gt;}&lt;/span&gt;
+
+  &lt;span class="nv"&gt;$uri&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;explode&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;/&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nv"&gt;$_SERVER&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;SCRIPT_NAME&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;?&lt;/span&gt; &lt;span class="nv"&gt;$_SERVER&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;SCRIPT_NAME&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="nv"&gt;$_SERVER&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;SCRIPT_FILENAME&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]);&lt;/span&gt;
+  &lt;span class="nv"&gt;$server&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;explode&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;.&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nb"&gt;implode&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;.&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nb"&gt;array_reverse&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;explode&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;:&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nb"&gt;rtrim&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$_SERVER&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;HTTP_HOST&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;.&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)))));&lt;/span&gt;
+  &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$i&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;count&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$uri&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt; &lt;span class="nv"&gt;$i&lt;/span&gt; &lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt; &lt;span class="nv"&gt;$i&lt;/span&gt;&lt;span class="o"&gt;--&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$j&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;count&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$server&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt; &lt;span class="nv"&gt;$j&lt;/span&gt; &lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt; &lt;span class="nv"&gt;$j&lt;/span&gt;&lt;span class="o"&gt;--&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+      &lt;span class="nv"&gt;$dir&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;implode&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;.&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nb"&gt;array_slice&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$server&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="nv"&gt;$j&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="nb"&gt;implode&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;.&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nb"&gt;array_slice&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$uri&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nv"&gt;$i&lt;/span&gt;&lt;span class="p"&gt;));&lt;/span&gt;
+      &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;isset&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$sites&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="nv"&gt;$dir&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt; &lt;span class="o"&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class="nb"&gt;file_exists&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;DRUPAL_ROOT&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="nv"&gt;$confdir&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="nv"&gt;$sites&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="nv"&gt;$dir&lt;/span&gt;&lt;span class="p"&gt;]))&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="nv"&gt;$dir&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;$sites&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="nv"&gt;$dir&lt;/span&gt;&lt;span class="p"&gt;];&lt;/span&gt;
+      &lt;span class="p"&gt;}&lt;/span&gt;
+      &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;file_exists&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;DRUPAL_ROOT&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="nv"&gt;$confdir&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="nv"&gt;$dir&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/settings.php&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;||&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="o"&gt;!&lt;/span&gt;&lt;span class="nv"&gt;$require_settings&lt;/span&gt; &lt;span class="o"&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class="nb"&gt;file_exists&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;DRUPAL_ROOT&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="nv"&gt;$confdir&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class="o"&gt;.&lt;/span&gt; &lt;span class="nv"&gt;$dir&lt;/span&gt;&lt;span class="p"&gt;)))&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="nv"&gt;$conf&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="si"&gt;$confdir&lt;/span&gt;&lt;span class="s2"&gt;/&lt;/span&gt;&lt;span class="si"&gt;$dir&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;$conf&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+      &lt;span class="p"&gt;}&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+  &lt;span class="p"&gt;}&lt;/span&gt;
+  &lt;span class="nv"&gt;$conf&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="si"&gt;$confdir&lt;/span&gt;&lt;span class="s2"&gt;/default&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+  &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;$conf&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+</code></pre>
 
 <p>What this code does is testing the requested hostname to see if a specific settings directory exists for this Host; this is the <strong>core functionality of drupal multisites</strong>. By default you have the <em>default</em> settings in the directory <code>&lt;www&gt;/sites/default</code>, you can then use a <code>&lt;www&gt;/sites/sites.php</code> file to map hostnames with other settings files -- but this will only cover names that you <strong>do</strong> have, not the bad ones --, and you <em>can</em> also have some directories based on the hostname, or part of it, containing a <code>settings.php</code> file. Note that you <strong>cannot suspend this multisite feature</strong>, it's always there, no opt-in or opt-out until Drupal 8 release.</p>
 
@@ -283,7 +283,7 @@ Host: www.example.com
 
 <p>The real issue is on <code>array_slice</code>, performing several thousands of inverted array_slice is <em>really very very slow</em>. The first ones are quite fast but the last steps are longer, and we will make several thousands of array_slice operations.</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">    </span><span class="cp">&lt;?php</span>
     <span class="k">function</span> <span class="nf">test_array_slice</span><span class="p">(</span><span class="nv">$server</span><span class="p">,</span><span class="nv">$j</span><span class="p">)</span> <span class="p">{</span>
       <span class="k">print</span> <span class="s2">&quot;ARRAY_SLICE array of &quot;</span> <span class="o">.</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$server</span><span class="p">)</span> <span class="o">.</span> <span class="s2">&quot; elts =&gt; &quot;</span><span class="p">;</span>
       <span class="nv">$time_start</span> <span class="o">=</span> <span class="nb">microtime</span><span class="p">(</span><span class="k">true</span><span class="p">);</span>
@@ -292,7 +292,7 @@ Host: www.example.com
       <span class="nv">$time</span> <span class="o">=</span> <span class="nv">$time_end</span> <span class="o">-</span> <span class="nv">$time_start</span><span class="p">;</span>
       <span class="k">print</span> <span class="s2">&quot;time for array_slice to </span><span class="si">$j</span><span class="s2"> : </span><span class="si">$time</span><span class="s2"> (s)</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">;</span>
     <span class="p">}</span>
-    <span class="cm">/*</span>
+    <span class="cm">/<em></span>
 <span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -10    : 0.0004069805 (s)</span>
 <span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -100   : 0.0004091262 (s)</span>
 <span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -500   : 0.0004727840 (s)</span>
@@ -302,8 +302,7 @@ Host: www.example.com
 <span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -12000 : 0.0018289089 (s)</span>
 <span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -14000 : 0.0025160312 (s)</span>
 <span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -16000 : 0.0032360553 (s)</span>
-<span class="cm">    */</span></code></pre></div>
-
+<span class="cm">    </em>/</span></code></pre></figure></p>
 
 <p>0.003s seems quite fast, but that's already 7.5 times more than the first array_slices. I made a simple graph to show theses times growth.</p>
 
@@ -315,11 +314,11 @@ Host: www.example.com
 
 <p>My first fix used an <code>array_walk</code> call to prepare all names that should be checked, instead of rebuilding this name on the loop, this way:</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
-    <span class="sd">/**</span>
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">    </span><span class="cp">&lt;?php</span>
+    <span class="sd">/<em>*</span>
 <span class="sd">     * Apply this function with an array_walk to obtain an array with names that</span>
 <span class="sd">     * need to be tested.</span>
-<span class="sd">     */</span>
+<span class="sd">     </em>/</span>
     <span class="k">function</span> <span class="nf">prepare_name</span><span class="p">(</span><span class="o">&amp;</span><span class="nv">$val</span><span class="p">,</span> <span class="nv">$key</span><span class="p">,</span> <span class="o">&amp;</span><span class="nv">$current</span><span class="p">)</span> <span class="p">{</span>
       <span class="k">if</span> <span class="p">(</span><span class="s1">&#39;&#39;</span><span class="o">!==</span><span class="nv">$current</span><span class="p">)</span> <span class="p">{</span>
         <span class="nv">$val</span> <span class="o">=</span> <span class="nv">$val</span><span class="o">.</span><span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="nv">$current</span><span class="p">;</span>
@@ -337,8 +336,7 @@ Host: www.example.com
       <span class="k">foreach</span><span class="p">(</span><span class="nv">$work_server</span> <span class="k">as</span> <span class="nv">$k</span> <span class="o">=&gt;</span> <span class="nv">$name</span><span class="p">)</span> <span class="p">{</span>
         <span class="nv">$dir</span> <span class="o">=</span> <span class="nv">$name</span> <span class="o">.</span> <span class="nb">implode</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="nb">array_slice</span><span class="p">(</span><span class="nv">$uri</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nv">$i</span><span class="p">));</span>
       <span class="p">}</span>
-    <span class="p">}</span></code></pre></div>
-
+    <span class="p">}</span></code></pre></figure></p>
 
 <p>And this fixed the performance issue (when <code>file_exists</code> is fast). But preventing bad hostnames as we have in the final fix is a better fix, more radical, no good reason to manage several thousand of subdomains.</p>
 
@@ -376,11 +374,10 @@ Host: www.example.com
 
 <p>The Mod_rewrite Apache module will receive the same <strong>HOSTNAME</strong> as PHP in the <strong>HTTP_HOST</strong> variable. If the Absolute-URI trick is used mod_rewrite could detect bad hostname and reject the request. Let's say you have one or two valid DNS for your Drupal websites (here <code>foo.example.com</code> and <code>bar.example.com</code>), then check Apache made the right job and reached your Drupal with theses valid names:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># Reject with a 403 any hostname wich is not in our list of supported domains</span>
-    <span class="nb">RewriteCond</span> %{HTTP_HOST} !^foo\.example\.com$
-    <span class="nb">RewriteCond</span> %{HTTP_HOST} !^bar\.example\.com$
-    <span class="nb">RewriteRule</span> .* - [F,L]</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache">    <span class="c"># Reject with a 403 any hostname wich is not in our list of supported domains</span>
+    <span class="nb">RewriteCond</span> %{HTTP_HOST} !^foo.example.com$
+    <span class="nb">RewriteCond</span> %{HTTP_HOST} !^bar.example.com$
+    <span class="nb">RewriteRule</span> .* - [F,L]</code></pre></figure></p>
 
 <h2>The absolute-URI trick?</h2>
 
@@ -481,29 +478,29 @@ Host: something.else
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/security/english/2015/03/25/nginx-integer_truncation/">
-                     <h4>Nginx Integer Truncation</h4>
-                     <p>Exploitation of Integer Overflow with the HTTP Content length Header</p>
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
+                     <h4>Security: HTTP Smuggling, Apsis Pound load balancer</h4>
+                     <p>details of CVE-2016-10711 (published feb 2018).</p>
                      </a>
                   
-                     <a class="list-group-item" href="/drupal/english/2011/09/03/Install_drupal_in_php_fpm_fastcgi_and_apache_chroot/">
-                     <h4>Install Drupal in php-fpm (fastcgi) with Apache and a chroot php-fpm</h4>
-                     <p>Step by step Apache+php-fpm installation of Drupal with some explanations on how to use php-fpm chroot while still not having mod_proxy_fcgi.</p>
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
+                     <h4>PostgreSQL, advanced use of generate_series for data generation</h4>
+                     <p>filling thousands of random realistic data rows.</p>
                      </a>
                   
-                     <a class="list-group-item" href="/drupal/english/2011/09/02/Tune_your_php_settings_for_drupal/">
-                     <h4>Tune your php settings for Drupal</h4>
-                     <p>How to make a clean Apache Virtualhost for each drupal project, with PHP settings altered for each project</p>
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
+                     <h4>Web Security, Dompdf security issues details</h4>
+                     <p>details of december 2015's 3 CVE in dompdf, with one RCE.</p>
                      </a>
                   
-                     <a class="list-group-item" href="/drupal/english/2011/09/01/better_rewrite_rules_for_drupal/">
-                     <h4>Better rewriteRules for Drupal</h4>
-                     <p>A big re-think of rewrite rules for Drupal, preventing acess from index.php?q=foo default url, no .htaccess, and some other security stuff</p>
+                     <a class="list-group-item" href="/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     <h4>Web Security, using bad HTML to escape from a DIV</h4>
+                     <p>Break HTML layouts with only bad HTML and the browser's help.</p>
                      </a>
                   
-                     <a class="list-group-item" href="/english/drupal/2014/10/30/drupal-nginx_apache_php-fpm-guide/">
-                     <h4>AirPair, Drupal with PHP-FPM, Apache or Nginx</h4>
-                     <p>Some very detailled posts on Installing Drupal with php-fpm with Apache2.4 or Nginx</p>
+                     <a class="list-group-item" href="/english/security/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <h4>Checking HTTP Smuggling issues in 2015 - Part1</h4>
+                     <p>First part of the 2015 HTTP Smuggling articles. Injecting HTTP in HTTP, the theory.</p>
                      </a>
                   
                 </div>
@@ -516,23 +513,23 @@ Host: something.else
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/security/english/2018/07/03/security_pound_http_smuggling/">
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
                      Security: HTTP Smuggling, Apsis Pound load balancer
                      </a>
                   
-                     <a class="list-group-item" href="/postgresql/english/2017/06/26/postgresql_advanced_generate_series/">
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
                      PostgreSQL, advanced use of generate_series for data generation
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2016/12/19/security_dompdf_rce/">
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
                      Web Security, Dompdf security issues details
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     <a class="list-group-item" href="/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
                      Web Security, using bad HTML to escape from a DIV
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <a class="list-group-item" href="/english/security/2015/10/04/http_smuggling_in_2015_part_one/">
                      Checking HTTP Smuggling issues in 2015 - Part1
                      </a>
                   
@@ -545,46 +542,46 @@ Host: something.else
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+                <a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
 <a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 28px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
 <a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 31px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
+<a style='font-size: 30px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
 <a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
 
                 </div>
               </div>
@@ -599,7 +596,7 @@ Host: something.else
                 <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
                 <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
                 <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
-                <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+                <a href="https://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
             </div>
             <div class="sideBarItem">
               <h3>Some Friends</h3>

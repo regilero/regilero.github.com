@@ -49,7 +49,7 @@
         <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
             <li ><a href="/" class="glyphicon glyphicon-home">&nbsp;Home</a></li>
-            <li class="active"><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
+            <li ><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
             <li ><a href="/contact/" class="glyphicon glyphicon-earphone">&nbsp;Contact</a></li>
             <li><a class="glyphicon glyphicon-eye-open" href="/feed.xml">&nbsp;RSS Feed</a></li>
           </ul>
@@ -77,7 +77,7 @@
             <div class="page-header">
             <h1>Web Security, using bad HTML to escape from a DIV
             <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="2016-06-10">Jun 10, 2016</time></span>
-            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/english/">english</a> and <a href="/security/">security</a></span>
+            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/Security/">Security</a> and <a href="/english/">english</a></span>
             </h1>
             </div>
         </header>
@@ -155,54 +155,50 @@ page clearly forgot to close some tags.</p>
 
 <p>So this:</p>
 
-<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="c">&lt;!-- initial --&gt;</span>
-    <span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">&quot;foo&quot;</span><span class="nt">&gt;</span>
-      <span class="nt">&lt;ul&gt;</span>
-        <span class="nt">&lt;li&gt;</span>foo
-        <span class="nt">&lt;li&gt;</span>bar
-      <span class="nt">&lt;/ul&gt;</span>
-    <span class="nt">&lt;/div&gt;</span></code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-html" data-lang="html">    <span class="c">&lt;!-- initial --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;foo&quot;</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>foo
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>bar
+      <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span></code></pre></figure></p>
 
 <p>Is automatically rewritten with closing <code>&lt;/LI&gt;</code>:</p>
 
-<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="c">&lt;!-- rendered --&gt;</span>
-    <span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">&quot;foo&quot;</span><span class="nt">&gt;</span>
-      <span class="nt">&lt;ul&gt;</span>
-        <span class="nt">&lt;li&gt;</span>foo<span class="nt">&lt;/LI&gt;</span>
-        <span class="nt">&lt;li&gt;</span>bar<span class="nt">&lt;/LI&gt;</span>
-      <span class="nt">&lt;/ul&gt;</span>
-    <span class="nt">&lt;/div&gt;</span></code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-html" data-lang="html">    <span class="c">&lt;!-- rendered --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;foo&quot;</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>foo<span class="p">&lt;/</span><span class="nt">LI</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>bar<span class="p">&lt;/</span><span class="nt">LI</span><span class="p">&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span></code></pre></figure></p>
 
 <p>But let's look at something nastier, we have an opening <code>&lt;DIV&gt;</code> inside the <code>&lt;LI&gt;</code>:</p>
 
-<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="c">&lt;!-- initial --&gt;</span>
-    <span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">&quot;foo&quot;</span><span class="nt">&gt;</span>
-      <span class="nt">&lt;ul&gt;</span>
-        <span class="nt">&lt;li&gt;</span>foo
-          <span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">&quot;second&quot;</span><span class="nt">&gt;</span>
+<p><figure class="highlight"><pre><code class="language-html" data-lang="html">    <span class="c">&lt;!-- initial --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;foo&quot;</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>foo
+          <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;second&quot;</span><span class="p">&gt;</span>
              test
-        <span class="nt">&lt;/li&gt;</span>
-        <span class="nt">&lt;li&gt;</span>bar<span class="nt">&lt;li&gt;</span>
-      <span class="nt">&lt;/ul&gt;</span>
-    <span class="nt">&lt;/div&gt;</span></code></pre></div>
-
+        <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>bar<span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span></code></pre></figure></p>
 
 <p>The browser will add the closing DIV:</p>
 
-<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="c">&lt;!-- rendered --&gt;</span>
-    <span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">&quot;foo&quot;</span><span class="nt">&gt;</span>
-      <span class="nt">&lt;ul&gt;</span>
-        <span class="nt">&lt;li&gt;</span>foo
-          <span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">&quot;second&quot;</span><span class="nt">&gt;</span>
+<p><figure class="highlight"><pre><code class="language-html" data-lang="html">    <span class="c">&lt;!-- rendered --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;foo&quot;</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>foo
+          <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;second&quot;</span><span class="p">&gt;</span>
             test
-          <span class="nt">&lt;/DIV&gt;</span>  <span class="c">&lt;!-- implicit HTML --&gt;</span>
-        <span class="nt">&lt;/li&gt;</span>
-        <span class="nt">&lt;li&gt;</span>bar<span class="nt">&lt;li&gt;</span>
-      <span class="nt">&lt;/ul&gt;</span>
-    <span class="nt">&lt;/div&gt;</span></code></pre></div>
-
+          <span class="p">&lt;/</span><span class="nt">DIV</span><span class="p">&gt;</span>  <span class="c">&lt;!-- implicit HTML --&gt;</span>
+        <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>bar<span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span></code></pre></figure></p>
 
 <p>Chances are that a <strong>server side output filter</strong>, filtering HTML contributions
 would have <strong>detected</strong> this HTML as invalid, if you <strong>count opening and closing
@@ -210,16 +206,15 @@ tags</strong> you can detect that a closing tag is missing.</p>
 
 <p>So our bad contributor will instead write this:</p>
 
-<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="c">&lt;!-- initial --&gt;</span>
-    <span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">&quot;foo&quot;</span><span class="nt">&gt;</span>
-      <span class="nt">&lt;ul&gt;</span>
-        <span class="nt">&lt;li&gt;</span>foo<span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">&quot;second&quot;</span><span class="nt">&gt;&lt;div</span> <span class="na">class=</span><span class="s">&quot;third&quot;</span><span class="nt">&gt;</span>test<span class="nt">&lt;/li&gt;</span>
-        <span class="nt">&lt;li&gt;</span>bar<span class="nt">&lt;li&gt;</span>
-      <span class="nt">&lt;/ul&gt;</span>
-      <span class="nt">&lt;/div&gt;</span> <span class="c">&lt;!-- end third --&gt;</span>
-      <span class="nt">&lt;/div&gt;</span> <span class="c">&lt;!-- end second --&gt;</span>
-    <span class="nt">&lt;/div&gt;</span></code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-html" data-lang="html">    <span class="c">&lt;!-- initial --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;foo&quot;</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>foo<span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;second&quot;</span><span class="p">&gt;&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;third&quot;</span><span class="p">&gt;</span>test<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>bar<span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span> <span class="c">&lt;!-- end third --&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span> <span class="c">&lt;!-- end second --&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span></code></pre></figure></p>
 
 <p>And <strong>if you count</strong> the number of closing and opening tags, or if you try to
 cleanup this with some regexp (are you crazy?), chances are that this will look
@@ -227,21 +222,20 @@ good.</p>
 
 <p>And now the browser result:</p>
 
-<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="c">&lt;!-- rendered --&gt;</span>
-    <span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">&quot;foo&quot;</span><span class="nt">&gt;</span>
-      <span class="nt">&lt;ul&gt;</span>
-        <span class="nt">&lt;li&gt;</span>foo
-           <span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">&quot;second&quot;</span><span class="nt">&gt;</span>
-            <span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">&quot;third&quot;</span><span class="nt">&gt;</span>test
-            <span class="nt">&lt;/DIV&gt;</span> <span class="c">&lt;!-- implicit HTML - end third--&gt;</span>
-           <span class="nt">&lt;/DIV&gt;</span> <span class="c">&lt;!-- implicit HTML - end second --&gt;</span>
-        <span class="nt">&lt;/li&gt;</span>
-        <span class="nt">&lt;li&gt;</span>bar<span class="nt">&lt;li&gt;</span>
-      <span class="nt">&lt;/ul&gt;</span>
-      <span class="nt">&lt;/div&gt;</span> <span class="c">&lt;!-- end third? no, end foo --&gt;</span>
-      <span class="nt">&lt;/div&gt;</span> <span class="c">&lt;!-- end second? no end foo&#39;s parent if any --&gt;</span>
-    <span class="nt">&lt;/div&gt;</span> <span class="c">&lt;!-- end foo&#39;s parent&#39;s parent if any --&gt;</span></code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-html" data-lang="html">    <span class="c">&lt;!-- rendered --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;foo&quot;</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>foo
+           <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;second&quot;</span><span class="p">&gt;</span>
+            <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;third&quot;</span><span class="p">&gt;</span>test
+            <span class="p">&lt;/</span><span class="nt">DIV</span><span class="p">&gt;</span> <span class="c">&lt;!-- implicit HTML - end third--&gt;</span>
+           <span class="p">&lt;/</span><span class="nt">DIV</span><span class="p">&gt;</span> <span class="c">&lt;!-- implicit HTML - end second --&gt;</span>
+        <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>bar<span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span> <span class="c">&lt;!-- end third? no, end foo --&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span> <span class="c">&lt;!-- end second? no end foo&#39;s parent if any --&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span> <span class="c">&lt;!-- end foo&#39;s parent&#39;s parent if any --&gt;</span></code></pre></figure></p>
 
 <p>Two <code>&lt;/DIV&gt;</code> are <strong>impliclty added by the browser</strong>, because you cannot close
 the <code>&lt;LI&gt;</code> without closing the <code>&lt;DIV&gt;</code> inside. And now, on the final page, you have
@@ -289,32 +283,32 @@ as would most inline tags like <code>&lt;span&gt;</code>, <code>&lt;strong&gt;</
 
 
 <table>
-<tr><td><small><a href="///theme/resource/t1.html">direct link</a></small></td><td><small><a href="///theme/resource/t2.html">direct link</a></small></td></tr><td>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t1.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t2.html">direct link</a></small></td></tr><td>
 <iframe src=/theme/resource/t1.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
 <iframe src=/theme/resource/t2.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
-<tr><td><small><a href="///theme/resource/t3.html">direct link</a></small></td><td><small><a href="///theme/resource/t4.html">direct link</a></small></td></tr><td>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t3.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t4.html">direct link</a></small></td></tr><td>
 <iframe src=/theme/resource/t3.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
 <iframe src=/theme/resource/t4.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
-<tr><td><small><a href="///theme/resource/t5.html">direct link</a></small></td><td><small><a href="///theme/resource/t6.html">direct link</a></small></td></tr><td>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t5.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t6.html">direct link</a></small></td></tr><td>
 <iframe src=/theme/resource/t5.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
 <iframe src=/theme/resource/t6.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
-<tr><td><small><a href="///theme/resource/t7.html">direct link</a></small></td><td><small><a href="///theme/resource/t8.html">direct link</a></small></td></tr><td>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t7.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t8.html">direct link</a></small></td></tr><td>
 <iframe src=/theme/resource/t7.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
 <iframe src=/theme/resource/t8.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
-<tr><td><small><a href="///theme/resource/t9.html">direct link</a></small></td><td><small><a href="///theme/resource/t10.html">direct link</a></small></td></tr><td>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t9.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t10.html">direct link</a></small></td></tr><td>
 <iframe src=/theme/resource/t9.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
 <iframe src=/theme/resource/t10.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
-<tr><td><small><a href="///theme/resource/t11.html">direct link</a></small></td><td><small><a href="///theme/resource/t12.html">direct link</a></small></td></tr><td>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t11.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t12.html">direct link</a></small></td></tr><td>
 <iframe src=/theme/resource/t11.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
 <iframe src=/theme/resource/t12.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
-<tr><td><small><a href="///theme/resource/t13.html">direct link</a></small></td><td><small><a href="///theme/resource/t14.html">direct link</a></small></td></tr><td>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t13.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t14.html">direct link</a></small></td></tr><td>
 <iframe src=/theme/resource/t13.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
 <iframe src=/theme/resource/t14.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
-<tr><td><small><a href="///theme/resource/t15.html">direct link</a></small></td><td><small><a href="///theme/resource/t16.html">direct link</a></small></td></tr><td>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t15.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t16.html">direct link</a></small></td></tr><td>
 <iframe src=/theme/resource/t15.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
 <iframe src=/theme/resource/t16.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
-<tr><td><small><a href="///theme/resource/t17.html">direct link</a></small></td><td>&nbsp;</td></tr><td>
-<iframe src=/theme/resource/t17.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td></td></tr>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t17.html">direct link</a></small></td><td>&nbsp;</td></tr><td>
+<iframe src=//regilero.github.io/theme/resource/t17.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td></td></tr>
 </table>
 
 
@@ -420,14 +414,19 @@ task, here is for example <a href="https://www.drupal.org/project/wysiwyg_filter
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/security/english/2016/12/19/security_dompdf_rce/">
-                     <h4>Web Security, Dompdf security issues details</h4>
-                     <p>details of december 2015's 3 CVE in dompdf, with one RCE.</p>
-                     </a>
-                  
-                     <a class="list-group-item" href="/security/english/2018/07/03/security_pound_http_smuggling/">
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
                      <h4>Security: HTTP Smuggling, Apsis Pound load balancer</h4>
                      <p>details of CVE-2016-10711 (published feb 2018).</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
+                     <h4>PostgreSQL, advanced use of generate_series for data generation</h4>
+                     <p>filling thousands of random realistic data rows.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
+                     <h4>Web Security, Dompdf security issues details</h4>
+                     <p>details of december 2015's 3 CVE in dompdf, with one RCE.</p>
                      </a>
                   
                      <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
@@ -440,11 +439,6 @@ task, here is for example <a href="https://www.drupal.org/project/wysiwyg_filter
                      <p>Exploitation of Integer Overflow with the HTTP Content length Header</p>
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2014/09/19/drupal-details_ofdrupal_sa_core_2014_003_dos/">
-                     <h4>Details of DRUPAL_SA_CORE_2014_003 Deny Of Service</h4>
-                     <p>Analysis of the new DRUPAL_SA_CORE_2014_003 DOS vulnerability (CVE-2014-5019)</p>
-                     </a>
-                  
                 </div>
               </div>
               
@@ -455,15 +449,15 @@ task, here is for example <a href="https://www.drupal.org/project/wysiwyg_filter
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/security/english/2018/07/03/security_pound_http_smuggling/">
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
                      Security: HTTP Smuggling, Apsis Pound load balancer
                      </a>
                   
-                     <a class="list-group-item" href="/postgresql/english/2017/06/26/postgresql_advanced_generate_series/">
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
                      PostgreSQL, advanced use of generate_series for data generation
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2016/12/19/security_dompdf_rce/">
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
                      Web Security, Dompdf security issues details
                      </a>
                   
@@ -484,46 +478,46 @@ task, here is for example <a href="https://www.drupal.org/project/wysiwyg_filter
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
-<a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 28px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+                <a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
 <a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
 <a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
 <a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
 <a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
 <a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 30px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 31px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
 <a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
 
                 </div>
               </div>
@@ -538,7 +532,7 @@ task, here is for example <a href="https://www.drupal.org/project/wysiwyg_filter
                 <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
                 <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
                 <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
-                <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+                <a href="https://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
             </div>
             <div class="sideBarItem">
               <h3>Some Friends</h3>

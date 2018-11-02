@@ -49,7 +49,7 @@
         <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
             <li ><a href="/" class="glyphicon glyphicon-home">&nbsp;Home</a></li>
-            <li class="active"><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
+            <li ><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
             <li ><a href="/contact/" class="glyphicon glyphicon-earphone">&nbsp;Contact</a></li>
             <li><a class="glyphicon glyphicon-eye-open" href="/feed.xml">&nbsp;RSS Feed</a></li>
           </ul>
@@ -77,7 +77,7 @@
             <div class="page-header">
             <h1>Better rewriteRules for Drupal
             <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="2011-09-01">Sep 01, 2011</time></span>
-            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/drupal/">drupal</a> and <a href="/english/">english</a></span>
+            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/Drupal/">Drupal</a> and <a href="/english/">english</a></span>
             </h1>
             </div>
         </header>
@@ -130,18 +130,19 @@ you do not need to share directives for all your websites). Then we'll make 2 th
 
 <p>For the first thing simply add this (wel I've added the <code>.svn</code> and <code>.git</code> things as well):</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;Directory</span>  <span class="s">/  </span><span class="nt">&gt;</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;Directory</span>  <span class="s">/  </span><span class="nt">&gt;</span>
     <span class="nb">Order</span> deny,allow
     <span class="nb">deny</span> from <span class="k">all</span>
     <span class="nb">Options</span> FollowSymLinks
     <span class="c"># PREVENT .htaccess reading</span>
-    <span class="nb">AllowOverride</span> <span class="k">None</span>
- 
-    <span class="c">#.svn &amp; .git directories must be avoided!!</span>
-    <span class="nb">RedirectMatch</span> <span class="m">404</span> /\.svn(/|$)
-    <span class="nb">RedirectMatch</span> <span class="m">404</span> /\.git(/|$)
-<span class="nt">&lt;/Directory&gt;</span></code></pre></div>
+    <span class="nb">AllowOverride</span> <span class="k">None</span></p>
 
+<pre><code>&lt;span class="c"&gt;#.svn &amp;amp; .git directories must be avoided!!&lt;/span&gt;
+&lt;span class="nb"&gt;RedirectMatch&lt;/span&gt; &lt;span class="m"&gt;404&lt;/span&gt; /\.svn(/|$)
+&lt;span class="nb"&gt;RedirectMatch&lt;/span&gt; &lt;span class="m"&gt;404&lt;/span&gt; /\.git(/|$)
+</code></pre>
+
+<p><span class="nt">&lt;/Directory&gt;</span></code></pre></figure></p>
 
 <p>Notice that this does not concern the <code>'/'</code> url (that would be <code>&lt;Location /&gt;</code>) but the <code>'/'</code> <strong>directory on the server</strong>,
 means the <code>'C:\'</code> if you were a windows user.<br/>
@@ -150,32 +151,32 @@ means the <code>'C:\'</code> if you were a windows user.<br/>
 <p>Then add another <code>Directory</code> directive, with the absolute path of your project web root
 (this should be the same as the <code>DocumentRoot</code> directive of this Virtualhost). And put inside the <code>.htaccess</code> content.</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;Directory</span> <span class="s">/var/www/mydrupalproject/www</span><span class="nt">&gt;</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;Directory</span> <span class="s">/var/www/mydrupalproject/www</span><span class="nt">&gt;</span>
         <span class="c">#Order allow,deny</span>
-        <span class="nb">Allow</span> from <span class="k">all</span>
- 
-        <span class="c"># Follow symbolic links in this directory.</span>
-        <span class="nb">Options</span> +FollowSymLinks -Indexes -Multiviews
-         
-        <span class="c"># Set the default handler.</span>
-        <span class="nb">DirectoryIndex</span> index.php
- 
-        <span class="c"># Protect files and directories from prying eyes.</span>
-        <span class="nt">&lt;FilesMatch</span> <span class="s">&quot;\.(engine|inc|info|install|make|module|profile|test|po|sh|.*sql|theme|tpl(\.php)?|xtmpl)$|^(\..*|Entries.*|Repository|Root|Tag|Template)$&quot;</span><span class="nt">&gt;</span>
-          <span class="nb">Order</span> allow,deny
-        <span class="nt">&lt;/FilesMatch&gt;</span>
-         
-        <span class="c"># Force simple error message for requests for non-existent favicon.ico.</span>
-        <span class="nt">&lt;Files</span> <span class="s">favicon.ico</span><span class="nt">&gt;</span>
-          <span class="c"># There is no end quote below, for compatibility with Apache 1.3.</span>
-          <span class="nb">ErrorDocument</span> <span class="m">404</span> <span class="err">&quot;</span>The requested file favicon.ico was not found.
-        <span class="nt">&lt;/Files&gt;</span>
+        <span class="nb">Allow</span> from <span class="k">all</span></p>
 
-        <span class="nb">etc</span>
-        (...)
-         
-<span class="nt">&lt;/Directory&gt;</span></code></pre></div>
+<pre><code>    &lt;span class="c"&gt;# Follow symbolic links in this directory.&lt;/span&gt;
+    &lt;span class="nb"&gt;Options&lt;/span&gt; +FollowSymLinks -Indexes -Multiviews
 
+    &lt;span class="c"&gt;# Set the default handler.&lt;/span&gt;
+    &lt;span class="nb"&gt;DirectoryIndex&lt;/span&gt; index.php
+
+    &lt;span class="c"&gt;# Protect files and directories from prying eyes.&lt;/span&gt;
+    &lt;span class="nt"&gt;&amp;lt;FilesMatch&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;\.(engine|inc|info|install|make|module|profile|test|po|sh|.*sql|theme|tpl(\.php)?|xtmpl)$|^(\..*|Entries.*|Repository|Root|Tag|Template)$&amp;quot;&lt;/span&gt;&lt;span class="nt"&gt;&amp;gt;&lt;/span&gt;
+      &lt;span class="nb"&gt;Order&lt;/span&gt; allow,deny
+    &lt;span class="nt"&gt;&amp;lt;/FilesMatch&amp;gt;&lt;/span&gt;
+
+    &lt;span class="c"&gt;# Force simple error message for requests for non-existent favicon.ico.&lt;/span&gt;
+    &lt;span class="nt"&gt;&amp;lt;Files&lt;/span&gt; &lt;span class="s"&gt;favicon.ico&lt;/span&gt;&lt;span class="nt"&gt;&amp;gt;&lt;/span&gt;
+      &lt;span class="c"&gt;# There is no end quote below, for compatibility with Apache 1.3.&lt;/span&gt;
+      &lt;span class="nb"&gt;ErrorDocument&lt;/span&gt; &lt;span class="m"&gt;404&lt;/span&gt; &lt;span class="err"&gt;&amp;quot;&lt;/span&gt;The requested file favicon.ico was not found.
+    &lt;span class="nt"&gt;&amp;lt;/Files&amp;gt;&lt;/span&gt;
+
+    &lt;span class="nb"&gt;etc&lt;/span&gt;
+    (...)
+</code></pre>
+
+<p><span class="nt">&lt;/Directory&gt;</span></code></pre></figure></p>
 
 <p>What does this as to do with <strong>mod-rewrite</strong>? Well mod-rewrites behave quite the same in a <code>Directory</code> directive and in a <code>.htaccess</code>,
 but faster here, and without the need of any <code>rewriteBase</code> prefix.<br/>
@@ -187,33 +188,31 @@ So we'll keep the mod-rewrite rules in this Directory <code>/var/www/mydrupalpro
 
 <p>So, if we do not care about the final mod-rewrite rules about gzip contents the main rules defined by Drupal are:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># always activate modRewrite on this directory</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># always activate modRewrite on this directory</span>
 <span class="c"># (do not forget it, even if you activated it on the Virtualhost)</span>
-<span class="nb">RewriteEngine</span> <span class="k">on</span>
- 
-<span class="c"># test the requested document is not a real file (like a css or js or even index.php or update.php)</span>
-<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !-f
- 
-<span class="c"># test the requested document is not a real directory</span>
-<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !-d
- 
-<span class="c"># test the requested document is not the favicon.ico (if you do not have one,</span>
+<span class="nb">RewriteEngine</span> <span class="k">on</span></p>
+
+<p><span class="c"># test the requested document is not a real file (like a css or js or even index.php or update.php)</span>
+<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !-f</p>
+
+<p><span class="c"># test the requested document is not a real directory</span>
+<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !-d</p>
+
+<p><span class="c"># test the requested document is not the favicon.ico (if you do not have one,</span>
 <span class="c"># else it would have been catched by the first test). As we do not want to launch</span>
 <span class="c"># the whole Drupal environment to imply return a 404 for the favicon.</span>
 <span class="c"># you could see other apache rules for this with the File directive</span>
-<span class="nb">RewriteCond</span> %{REQUEST_URI} !=/favicon.ico
- 
-<span class="c"># still there, ok so take the whole request things (without the hostname) and give it to</span>
+<span class="nb">RewriteCond</span> %{REQUEST_URI} !=/favicon.ico</p>
+
+<p><span class="c"># still there, ok so take the whole request things (without the hostname) and give it to</span>
 <span class="c"># the index.php file in the &#39;q&#39; GET argument. Then stop the rewriting process (L) and add any</span>
 <span class="c"># GET argument after a ? in the request after this q argument (QSA)</span>
-<span class="nb">RewriteRule</span> ^(.*)$ index.php?q=$1 [L,QSA]</code></pre></div>
-
+<span class="nb">RewriteRule</span> ^(.*)$ index.php?q=$1 [L,QSA]</code></pre></figure></p>
 
 <p>in Drupal 6. And Drupal7 added a new rule before this one which is:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># catch anything starting with a dot and return a 403 Forbidden</span>
-<span class="nb">RewriteRule</span> <span class="s2">&quot;(^|/)\.&quot;</span> - [F]</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># catch anything starting with a dot and return a 403 Forbidden</span>
+<span class="nb">RewriteRule</span> <span class="s2">&quot;(^|/).&quot;</span> - [F]</code></pre></figure></p>
 
 <p>The only goal of this rule is to avoid access on directory with a dot in the name (such as .git or .svn).<br/>
 So if you used the <code>Redirect</code> instructions on the root directory section as I did you do not need to activate this rule.
@@ -248,15 +247,14 @@ And if we're talking about security, access to <code>/admin</code> could be done
 <p>Benoit once tried to prevent all theses access with mod-rewrite in this <a href="http://www.makina-corpus.org/blog/how-prevent-access-drupal-admin-url-apache-and-mod-rewrite">article</a>.
 But a condition filtering theses requests, only on <code>/admin</code>, would be (AFAIK):</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">RewriteCond</span> %{QUERY_STRING} (^|&amp;|%26|%20)(q|Q|%71|%51)(=|%3D)(/|%2F)+?(a|A|%61|%41)(d|D|%64|%44)(m|M|%6D|%4D)(i|I|%69|%49)(n|N|%6E|%4E)(/|%2F|&amp;|%26|$) [NC]</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">RewriteCond</span> %{QUERY_STRING} (^|&amp;|%26|%20)(q|Q|%71|%51)(=|%3D)(/|%2F)+?(a|A|%61|%41)(d|D|%64|%44)(m|M|%6D|%4D)(i|I|%69|%49)(n|N|%6E|%4E)(/|%2F|&amp;|%26|$) [NC]</code></pre></figure></p>
 
 <p>Which is pretty <strong>awfull</strong>.</p>
 
 <p>The <strong>real solution</strong> is <strong>to prevent any direct via the <code>q=xxx</code> argument</strong>.<br/>
 But that mean as well without restricting the real final Drupal request on <code>index.php</code> with this <code>q=xxx</code> argument. This is the way to do it:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># always activate modRewrite on this directory</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># always activate modRewrite on this directory</span>
 <span class="c"># (do not forget it, even if you activated it on the Virtualhost)</span>
 <span class="nb">RewriteEngine</span> <span class="k">on</span>
 <span class="c">######### START RULE 1 ##################################</span>
@@ -274,20 +272,20 @@ But that mean as well without restricting the real final Drupal request on <code
 <span class="c"># /toto/titi to q=/toto/titi (done in rule 2)</span>
 <span class="c"># to be forbidden, so the rule apply only</span>
 <span class="c"># if the rewriting process is starting</span>
-<span class="nb">RewriteCond</span> %{ENV:REDIRECT_STATUS} ^$
- 
-<span class="c">#detect non-blank QUERY_STRING (some parameters are present after the ?)</span>
+<span class="nb">RewriteCond</span> %{ENV:REDIRECT_STATUS} ^$</p>
+
+<p><span class="c">#detect non-blank QUERY_STRING (some parameters are present after the ?)</span>
 <span class="c"># else we have nothing to fear about blank queries</span>
-<span class="nb">RewriteCond</span> %{QUERY_STRING} . [NC]
- 
-<span class="c"># we prevent any query with a q= parameter</span>
-<span class="nb">RewriteCond</span> %{QUERY_STRING} (^|&amp;|%26|%20)(q|Q|%71|%51)(=|%3D). [NC]
- 
-<span class="c"># 403 FORBIDDEN !</span>
+<span class="nb">RewriteCond</span> %{QUERY_STRING} . [NC]</p>
+
+<p><span class="c"># we prevent any query with a q= parameter</span>
+<span class="nb">RewriteCond</span> %{QUERY_STRING} (^|&amp;|%26|%20)(q|Q|%71|%51)(=|%3D). [NC]</p>
+
+<p><span class="c"># 403 FORBIDDEN !</span>
 <span class="nb">RewriteRule</span> .* - [F,L]
-<span class="c">########## END RULE 1 ###################</span>
- 
-<span class="c">########## START RULE 2 ###################</span>
+<span class="c">########## END RULE 1 ###################</span></p>
+
+<p><span class="c">########## START RULE 2 ###################</span>
 <span class="c"># Clean url handling</span>
 <span class="c"># for things which aren&#39;t real files or dir then</span>
 <span class="c"># take the given url and giv it to index.php?q=...</span>
@@ -296,33 +294,31 @@ But that mean as well without restricting the real final Drupal request on <code
 <span class="c"># squeeze real files or directories, if they really exists</span>
 <span class="c"># then Drupal won&#39;t be called</span>
 <span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !-f
-<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !-d
- 
-<span class="c"># do not handle the favicon with Drupal bootstrap</span>
-<span class="nb">RewriteCond</span> %{REQUEST_URI} !=/favicon.ico
- 
-<span class="c"># put everything still there to Drupal index.php</span>
+<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !-d</p>
+
+<p><span class="c"># do not handle the favicon with Drupal bootstrap</span>
+<span class="nb">RewriteCond</span> %{REQUEST_URI} !=/favicon.ico</p>
+
+<p><span class="c"># put everything still there to Drupal index.php</span>
 <span class="c"># [L]= stop rewriting here for matching rules</span>
 <span class="c"># [QSA]=Appends any query string created in the rewrite target</span>
 <span class="c"># to any query string that was in the original request URL</span>
 <span class="nb">RewriteRule</span> ^(.*)$ index.php?q=$1 [L,QSA]
-<span class="c">########## END RULE 2 ###################</span></code></pre></div>
-
+<span class="c">########## END RULE 2 ###################</span></code></pre></figure></p>
 
 <p>Without the comments, for reference:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">RewriteEngine</span> <span class="k">on</span>
- 
-<span class="nb">RewriteCond</span> %{ENV:REDIRECT_STATUS} ^$
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">RewriteEngine</span> <span class="k">on</span></p>
+
+<p><span class="nb">RewriteCond</span> %{ENV:REDIRECT_STATUS} ^$
 <span class="nb">RewriteCond</span> %{QUERY_STRING} . [NC]
 <span class="nb">RewriteCond</span> %{QUERY_STRING} (^|&amp;|%26|%20)(q|Q|%71|%51)(=|%3D). [NC]
-<span class="nb">RewriteRule</span> .* - [F,L]
- 
-<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !-f
+<span class="nb">RewriteRule</span> .* - [F,L]</p>
+
+<p><span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !-f
 <span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !-d
 <span class="nb">RewriteCond</span> %{REQUEST_URI} !=/favicon.ico
-<span class="nb">RewriteRule</span> ^(.*)$ index.php?q=$1 [L,QSA]</code></pre></div>
-
+<span class="nb">RewriteRule</span> ^(.*)$ index.php?q=$1 [L,QSA]</code></pre></figure></p>
 
 <h3>WTF: what is this hackme.php file in this javascript library?</h3>
 
@@ -345,27 +341,24 @@ And do you need <code>xmlrpc.php</code>? I'm not saying these files have known s
 someday fond one ... And for the <code>cron.php</code> file, this is a good script to request to perform a
 nice <code>DOS</code> with a few requests. This is an example of restrictions for cron.php:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># Limit cron.php access to localhost only</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># Limit cron.php access to localhost only</span>
 <span class="nt">&lt;Location</span> <span class="s">/cron.php</span><span class="nt">&gt;</span>
     <span class="nb">Order</span> deny,allow
     <span class="nb">deny</span> from <span class="k">all</span>
     <span class="nb">allow</span> from <span class="m">127.0.0.1</span>
-<span class="nt">&lt;/Location&gt;</span></code></pre></div>
-
+<span class="nt">&lt;/Location&gt;</span></code></pre></figure></p>
 
 <p>But if you think you'll never need to access the other files (or that you will alter apache configuation when needed),
 you can also add in the VirtualHost (see, no need of mod-rewrite for simple redirects):</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">Redirect</span> temp <span class="sx">/update.php</span> http://www.example.com/index.php
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"> <span class="nb">Redirect</span> temp <span class="sx">/update.php</span> http://www.example.com/index.php
  <span class="nb">Redirect</span> temp <span class="sx">/install.php</span> http://www.example.com/index.php
- <span class="nb">Redirect</span> temp <span class="sx">/xmlrpc.php</span> http://www.example.com/index.php</code></pre></div>
-
+ <span class="nb">Redirect</span> temp <span class="sx">/xmlrpc.php</span> http://www.example.com/index.php</code></pre></figure></p>
 
 <p>But now, let's perform a little find on your Drupal project to see if some other php files aren't there in the web directory
 root (so allowing direct access):</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">find /var/www/mydrupalproject/www -name <span class="se">\*</span>.php</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-bash" data-lang="bash">find /var/www/mydrupalproject/www -name <span class="se">*</span>.php</code></pre></figure></p>
 
 <p>Ouch, at least <strong>62 files</strong>, from a basic <strong>nude</strong> Drupal.<br/>
 We're not in a Zend Framework project here (result would be 1), every library is on the document root, like in the 90's !<br/>
@@ -379,18 +372,17 @@ in a short time google will prevent any browser access to your website!</p>
 <p>So the solution? <strong>prevent any access to a php file which is not one of index.php, cron.php, update.php and install.php (and maybe xmlrpc.php)</strong><br/>
 Just add this last rule:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c">########## START RULE 3 ###################</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c">########## START RULE 3 ###################</span>
 <span class="c"># deny direct access to php files which aren&#39;t</span>
 <span class="c"># index.php or update.php or install.php or xmlrpc.php or cron.php</span>
 <span class="c"># (like an injected phpinfo.php)</span>
 <span class="c">###########################################</span>
 <span class="nb">RewriteCond</span> %{ENV:REDIRECT_STATUS} ^$
 <span class="nb">RewriteCond</span> %{REQUEST_FILENAME} -f
-<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} .*\.php
-<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !(update\.php|index\.php|install\.php|xmlrpc\.php|cron\.php)
-<span class="nb">RewriteRule</span> .* - [F,L]
-<span class="c">########## END RULE 3 ###################</span></code></pre></div>
-
+<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} .<em>.php
+<span class="nb">RewriteCond</span> %{REQUEST_FILENAME} !(update.php|index.php|install.php|xmlrpc.php|cron.php)
+<span class="nb">RewriteRule</span> .</em> - [F,L]
+<span class="c">########## END RULE 3 ###################</span></code></pre></figure></p>
 
 <h3>Need to debug? Questions?</h3>
 
@@ -399,11 +391,10 @@ Just add this last rule:</p>
 If you want to make some more rules, or debug what mod-rewrite is doing for one request add theses settings in the VirtualHost
 (<strong>not</strong> on the <code>Directory</code> section like the rules):</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">RewriteEngine</span> <span class="k">on</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">RewriteEngine</span> <span class="k">on</span>
 <span class="c"># debug mod_rewrite</span>
 <span class="nb">RewriteLogLevel</span> <span class="m">9</span>
-<span class="nb">RewriteLog</span> <span class="sx">/tmp/rewritelog.log</span></code></pre></div>
-
+<span class="nb">RewriteLog</span> <span class="sx">/tmp/rewritelog.log</span></code></pre></figure></p>
 
 <p>Then a <code>"tail -f /tmp/rewritelog.log"</code> will show you a lot of things.
 Do not do that on a production server.<br/>
@@ -467,29 +458,29 @@ Check <a href="/apache/english/2009/11/05/use_rewrite_map_to_prevent_proxying_fo
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/apache/english/2009/11/06/more_on_static_file_redirector/">
-                     <h4>More on Static file redirector</h4>
-                     <p>Complements on the previous article. hash the file map, use a /static url, and avoid security problems with tis new mode.</p>
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
+                     <h4>Security: HTTP Smuggling, Apsis Pound load balancer</h4>
+                     <p>details of CVE-2016-10711 (published feb 2018).</p>
                      </a>
                   
-                     <a class="list-group-item" href="/apache/english/2009/11/05/use_rewrite_map_to_prevent_proxying_for_some_static_contents/">
-                     <h4>Use RewriteMap to prevent proxying for some static contents</h4>
-                     <p>How to use the not well known RewriteMap Apache feature to proxy static resources on a web app without clean url separation between static and dynamic content (here Plone).</p>
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
+                     <h4>PostgreSQL, advanced use of generate_series for data generation</h4>
+                     <p>filling thousands of random realistic data rows.</p>
                      </a>
                   
-                     <a class="list-group-item" href="/drupal/english/2011/10/18/drupal_mongodb_statistics_module_published/">
-                     <h4>Drupal - Mongodb statistics module published</h4>
-                     <p>mongodb-statistics module for drupal is a replacement for core statistics module using an ajax callback tracker.</p>
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
+                     <h4>Web Security, Dompdf security issues details</h4>
+                     <p>details of december 2015's 3 CVE in dompdf, with one RCE.</p>
                      </a>
                   
-                     <a class="list-group-item" href="/drupal/english/2011/10/03/separate_cache_backends_d6_and_d7/">
-                     <h4>Separate cache Backends with Drupal6 and Drupal7.</h4>
-                     <p>Detailled explanation on how to split Drupal's cache tables on several devices, as each cache does not need the same speed and/or capacity.</p>
+                     <a class="list-group-item" href="/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     <h4>Web Security, using bad HTML to escape from a DIV</h4>
+                     <p>Break HTML layouts with only bad HTML and the browser's help.</p>
                      </a>
                   
-                     <a class="list-group-item" href="/drupal/english/2013/05/16/Warning_chrooted_php_fpm_and_apc/">
-                     <h4>Warning Chrooted php-fpm and Apc with multiple pools</h4>
-                     <p>Using several chrooted php-fpm pools with APC opcode may break all your websites (and chroot jails). Step by step of cloning php-fpm daemons.</p>
+                     <a class="list-group-item" href="/english/security/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <h4>Checking HTTP Smuggling issues in 2015 - Part1</h4>
+                     <p>First part of the 2015 HTTP Smuggling articles. Injecting HTTP in HTTP, the theory.</p>
                      </a>
                   
                 </div>
@@ -502,23 +493,23 @@ Check <a href="/apache/english/2009/11/05/use_rewrite_map_to_prevent_proxying_fo
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/security/english/2018/07/03/security_pound_http_smuggling/">
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
                      Security: HTTP Smuggling, Apsis Pound load balancer
                      </a>
                   
-                     <a class="list-group-item" href="/postgresql/english/2017/06/26/postgresql_advanced_generate_series/">
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
                      PostgreSQL, advanced use of generate_series for data generation
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2016/12/19/security_dompdf_rce/">
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
                      Web Security, Dompdf security issues details
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     <a class="list-group-item" href="/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
                      Web Security, using bad HTML to escape from a DIV
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <a class="list-group-item" href="/english/security/2015/10/04/http_smuggling_in_2015_part_one/">
                      Checking HTTP Smuggling issues in 2015 - Part1
                      </a>
                   
@@ -531,46 +522,46 @@ Check <a href="/apache/english/2009/11/05/use_rewrite_map_to_prevent_proxying_fo
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
+                <a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
 <a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 30px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
-<a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
-<a style='font-size: 28px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
+<a style='font-size: 31px' class='taglink' href='/tag/PHP/'>PHP</a>
 <a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
 <a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
 <a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
 
                 </div>
               </div>
@@ -585,7 +576,7 @@ Check <a href="/apache/english/2009/11/05/use_rewrite_map_to_prevent_proxying_fo
                 <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
                 <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
                 <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
-                <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+                <a href="https://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
             </div>
             <div class="sideBarItem">
               <h3>Some Friends</h3>

