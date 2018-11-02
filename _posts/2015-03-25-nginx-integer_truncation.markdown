@@ -2,8 +2,8 @@
 layout: post
 uuid: 91e11e2b-c5ed-34f5-e5a6-64ebc000cf44
 title: Nginx Integer Truncation
-categories: [Security, English]
-tags: [Drupal, Security, Apache, PHP]
+categories: [english, Security]
+tags: [Drupal, Security, Apache, HTTP]
 pic: long_name2.jpg
 excerpt: Exploitation of Integer Overflow with the HTTP Content length Header
 ---

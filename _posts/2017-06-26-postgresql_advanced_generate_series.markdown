@@ -2,7 +2,7 @@
 layout: post
 uuid: 8dcfedce-aae4-3bfffd-986edab3535ebb050ac
 title: PostgreSQL, advanced use of generate_series for data generation
-categories: [PostgreSQL, English]
+categories: [english, PostgreSQL]
 tags: [PostgreSQL]
 pic: generation.jpg
 excerpt: filling thousands of random realistic data rows.

@@ -2,7 +2,7 @@
 layout: post
 uuid: b4d9c381-9c78-4039-9155-e3385e81875c
 title: 6 nice things not know enough about PostgreSQL
-categories: [PostgreSQL, English]
+categories: [english, PostgreSQL]
 tags: [PostgreSQL]
 pic: old4.jpg
 excerpt: Let's explore FillFactor, Returning inserts, TOAST, table inheritance, table partitionning and Notify/listen features. 

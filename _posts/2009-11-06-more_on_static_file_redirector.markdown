@@ -2,7 +2,7 @@
 layout: post
 uuid: 6eab1ca2-20a3-4051-8880-57776d835d35
 title: More on Static file redirector
-categories: [Apache, English]
+categories: [english, Apache]
 tags: [HTTP, Plone, Performance, Proxy, mod_rewrite, RewriteMap, Security]
 pic: old7.jpg
 excerpt: Complements on the previous article. hash the file map, use a /static url, and avoid security problems with tis new mode.  

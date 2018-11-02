@@ -2,7 +2,7 @@
 layout: post
 uuid: 671fb11a-8778-11e3-b2e4-d231feb1dc81 
 title: SaltStack, Use file.accumulated accumulators with file.managed and file.blockreplace
-categories: [SaltStack, English]
+categories: [english, SaltStack]
 tags: [SaltStack, BlockReplace, Managed, Accumulated]
 pic: replaceblock2.jpg
 excerpt: This is a detailled example of salt-stack's file.accumulated usage.

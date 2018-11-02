@@ -2,7 +2,7 @@
 layout: post
 uuid: e1ff7b10-4e59-4762-a294-7dbda908f5a2
 title: Autocomplete Ajax search with Dojo and Zend Framework
-categories: [Zend Framework, English]
+categories: [english, Zend Framework]
 tags: [ZendFramework, Dojo, js, Ajax]
 pic: old3.jpg
 excerpt: How to build a Dojo autocomplete with ZF 1.6, with a nice json response.

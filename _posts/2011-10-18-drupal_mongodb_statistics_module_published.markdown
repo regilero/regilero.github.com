@@ -2,7 +2,7 @@
 layout: post
 uuid: fd77f142-4f70-4268-9668-a252db9b0ff3
 title: Drupal - Mongodb statistics module published
-categories: [Drupal, English]
+categories: [english, Drupal]
 tags: [Drupal, Performance, Mongodb, Statistics, PHP]
 pic: old13.jpg
 excerpt: mongodb-statistics module for drupal is a replacement for core statistics module using an ajax callback tracker.

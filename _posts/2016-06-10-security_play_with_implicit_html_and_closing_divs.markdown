@@ -2,7 +2,7 @@
 layout: post
 uuid: 9addd55e-aff4-4qdq-a8eef80dfee8d080f8
 title: Web Security, using bad HTML to escape from a DIV
-categories: [Security, English]
+categories: [english, Security]
 tags: [Security, HTML, Injection]
 pic: counting.jpg
 excerpt: Break HTML layouts with only bad HTML and the browser's help.

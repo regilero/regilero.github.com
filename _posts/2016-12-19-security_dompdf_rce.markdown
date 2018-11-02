@@ -2,7 +2,7 @@
 layout: post
 uuid: 9daab43e-eda2-2abba-312dcba518aa8d0808f
 title: Web Security, Dompdf security issues details
-categories: [Security, English]
+categories: [english, Security]
 tags: [Security, CVE, Injection]
 pic: library.jpg
 excerpt: details of december 2015's 3 CVE in dompdf, with one RCE.

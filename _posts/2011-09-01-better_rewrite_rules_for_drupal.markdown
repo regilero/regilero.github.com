@@ -2,7 +2,7 @@
 layout: post
 uuid: 4323720b-b870-4f95-8938-ef0c2dc355d6
 title: Better rewriteRules for Drupal
-categories: [Drupal, English]
+categories: [english, Drupal]
 tags: [Drupal, Performance, Apache, PHP, mod_rewrite, Security]
 pic: old9.jpg
 excerpt: A big re-think of rewrite rules for Drupal, preventing acess from index.php?q=foo default url, no .htaccess, and some other security stuff 

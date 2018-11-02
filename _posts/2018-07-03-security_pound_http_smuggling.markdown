@@ -2,7 +2,7 @@
 layout: post
 uuid: 9dchfg-ebb4-2cdfe-586dcaa665ecec50f0
 title: "Security: HTTP Smuggling, Apsis Pound load balancer"
-categories: [Security, English]
+categories: [english, Security]
 tags: [Security, CVE, HTTP, Smuggling, Pound]
 pic: old1.jpg
 excerpt: details of CVE-2016-10711 (published feb 2018).

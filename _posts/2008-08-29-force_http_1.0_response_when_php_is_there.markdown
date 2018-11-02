@@ -2,7 +2,7 @@
 layout: post
 uuid: 146ce900-469f-483e-9a0e-8ce74364b308
 title: Force HTTP/1.0 Apache response when PHP is there...
-categories: [Apache, English]
+categories: [english, Apache]
 tags: [HTTP, Apache, PHP, Bug]
 pic: old2.jpg
 excerpt: Trying to user force-response-1.0 downgrade-1.0 apache setting when using PHP is not working - a PHP bug - here is a workaround.

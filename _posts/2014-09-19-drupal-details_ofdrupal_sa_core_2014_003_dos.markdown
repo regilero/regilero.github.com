@@ -2,7 +2,7 @@
 layout: post
 uuid: 21c84958-8e55-11f8-bae8-0842200c9a55
 title: Details of DRUPAL_SA_CORE_2014_003 Deny Of Service
-categories: [Security, English]
+categories: [english, Security]
 tags: [Drupal, Security, Apache, PHP]
 pic: long_name.jpg
 excerpt: Analysis of the new DRUPAL_SA_CORE_2014_003 DOS vulnerability (CVE-2014-5019)

@@ -2,8 +2,8 @@
 layout: post
 uuid: 91ecd42e-adc8-4dqq-a2ff80deaa8d000ff
 title: Checking HTTP Smuggling issues in 2015 - Part1
-categories: [Security, English]
-tags: [Security, Apache, Varnish, Nginx, HAProxy, Smuggling]
+categories: [english, Security]
+tags: [Security, HTTP, Apache, Varnish, Nginx, HAProxy, Smuggling]
 pic: wookie1.jpg
 excerpt: First part of the 2015 HTTP Smuggling articles. Injecting HTTP in HTTP, the theory.
 ---
