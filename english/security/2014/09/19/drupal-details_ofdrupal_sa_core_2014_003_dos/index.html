@@ -1,0 +1,649 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title> Details of DRUPAL_SA_CORE_2014_003 Deny Of Service |  RBleug</title>
+    <meta name="description" content="Regilero's blog; Mostly tech things about web stuff."/>
+    <meta name="author" content="regilero"/>
+    <link rel="author" href="/contact/" title="who am I?" type="text/html" />
+    <link rel="icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/feed.xml" />
+    <link rel="stylesheet" href="/theme/bootstrap/css/bootstrap.min.css" type="text/css">
+    <link rel="stylesheet" href="/theme/bootstrap/css/bootstrap-theme.min.css" type="text/css">
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+<!--
+    <link rel="stylesheet" href="/theme/blueprint/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/blueprint/print.css" type="text/css" media="print">
+    <link rel="stylesheet" href="/theme/syntax.css" type="text/css" />
+    <!--[if lt IE 8]>
+      <link rel="stylesheet" href="/theme/blueprint/ie.css" type="text/css" media="screen, projection">
+    <![endif]-->
+<!--
+    <link rel="stylesheet" href="/theme/blueprint/plugins/link-icons/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/fontello/css/fontello.css">
+    <!--[if IE 7]><link rel="stylesheet" href="/theme/fontello/css/fontello-ie7.css"><![endif]-->
+    <link href="/theme/syntax.css" rel="stylesheet" type="text/css" />
+    <link href="/theme/style.css" rel="stylesheet" type="text/css" />
+
+  </head>
+  <body>
+    <div class="topNav navbar navbar-inverse navbar-static-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand visible-xs-inline" href="#">Navigation</a>
+        </div>
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li ><a href="/" class="glyphicon glyphicon-home">&nbsp;Home</a></li>
+            <li class="active"><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
+            <li ><a href="/contact/" class="glyphicon glyphicon-earphone">&nbsp;Contact</a></li>
+            <li><a class="glyphicon glyphicon-eye-open" href="/feed.xml">&nbsp;RSS Feed</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </div>
+
+  <div class="container" role="main">
+  
+    <div class="jumbotron">
+      <div class="container">
+         <div id="branding">
+           <h1 class="logo"><a href="/">RBleug</a></h1>
+           <hr/>
+           <h2 class="alt">Regilero's blog; Mostly tech things about web stuff.</h2>
+         </div>
+       </div>
+     </div>
+
+    <div class="row">
+      <div class="col-md-8" id="left-content">
+
+          <article>
+        <header>
+            <div class="page-header">
+            <h1>Details of DRUPAL_SA_CORE_2014_003 Deny Of Service
+            <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="2014-09-19">Sep 19, 2014</time></span>
+            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/english/">english</a> and <a href="/security/">security</a></span>
+            </h1>
+            </div>
+        </header>
+
+        <div class="entry">
+         <div class="col-md-6">
+          <div class="post-excerpt-full">
+          Analysis of the new DRUPAL_SA_CORE_2014_003 DOS vulnerability (CVE-2014-5019)
+          </div>
+          <div id="post-toc">
+          </div>
+         </div>
+         <div class="col-md-6">
+          <img class="topimg" src="/theme/img/pic/long_name.jpg" alt="Analysis of the new DRUPAL_SA_CORE_2014_003 DOS vulnerability (CVE-2014-5019)" title="Analysis of the new DRUPAL_SA_CORE_2014_003 DOS vulnerability (CVE-2014-5019)" />
+         </div>
+         <div class="row">
+          <div class="col-md-12" id="post-full">
+       
+          <p><small><strong>English version</strong> (<strong>Version Française</strong> disponible sur <a href="http://makina-corpus.com/blog/metier/2014/details-of-drupal_sa_core_2014_003">makina corpus</a>.)</small></p>
+
+<h2>SA_CORE_2014_003</h2>
+
+<p>This summer Drupal versions <a href="https://www.drupal.org/drupal-6.32-release-notes">6.x</a> and <a href="https://www.drupal.org/drupal-7.29-release-notes">7.29</a> &amp; <a href="https://www.drupal.org/drupal-7.31-release-notes">7.31</a> have been released with some critical security fixs. Enough time as passed, so I will give some details one of the issues from <a href="https://www.drupal.org/SA-CORE-2014-003">SA-CORE-2014-003 - Drupal core - Multiple vulnerabilities</a>. It contains 3 issues. The one we will study here is the Core <strong>Deny of Service</strong> (DOS) issue which is also available in the CVE database as <a href="http://www.cvedetails.com/cve/CVE-2014-5019/">CVE-2014-5019</a>. This post is a detailled explanation of how drupal is using the Host header of the http request to find the configuration file, and why this was usable in a deny of service attack even for websites not using the multisite feature. It contains some not very well known things on Host header manipulations, so I hope this will help other projects from avoiding theses issues.</p>
+
+<p>Note that there were a regression in Drupal 7.29, with images and files attached to taxonomy terms which has been fixed on the next release 7.30 (the regression was not about the patch discussed here).</p>
+
+<p>Note also that another core security issue has been fixed right after this one (<a href="https://www.drupal.org/SA-CORE-2014-004">SA-CORE-2014-004 - Drupal core - Multiple vulnerabilities</a>, which was another DOS issue coming from <code>xmlrpc.php</code>, so if you do not have something preventing remote access to this php file you should really upgrade your drupal code version to version <code>7.31</code>. My own advice is to alter your Apache/Nginx configuration to only allow one PHP file, <code>index.php</code>, this will prevent a loooot of problems.</p>
+
+<p>If you have some fears on updating the Core you can at least apply <a href="https://www.drupal.org/files/issues/sec-D7-conf-path-dos-105258-23.patch">the DOS patch</a> for this first DOS issue (this is not the patch for the xmlrpc.php issue), which is quite simple:</p>
+
+<pre><code>diff --git a/includes/bootstrap.inc b/includes/bootstrap.inc
+index 0b81dc0..dc08dd6 100644
+--- a/includes/bootstrap.inc
++++ b/includes/bootstrap.inc
+@@ -700,7 +700,14 @@ function drupal_environment_initialize() {
+  *  TRUE if only containing valid characters, or FALSE otherwise.
+  */
+ function drupal_valid_http_host($host) {
+-  return preg_match('/^\[?(?:[a-zA-Z0-9-:\]_]+\.?)+$/', $host);
++  // Limit the length of the host name to 1000 bytes to prevent DoS attacks with
++  // long host names.
++  return strlen($host) &lt;= 1000
++    // Limit the number of subdomains and port separators to prevent DoS attacks
++    // in conf_path().
++    &amp;&amp; substr_count($host, '.') &lt;= 100
++    &amp;&amp; substr_count($host, ':') &lt;= 100
++    &amp;&amp; preg_match('/^\[?(?:[a-zA-Z0-9-:\]_]+\.?)+$/', $host);
+ }
+</code></pre>
+
+<h2>So, what was the problem?</h2>
+
+<h3>Spoofable Hostnames</h3>
+
+<p>By simply checking the patch we can see that the goal is to prevent :</p>
+
+<ul>
+<li>hostnames longer than 1000 characters</li>
+<li>hostnames with more than 100 dots (or subdomains)</li>
+<li>hostnames with more than 100 <code>:</code> (used on ports and sometimes for IPv6)</li>
+</ul>
+
+
+<p>The <strong>hostname</strong> is a very important part of the client HTTP request. When you are requesting a website, which could be a drupal website, your client HTTP request will send several headers and on of theses headers is the hostname, it is the <strong>Host:</strong> header:</p>
+
+<pre><code>GET /page/foo?z=42 HTTP/1.1
+Host: www.example.com
+(other headers)
+</code></pre>
+
+<p>The HTTP server receiving this request will decide which VirtualHost will have to handle the request, usually using the Host header to choose between several VirtualHosts (sometimes a same HTTP server is used to manage hundreds of websites). Usually this Host header should contain your website <strong>DNS</strong>. This header is required for HTTP/1.1 and can also be used with HTTP/1.0.</p>
+
+<p>But this header is <strong>spoofable</strong> by the client, so it could contain anything. Hopefully (or at least that's what you usually hope) having a bad Host header should prevent the request from reaching your valid Drupal installation because of several facts:</p>
+
+<ul>
+<li>really bad injections (like null-bytes) are detected by the HTTP server and the connection is closed</li>
+<li>Headers cannot use more than 8000 characters (more or less), this limits the size of the spoofed header (but, hey, 8000 is quite huge)</li>
+<li>unrecognized hostnames goes to the default Virtualhost, which may not be your Drupal website</li>
+<li>Drupal also ensure this Hostname only contains a small subset of valid characters</li>
+<li>multiple Host headers are concatenated with <code>,</code> (comma and space -- and drupal rejects spaces in headers)</li>
+</ul>
+
+
+<p>In 2013 an excellent paper on <a href="http://www.skeletonscribe.net/2013/05/practical-http-host-header-attacks.html">Practical Host headers attacks</a> have been published by <a href="https://plus.google.com/+JamesKettle/about">James Kettle</a> and we can see several very important facts in this paper:</p>
+
+<ul>
+<li>the <strong>default Virtualhost protection does not work</strong>, more on that at the end of this page. This is valid for both <strong>Nginx</strong> and <strong>Apache</strong>.</li>
+<li>any application having too much trust on this spoofable Header may suffers from issues.</li>
+</ul>
+
+
+<p>This paper was studied by the drupal security team, <a href="https://www.drupal.org/node/2221699">you can check the discussions here</a>, and one fact to remember about this discussion is that <strong>you should always enforce the <code>$base_url</code> setting</strong> when running Drupal in production to avoid attacks based on password renewable mails.</p>
+
+<p>So far so good, no real problems.</p>
+
+<h3>conf_path() settings file search</h3>
+
+<p>Drupal already had a <code>drupal_valid_http_host</code> function ensuring the hostnames did not contain bad characters like <code>/</code>,<code>\</code>,<code>%</code>,<code></code> or <code>&amp;</code>. Only letters, digits, dots and <code>:</code>. Not relying on the HTTP server to ensure a really clean Hostname, always good to add some security layers in the application.</p>
+
+<p>This was a good security point, because this hostname is used in <code>conf_path()</code> function, and this is a very early function in the drupal bootstraping process.</p>
+
+<p>One of the early step done while bootstraping Drupal is to load the configuration file. This file will give you, for example, access to the database, or the <code>$base_url</code> enforced setting.</p>
+
+<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
+    <span class="sd">/**</span>
+<span class="sd">     * Sets the base URL, cookie domain, and session name from configuration.</span>
+<span class="sd">     */</span>
+    <span class="k">function</span> <span class="nf">drupal_settings_initialize</span><span class="p">()</span> <span class="p">{</span>
+      <span class="k">global</span> <span class="nv">$base_url</span><span class="p">,</span> <span class="nv">$base_path</span><span class="p">,</span> <span class="nv">$base_root</span><span class="p">;</span>
+    
+      <span class="c1">// Export these settings.php variables to the global namespace.</span>
+      <span class="k">global</span> <span class="nv">$databases</span><span class="p">,</span> <span class="nv">$cookie_domain</span><span class="p">,</span> <span class="nv">$conf</span><span class="p">,</span> <span class="nv">$installed_profile</span><span class="p">,</span>     <span class="nv">$update_free_access</span><span class="p">,</span> <span class="nv">$db_url</span><span class="p">,</span> <span class="nv">$db_prefix</span><span class="p">,</span> <span class="nv">$drupal_hash_salt</span><span class="p">,</span> <span class="nv">$is_https</span><span class="p">,</span> <span class="nv">$base_secure_url</span><span class="p">,</span> <span class="nv">$base_insecure_url</span><span class="p">;</span>
+      <span class="nv">$conf</span> <span class="o">=</span> <span class="k">array</span><span class="p">();</span>
+    
+      <span class="k">if</span> <span class="p">(</span><span class="nb">file_exists</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nx">conf_path</span><span class="p">()</span> <span class="o">.</span> <span class="s1">&#39;/settings.php&#39;</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">include_once</span> <span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nx">conf_path</span><span class="p">()</span> <span class="o">.</span> <span class="s1">&#39;/settings.php&#39;</span><span class="p">;</span>
+      <span class="p">}</span></code></pre></div>
+
+
+<p>Here we see that the settings path depends on the <code>conf_path()</code> call. This function is quite short, there's a <code>drupal_static</code> thing which is simply a way to avoid re-doing stuff after the first call (in the same HTTP request), it's basically a lazy-loading-run-only-once shortcut.</p>
+
+<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
+    <span class="k">function</span> <span class="nf">conf_path</span><span class="p">(</span><span class="nv">$require_settings</span> <span class="o">=</span> <span class="k">TRUE</span><span class="p">,</span> <span class="nv">$reset</span> <span class="o">=</span> <span class="k">FALSE</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nv">$conf</span> <span class="o">=</span> <span class="o">&amp;</span><span class="nx">drupal_static</span><span class="p">(</span><span class="nx">__FUNCTION__</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">);</span>
+    
+      <span class="k">if</span> <span class="p">(</span><span class="nv">$conf</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nv">$reset</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nv">$conf</span><span class="p">;</span> <span class="c1">//&lt;-- here is the run-only-once thing I was talking about</span>
+      <span class="p">}</span>
+    
+      <span class="nv">$confdir</span> <span class="o">=</span> <span class="s1">&#39;sites&#39;</span><span class="p">;</span>
+    
+      <span class="nv">$sites</span> <span class="o">=</span> <span class="k">array</span><span class="p">();</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nb">file_exists</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$confdir</span> <span class="o">.</span> <span class="s1">&#39;/sites.php&#39;</span><span class="p">))</span> <span class="p">{</span>
+        <span class="c1">// This will overwrite $sites with the desired mappings.</span>
+        <span class="k">include</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$confdir</span> <span class="o">.</span> <span class="s1">&#39;/sites.php&#39;</span><span class="p">);</span>
+      <span class="p">}</span>
+    
+      <span class="nv">$uri</span> <span class="o">=</span> <span class="nb">explode</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;SCRIPT_NAME&#39;</span><span class="p">]</span> <span class="o">?</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;SCRIPT_NAME&#39;</span><span class="p">]</span> <span class="o">:</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;SCRIPT_FILENAME&#39;</span><span class="p">]);</span>
+      <span class="nv">$server</span> <span class="o">=</span> <span class="nb">explode</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="nb">implode</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="nb">array_reverse</span><span class="p">(</span><span class="nb">explode</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="nb">rtrim</span><span class="p">(</span><span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;HTTP_HOST&#39;</span><span class="p">],</span> <span class="s1">&#39;.&#39;</span><span class="p">)))));</span>
+      <span class="k">for</span> <span class="p">(</span><span class="nv">$i</span> <span class="o">=</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$uri</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span> <span class="nv">$i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$i</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="nv">$j</span> <span class="o">=</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$server</span><span class="p">);</span> <span class="nv">$j</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$j</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
+          <span class="nv">$dir</span> <span class="o">=</span> <span class="nb">implode</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="nb">array_slice</span><span class="p">(</span><span class="nv">$server</span><span class="p">,</span> <span class="o">-</span><span class="nv">$j</span><span class="p">))</span> <span class="o">.</span> <span class="nb">implode</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="nb">array_slice</span><span class="p">(</span><span class="nv">$uri</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nv">$i</span><span class="p">));</span>
+          <span class="k">if</span> <span class="p">(</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$sites</span><span class="p">[</span><span class="nv">$dir</span><span class="p">])</span> <span class="o">&amp;&amp;</span> <span class="nb">file_exists</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$confdir</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$sites</span><span class="p">[</span><span class="nv">$dir</span><span class="p">]))</span> <span class="p">{</span>
+            <span class="nv">$dir</span> <span class="o">=</span> <span class="nv">$sites</span><span class="p">[</span><span class="nv">$dir</span><span class="p">];</span>
+          <span class="p">}</span>
+          <span class="k">if</span> <span class="p">(</span><span class="nb">file_exists</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$confdir</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$dir</span> <span class="o">.</span> <span class="s1">&#39;/settings.php&#39;</span><span class="p">)</span> <span class="o">||</span> <span class="p">(</span><span class="o">!</span><span class="nv">$require_settings</span> <span class="o">&amp;&amp;</span> <span class="nb">file_exists</span><span class="p">(</span><span class="nx">DRUPAL_ROOT</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$confdir</span> <span class="o">.</span> <span class="s1">&#39;/&#39;</span> <span class="o">.</span> <span class="nv">$dir</span><span class="p">)))</span> <span class="p">{</span>
+            <span class="nv">$conf</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">$confdir</span><span class="s2">/</span><span class="si">$dir</span><span class="s2">&quot;</span><span class="p">;</span>
+            <span class="k">return</span> <span class="nv">$conf</span><span class="p">;</span>
+          <span class="p">}</span>
+        <span class="p">}</span>
+      <span class="p">}</span>
+      <span class="nv">$conf</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">$confdir</span><span class="s2">/default&quot;</span><span class="p">;</span>
+      <span class="k">return</span> <span class="nv">$conf</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></div>
+
+
+<p>What this code does is testing the requested hostname to see if a specific settings directory exists for this Host; this is the <strong>core functionality of drupal multisites</strong>. By default you have the <em>default</em> settings in the directory <code>&lt;www&gt;/sites/default</code>, you can then use a <code>&lt;www&gt;/sites/sites.php</code> file to map hostnames with other settings files -- but this will only cover names that you <strong>do</strong> have, not the bad ones --, and you <em>can</em> also have some directories based on the hostname, or part of it, containing a <code>settings.php</code> file. Note that you <strong>cannot suspend this multisite feature</strong>, it's always there, no opt-in or opt-out until Drupal 8 release.</p>
+
+<p>If the hostname is <code>www.example.com:8080</code> and the bootstraped drupal file is <code>&lt;www&gt;/index.php</code>, Drupal will check for theses files (in this order):</p>
+
+<ul>
+<li><code>www/sites/8080.www.example.com/settings.php</code></li>
+<li><code>www/sites/www.example.com/settings.php</code></li>
+<li><code>www/sites/example.com/settings.php</code></li>
+<li><code>www/sites/com/settings.php</code></li>
+<li><code>www/sites/www.example.com/settings.php</code></li>
+<li><code>www/sites/default/settings.php</code></li>
+</ul>
+
+
+<p>If the hostname is <code>www.example.com:8080</code> and the bootstraped drupal file is <code>www/modules/statistics/statistics.php</code>, Drupal will check theses files:</p>
+
+<ul>
+<li><code>www/sites/8080.www.example.com.modules.statistics/settings.php</code></li>
+<li><code>www/sites/www.example.com.modules.statistics/settings.php</code></li>
+<li><code>www/sites/example.com.modules.statistics/settings.php</code></li>
+<li><code>www/sites/com.modules.statistics/settings.php</code></li>
+<li><code>www/sites/8080.www.example.com.modules/settings.php</code></li>
+<li><code>www/sites/www.example.com.modules/settings.php</code></li>
+<li><code>www/sites/example.com.modules/settings.php</code></li>
+<li><code>www/sites/com.modules/settings.php</code></li>
+<li><code>www/sites/8080.www.example.com/settings.php</code></li>
+<li><code>www/sites/www.example.com/settings.php</code></li>
+<li><code>www/sites/example.com/settings.php</code></li>
+<li><code>www/sites/com/settings.php</code></li>
+<li><code>www/sites/default/settings.php</code></li>
+</ul>
+
+
+<p>Yep, I'm not sure anyone is really using that feature, but that's what this code does.</p>
+
+<p>If one file is found before the default one, then it is used, you can alter settings in this file to connect another database, or use another <code>base_url</code> or <code>database_prefix</code>, or alter any setting in fact, the multisites feature things.</p>
+
+<p>As you can see using the <code>sites/sites.php</code> to set your hostname-to-directory mapping is quite certainly a good thing to do in terms of performances (this search loop is avoided). Remember that theses file checks are done for <strong>every</strong> HTTP requests received by Drupal.</p>
+
+<p>Now re-read the patch, before this patch very long hostnames could be used, and you could use a very big number of subdomains... and for each subdomain you add several locations to check for a setting file...</p>
+
+<p>This is where I came and then I made some evil tests to see how this multisite code would react with bad hostnames. Working only with the allowed characters (alphabetical letters, digits, dots, <code>:</code>) we can at least play with this deep settings files search. And the <code>sites.php</code> map shortcuts won't be used for bad hostnames.</p>
+
+<h3>And then the DOS issue</h3>
+
+<p>So, you may think the issue is on the <code>file_exists</code> calls, as we will run several thousands of file_exists, searching for the first match if we set a hostname with a lot of subdomains. Strangely this is usually quite fast.</p>
+
+<p>The real issue is on <code>array_slice</code>, performing several thousands of inverted array_slice is <em>really very very slow</em>. The first ones are quite fast but the last steps are longer, and we will make several thousands of array_slice operations.</p>
+
+<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
+    <span class="k">function</span> <span class="nf">test_array_slice</span><span class="p">(</span><span class="nv">$server</span><span class="p">,</span><span class="nv">$j</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">print</span> <span class="s2">&quot;ARRAY_SLICE array of &quot;</span> <span class="o">.</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$server</span><span class="p">)</span> <span class="o">.</span> <span class="s2">&quot; elts =&gt; &quot;</span><span class="p">;</span>
+      <span class="nv">$time_start</span> <span class="o">=</span> <span class="nb">microtime</span><span class="p">(</span><span class="k">true</span><span class="p">);</span>
+      <span class="nb">array_slice</span><span class="p">(</span><span class="nv">$server</span><span class="p">,</span><span class="nv">$j</span><span class="p">);</span>
+      <span class="nv">$time_end</span> <span class="o">=</span> <span class="nb">microtime</span><span class="p">(</span><span class="k">true</span><span class="p">);</span>
+      <span class="nv">$time</span> <span class="o">=</span> <span class="nv">$time_end</span> <span class="o">-</span> <span class="nv">$time_start</span><span class="p">;</span>
+      <span class="k">print</span> <span class="s2">&quot;time for array_slice to </span><span class="si">$j</span><span class="s2"> : </span><span class="si">$time</span><span class="s2"> (s)</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="cm">/*</span>
+<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -10    : 0.0004069805 (s)</span>
+<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -100   : 0.0004091262 (s)</span>
+<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -500   : 0.0004727840 (s)</span>
+<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -1000  : 0.0005030632 (s)</span>
+<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -4000  : 0.0010337829 (s)</span>
+<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -8000  : 0.0016450881 (s)</span>
+<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -12000 : 0.0018289089 (s)</span>
+<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -14000 : 0.0025160312 (s)</span>
+<span class="cm">    ARRAY_SLICE array of 16000 elts =&gt; time for array_slice to -16000 : 0.0032360553 (s)</span>
+<span class="cm">    */</span></code></pre></div>
+
+
+<p>0.003s seems quite fast, but that's already 7.5 times more than the first array_slices. I made a simple graph to show theses times growth.</p>
+
+<p><img src="/theme/img/posts/graph_array_slice.png" width="600" height="463" alt="array_slice time graph for 16000 elements"/></p>
+
+<p>And each of theses times are computed for <strong>1 extraction</strong> -- like extracting the array of 16 000 elements to index -12 000 --, but the loop is extracting all values. One at each call of the loop.</p>
+
+<p>The loop is <strong>stacking</strong> each of theses times, with 16 000 elements the last array_slice is 0.003s but the sum of all theses <code>array_slice</code> calls is ... <strong>52 seconds!</strong></p>
+
+<p>My first fix used an <code>array_walk</code> call to prepare all names that should be checked, instead of rebuilding this name on the loop, this way:</p>
+
+<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
+    <span class="sd">/**</span>
+<span class="sd">     * Apply this function with an array_walk to obtain an array with names that</span>
+<span class="sd">     * need to be tested.</span>
+<span class="sd">     */</span>
+    <span class="k">function</span> <span class="nf">prepare_name</span><span class="p">(</span><span class="o">&amp;</span><span class="nv">$val</span><span class="p">,</span> <span class="nv">$key</span><span class="p">,</span> <span class="o">&amp;</span><span class="nv">$current</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="s1">&#39;&#39;</span><span class="o">!==</span><span class="nv">$current</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nv">$val</span> <span class="o">=</span> <span class="nv">$val</span><span class="o">.</span><span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="nv">$current</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="nv">$current</span> <span class="o">=</span> <span class="nv">$val</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="p">(</span><span class="o">...</span><span class="p">)</span>
+    <span class="nv">$rev_server</span> <span class="o">=</span> <span class="nb">array_reverse</span><span class="p">(</span><span class="nv">$server</span><span class="p">);</span>
+    <span class="nv">$current</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">;</span>
+    <span class="nb">array_walk</span><span class="p">(</span><span class="nv">$rev_server</span><span class="p">,</span> <span class="s1">&#39;prepare_name&#39;</span><span class="p">,</span> <span class="nv">$current</span><span class="p">);</span>
+    <span class="nv">$work_server</span> <span class="o">=</span> <span class="nb">array_reverse</span><span class="p">(</span><span class="nv">$rev_server</span><span class="p">);</span>
+    <span class="c1">// --end new</span>
+    <span class="k">for</span> <span class="p">(</span><span class="nv">$i</span> <span class="o">=</span> <span class="nb">count</span><span class="p">(</span><span class="nv">$uri</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span> <span class="nv">$i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="nv">$i</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// now the loop is a simple foreach name on first array</span>
+      <span class="k">foreach</span><span class="p">(</span><span class="nv">$work_server</span> <span class="k">as</span> <span class="nv">$k</span> <span class="o">=&gt;</span> <span class="nv">$name</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nv">$dir</span> <span class="o">=</span> <span class="nv">$name</span> <span class="o">.</span> <span class="nb">implode</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="nb">array_slice</span><span class="p">(</span><span class="nv">$uri</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nv">$i</span><span class="p">));</span>
+      <span class="p">}</span>
+    <span class="p">}</span></code></pre></div>
+
+
+<p>And this fixed the performance issue (when <code>file_exists</code> is fast). But preventing bad hostnames as we have in the final fix is a better fix, more radical, no good reason to manage several thousand of subdomains.</p>
+
+<p>Is this a real DOS issue? Well, on real life production servers, with a lot of memory and very fast CPUs we've made exploits which usually made any (unique) request run in this loop for more than <strong>2 minutes</strong>. So with an attacker running parallel requests or reaching some cheaper hosts, this could really become a problem.</p>
+
+<h2>Protect your website</h2>
+
+<p>Things that <strong>DO NOT</strong> protect you, <strong>theses things will not protect your Drupal website from being attacked</strong>:</p>
+
+<ul>
+<li>Not having a <strong>multisite drupal</strong>, this happens on the multisite check and you cannot suspend it on D5, D6 and D7 (opt-in for D8, at last), you <strong>always</strong> have this <code>conf_path()</code> running, on every request, and you cannot do anything before the settings are loaded.</li>
+<li>Not having drupal on the <strong>Default Virtualhost</strong>, the <strong>absolute-URI</strong> trick will hit you, see last part.</li>
+<li><strong>Old Drupal</strong>, this issue is present from a very very long time, also present in Drupal5 for example.</li>
+<li><strong>Varnish, Nginx, Apache</strong> (and maybe others): no default protection.</li>
+<li>Using the <code>www/sites.php</code> hostname location mapping file, as you will not have the bad hostnames there and you have no way in drupal to reject undefined names.</li>
+</ul>
+
+
+<p>Things <strong>THAT MAY WORK</strong> to protect yourself (untested):</p>
+
+<ul>
+<li>using <strong>mod_security</strong> or some other security tool checking for some strange Host headers, but you should check the behavior of theses tools with the absolute-URI trick (see last part).</li>
+</ul>
+
+
+<p>Things <strong>THAT DO WORK</strong> to protect yourself (choose one):</p>
+
+<ul>
+<li>Upgrade <a href="https://www.drupal.org/drupal-6.32-release-notes">D6</a> or [D7][DRUPAL_7] to the last versions <em>OR</em></li>
+<li>Apply the <a href="https://www.drupal.org/files/issues/sec-D7-conf-path-dos-105258-23.patch">DOS patch</a> <em>OR</em></li>
+<li>use a default catch-all non-drupal Virtualhost <strong>and</strong> <a href="https://issues.apache.org/bugzilla/show_bug.cgi?id=56718">patch Apache</a> (see at the end) <em>OR</em></li>
+<li>Add a <strong>mod_rewrite</strong> <em>Hostname check</em> :</li>
+</ul>
+
+
+<p>The Mod_rewrite Apache module will receive the same <strong>HOSTNAME</strong> as PHP in the <strong>HTTP_HOST</strong> variable. If the Absolute-URI trick is used mod_rewrite could detect bad hostname and reject the request. Let's say you have one or two valid DNS for your Drupal websites (here <code>foo.example.com</code> and <code>bar.example.com</code>), then check Apache made the right job and reached your Drupal with theses valid names:</p>
+
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="c"># Reject with a 403 any hostname wich is not in our list of supported domains</span>
+    <span class="nb">RewriteCond</span> %{HTTP_HOST} !^foo\.example\.com$
+    <span class="nb">RewriteCond</span> %{HTTP_HOST} !^bar\.example\.com$
+    <span class="nb">RewriteRule</span> .* - [F,L]</code></pre></div>
+
+
+<h2>The absolute-URI trick?</h2>
+
+<p>So, as I said before the default Virtualhost method does not protect you, that's sad because it's usually a good practice, you add a default Virtualhost with default simple pages (like an "It Works" page) and anyone doing bad things with HOST headers would end there.</p>
+
+<p>But this can be bypassed with both Apache and Nginx by using the absolute-URI trick describe at the end of the <a href="http://www.skeletonscribe.net/2013/05/practical-http-host-header-attacks.html">Practical Host Header attacks paper</a> that I linked before.</p>
+
+<p>The trick is to use an absolute URI in the first part of the HTTP query. Instead of the classical HTTP 1.1 request :</p>
+
+<pre><code>GET /page/foo?z=42 HTTP/1.1
+Host: www.example.com
+(other headers)
+</code></pre>
+
+<p>You do:</p>
+
+<pre><code>GET http://www.example.com/page/foo?z=42 HTTP/1.1
+Host: something.else
+(other headers)
+</code></pre>
+
+<p>And the RFC 2616 says this request should be managed by the <code>www.example.com</code> virtualhost, that's OK. And it also states that the Host Header should then be <strong>ignored</strong>. Cool. But in both Apache and Nginx this does not means the used Host headers will not be sent to the final application (here PHP).</p>
+
+<p>At the end Drupal receive the Host header (here <code>something.else</code>). I think this is an issue on the HTTP server side. This header should be overwritten and should look like <code>www.example.com</code>. What's worse is that classical bad characters that are usually detected in the Host headers are not checked in Apache when you use the Abolute-URI trick. On the drupal side we have the regex cleanup on the Host header, that's a very good thing (<a href="http://en.wikipedia.org/wiki/Defense_in_depth_%28computing%29">defense in depth</a> applied). On the drupal side using the absolute-URI trick will produce a 404 page, the URL does not match any known Drupal path, but this 404 is not a problem for the DOS attack which occurs on the settings file search, very early.</p>
+
+<p>If you think this is an Apache issue please vote for this <a href="https://issues.apache.org/bugzilla/show_bug.cgi?id=56718">Apache patch</a> on the httpd bugtracker, which overwrite the HTTP_HOST with the absolute-uri host :</p>
+
+<pre><code>--- server/protocol.c   2014-03-10 14:04:03.000000000 +0100
++++ server/protocol.c.new   2014-06-05 23:41:38.233573966 +0200
+@@ -1063,6 +1063,21 @@
+
+     apr_brigade_destroy(tmp_bb);
+
++    /*
++    * rfc2616: If Request-URI is an absoluteURI, the host is part of the
++    * Request-URI. Any Host header field value in the request MUST be
++    * ignored.
++    * We are currently ignoring it, but the Host headers are still present
++    * and may get use by naive programs as the one used for vhost choice
++    * or like a valid hostname. So enforce the 'ignore' behavior by
++    * overwritting any present Host header.
++    * Note that this is made just before the fixHostname(r) call, so this
++    * Host header entry is still not as safe as the hostname.
++    */
++    if (r-&gt;hostname &amp;&amp; apr_table_get(r-&gt;headers_in, "Host")) {
++        apr_table_set(r-&gt;headers_in, "Host", r-&gt;hostname);
++    }
++
+     /* update what we think the virtual host is based on the headers we've
+      * now read. may update status.
+      */
+</code></pre>
+
+<p>With this patch applied the only way to get a strange Hostname targeted to your Drupal would be having the Drupal Apache Virtualhost used as default Virtualhost, something usually quite easy to fix.</p>
+
+<p>Nginx may also need a fix one day.</p>
+
+<ul>
+<li><a href="https://twitter.com/regilero">Stay tuned on twitter, @regilero</a>, <a href="https://twitter.com/makinacorpus">@makinacorpus</a></li>
+</ul>
+
+
+
+          </div>
+         </div>
+        </div>
+        <div class="tag">Tags:&nbsp;<i class="glyphicon glyphicon-tag"></i><a href="/tag/Apache/">Apache</a>, <i class="glyphicon glyphicon-tag"></i><a href="/tag/Drupal/">Drupal</a>, <i class="glyphicon glyphicon-tag"></i><a href="/tag/PHP/">PHP</a>, <i class="glyphicon glyphicon-tag"></i><a href="/tag/Security/">Security</a></div>
+</article>
+<hr/>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: * * */
+    var disqus_shortname = "regilero";
+    var disqus_identifier = '21c84958-8e55-11f8-bae8-0842200c9a55';
+    var disqus_title = "Details of DRUPAL_SA_CORE_2014_003 Deny Of Service";
+    var disqus_url = 'http://regilero.github.io/english/security/2014/09/19/drupal-details_ofdrupal_sa_core_2014_003_dos/';
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+
+    
+
+      </div>
+      <div class="col-md-4" id="sideBar">
+
+            <div id="sideBarContent"> 
+              
+              <div class="sideBarListBox">
+                <div class="page-header">
+                <h3>Related posts</h3>
+                </div>
+                <div class="list-group" role="navigation">
+                  
+                     <a class="list-group-item" href="/english/drupal/2011/09/03/Install_drupal_in_php_fpm_fastcgi_and_apache_chroot/">
+                     <h4>Install Drupal in php-fpm (fastcgi) with Apache and a chroot php-fpm</h4>
+                     <p>Step by step Apache+php-fpm installation of Drupal with some explanations on how to use php-fpm chroot while still not having mod_proxy_fcgi.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/drupal/2011/09/02/Tune_your_php_settings_for_drupal/">
+                     <h4>Tune your php settings for Drupal</h4>
+                     <p>How to make a clean Apache Virtualhost for each drupal project, with PHP settings altered for each project</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/drupal/2011/09/01/better_rewrite_rules_for_drupal/">
+                     <h4>Better rewriteRules for Drupal</h4>
+                     <p>A big re-think of rewrite rules for Drupal, preventing acess from index.php?q=foo default url, no .htaccess, and some other security stuff</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/drupal/2014/10/30/drupal-nginx_apache_php-fpm-guide/">
+                     <h4>AirPair, Drupal with PHP-FPM, Apache or Nginx</h4>
+                     <p>Some very detailled posts on Installing Drupal with php-fpm with Apache2.4 or Nginx</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2015/03/25/nginx-integer_truncation/">
+                     <h4>Nginx Integer Truncation</h4>
+                     <p>Exploitation of Integer Overflow with the HTTP Content length Header</p>
+                     </a>
+                  
+                </div>
+              </div>
+              
+      
+              <div class="sideBarListBox">
+                <div class="page-header">
+                <h3>Latest posts</h3>
+                </div>
+                <div class="list-group" role="navigation">
+                  
+                     <a class="list-group-item" href="/english/security/2019/04/24/security_jetty_http_smuggling/">
+                     Security: HTTP Smuggling, Jetty
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
+                     Security: HTTP Smuggling, Apsis Pound load balancer
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
+                     PostgreSQL, advanced use of generate_series for data generation
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
+                     Web Security, Dompdf security issues details
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     Web Security, using bad HTML to escape from a DIV
+                     </a>
+                  
+                </div>
+              </div>
+            
+              <div class="sideBarListBox">
+                <div class="page-header">
+                <h3>Tags</h3>
+                </div>
+
+                <div class="tagcloud">
+                <a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 21px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Jetty/'>Jetty</a>
+<a style='font-size: 21px' class='taglink' href='/tag/CVE/'>CVE</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 21px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 30px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 21px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 21px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 27px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 21px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
+<a style='font-size: 30px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 30px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+
+                </div>
+              </div>
+          </div> <!-- end sideBarContent -->
+            
+            <div class="sideBarMore">
+              <div class="page-header">
+              <h3>About</h3>
+              </div>
+                <a href="https://twitter.com/regilero" target="_blank"><img src="/theme/img/twitter_thumb.png" width="48" height="48" alt="Twitter regilero" title="Twitter regilero"></a>
+                <a href="https://github.com/regilero" target="_blank"><img src="/theme/img/github_thumb.png" width="48" height="48" alt="Github regilero" title="Github regilero"></a>
+                <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
+                <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
+                <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
+                <a href="https://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+            </div>
+            <div class="sideBarItem">
+              <h3>Some Friends</h3>
+                <ul>
+                  <li><a class="effect" target="_blank" href="http://makina-corpus.com/blog/metier/actu-metier">Blogs Makina Corpus<div class="cover-right"><img src="/theme/img/makinaorg.png" height="30" width="30"><img src="/theme/img/makinaorg_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://www.makina-corpus.com">Makina Corpus<div class="cover-right"><img src="/theme/img/makinacom.png" height="30" width="30"><img src="/theme/img/makinacom_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://blog.processus.org/">Pounard, processus.org<div class="cover-right"><img src="/theme/img/pounard.png" height="30" width="30"><img src="/theme/img/pounard_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://toutpt.github.io/" >Toupt<div class="cover-right"><img src="/theme/img/toupt.png" height="30" width="30"><img src="/theme/img/toupt_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://francoisgaudin.com/">François Gaudin<div class="cover-right"><img src="/theme/img/gaudin.png" height="30" width="30"><img src="/theme/img/gaudin_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://fle.github.io/">Florent Lebreton<div class="cover-right"><img src="/theme/img/fle.png" height="30" width="30"><img src="/theme/img/fle_banner.png" height="30" width="117"></div></a></li>
+                </ul>
+                <div class="clear"></div>
+            </div>
+         </div> <!-- end sidebar -->
+        
+       </div><!-- end row -->
+       <div class="row">
+         <div class="col-md-12" id="footer">
+           <div class="panel panel-default">
+             <div class=panel-footer">
+          <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/"><img alt="Licence Creative Commons" style="border-width:0" src="http://i.creativecommons.org/l/by-sa/3.0/fr/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/Text" property="dct:title" rel="dct:type">regilero's blog</span> est mis à disposition selon les termes de la <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/">licence Creative Commons Attribution -  Partage dans les Mêmes Conditions 3.0 France</a>.<br />Fondé(e) sur une œuvre à <a xmlns:dct="http://purl.org/dc/terms/" href="http://regilero.github.io" rel="dct:source">http://regilero.github.io</a>.
+              </div>
+            </div>
+         </div>
+       </div><!-- end row -->
+  </div>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<!--    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script> -->
+    <script src="/theme/js/toc.min.js" ></script>
+    <script src="/theme/js/effects.js" ></script>
+   <script src="/theme/js/jquery.parallax.min.js"></script>
+    <script src="/theme/bootstrap/js/bootstrap.min.js"></script>
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-40859893-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+    </body>
+</html>

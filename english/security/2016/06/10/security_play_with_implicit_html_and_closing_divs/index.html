@@ -1,0 +1,588 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title> Web Security, using bad HTML to escape from a DIV |  RBleug</title>
+    <meta name="description" content="Regilero's blog; Mostly tech things about web stuff."/>
+    <meta name="author" content="regilero"/>
+    <link rel="author" href="/contact/" title="who am I?" type="text/html" />
+    <link rel="icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/feed.xml" />
+    <link rel="stylesheet" href="/theme/bootstrap/css/bootstrap.min.css" type="text/css">
+    <link rel="stylesheet" href="/theme/bootstrap/css/bootstrap-theme.min.css" type="text/css">
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+<!--
+    <link rel="stylesheet" href="/theme/blueprint/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/blueprint/print.css" type="text/css" media="print">
+    <link rel="stylesheet" href="/theme/syntax.css" type="text/css" />
+    <!--[if lt IE 8]>
+      <link rel="stylesheet" href="/theme/blueprint/ie.css" type="text/css" media="screen, projection">
+    <![endif]-->
+<!--
+    <link rel="stylesheet" href="/theme/blueprint/plugins/link-icons/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/fontello/css/fontello.css">
+    <!--[if IE 7]><link rel="stylesheet" href="/theme/fontello/css/fontello-ie7.css"><![endif]-->
+    <link href="/theme/syntax.css" rel="stylesheet" type="text/css" />
+    <link href="/theme/style.css" rel="stylesheet" type="text/css" />
+
+  </head>
+  <body>
+    <div class="topNav navbar navbar-inverse navbar-static-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand visible-xs-inline" href="#">Navigation</a>
+        </div>
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li ><a href="/" class="glyphicon glyphicon-home">&nbsp;Home</a></li>
+            <li class="active"><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
+            <li ><a href="/contact/" class="glyphicon glyphicon-earphone">&nbsp;Contact</a></li>
+            <li><a class="glyphicon glyphicon-eye-open" href="/feed.xml">&nbsp;RSS Feed</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </div>
+
+  <div class="container" role="main">
+  
+    <div class="jumbotron">
+      <div class="container">
+         <div id="branding">
+           <h1 class="logo"><a href="/">RBleug</a></h1>
+           <hr/>
+           <h2 class="alt">Regilero's blog; Mostly tech things about web stuff.</h2>
+         </div>
+       </div>
+     </div>
+
+    <div class="row">
+      <div class="col-md-8" id="left-content">
+
+          <article>
+        <header>
+            <div class="page-header">
+            <h1>Web Security, using bad HTML to escape from a DIV
+            <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="2016-06-10">Jun 10, 2016</time></span>
+            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/english/">english</a> and <a href="/security/">security</a></span>
+            </h1>
+            </div>
+        </header>
+
+        <div class="entry">
+         <div class="col-md-6">
+          <div class="post-excerpt-full">
+          Break HTML layouts with only bad HTML and the browser's help.
+          </div>
+          <div id="post-toc">
+          </div>
+         </div>
+         <div class="col-md-6">
+          <img class="topimg" src="/theme/img/pic/counting.jpg" alt="Break HTML layouts with only bad HTML and the browser's help." title="Break HTML layouts with only bad HTML and the browser's help." />
+         </div>
+         <div class="row">
+          <div class="col-md-12" id="post-full">
+       
+          <p><small><strong>English version</strong> (<strong>Version Française</strong> disponible sur <a href="http://www.makina-corpus.com/blog/metier/2016/securite-web-utiliser-du-mauvais-html-pour-sevader-dun-div-1">makina corpus</a>).</small>
+<small>estimated read time: 10min</small></p>
+
+<h2>Why?</h2>
+
+<p>Have you ever wondered why you cannot post any HTML on Facebook? It seems so
+easy on a lot of websites to submit content containing a small HTML subset, why doesn't Facebook allow it?</p>
+
+<p>Or maybe you knew that it was possible in Facebook Notes, before April 2014. You
+had a little rich text editor where you could type in some HTML tags (both in
+wysiwyg and raw mode). But you cannot do that anymore. Now you are forced to use the
+wysiwyg mode and even using the API you will see that the very small part of
+HTML you can use will always be very very clean. Very few nested levels,
+very strict opening/closing policy for tags, no attributes, etc.</p>
+
+<p>Well, in this article I'll try to explain why. I'll show you how, by simply
+playing with <strong>bad HTML syntax</strong> on a very small subset of HTML, it is easy
+for contributed HTML to <strong>evade the box</strong> and write everywhere on the page.</p>
+
+<p>This earned me a 1500 USD facebook bounty (and a Github T-shirt). So, yes, it's very
+simple but it's still very annoying and real.</p>
+
+<p>I like to look at <strong>very simple things</strong> and HTML box evasion is something very
+very simple. So simple that most people would not even see why it is a problem.</p>
+
+<p>So, before reading, keep in mind that this is about HTML contributions and HTML injection, this is
+not about XSS or SQL injection. The problem here is:</p>
+
+<ul>
+<li><strong>Can you let the user contribute content formatted with a small subset of HTML?</strong></li>
+<li>Can you ensure the contributed content will stay <em>in the box</em>, in the dedicated layout subset.</li>
+</ul>
+
+
+<p>This impacts every markup language that is rendered to HTML (like
+partial HTML, of course, but also markdown, reStructuredText, etc.).</p>
+
+<h2>So what?</h2>
+
+<h3>Implicit HTML and the browser fixing your errors</h3>
+
+<p>When you feed a browser with some HTML, the browser is very kind and will try to
+fix a big number of errors that could be present in the page.</p>
+
+<p>This behavior was a very important part of the web's success. If browsers made a
+<em>White-Page-Of-Death</em> for every HTML syntax error, the web would be really
+smaller.</p>
+
+<p><strong>This is cool for the end user.</strong></p>
+
+<p><strong>This is cool for the web developer.</strong></p>
+
+<p><strong>This is bad in terms of security.</strong></p>
+
+<p>One of the way browsers will fix HTML is by adding closing tags when the
+page clearly forgot to close some tags.</p>
+
+<p>So this:</p>
+
+<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="c">&lt;!-- initial --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;foo&quot;</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>foo
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>bar
+      <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span></code></pre></div>
+
+
+<p>Is automatically rewritten with closing <code>&lt;/LI&gt;</code>:</p>
+
+<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="c">&lt;!-- rendered --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;foo&quot;</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>foo<span class="p">&lt;/</span><span class="nt">LI</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>bar<span class="p">&lt;/</span><span class="nt">LI</span><span class="p">&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span></code></pre></div>
+
+
+<p>But let's look at something nastier, we have an opening <code>&lt;DIV&gt;</code> inside the <code>&lt;LI&gt;</code>:</p>
+
+<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="c">&lt;!-- initial --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;foo&quot;</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>foo
+          <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;second&quot;</span><span class="p">&gt;</span>
+             test
+        <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>bar<span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span></code></pre></div>
+
+
+<p>The browser will add the closing DIV:</p>
+
+<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="c">&lt;!-- rendered --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;foo&quot;</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>foo
+          <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;second&quot;</span><span class="p">&gt;</span>
+            test
+          <span class="p">&lt;/</span><span class="nt">DIV</span><span class="p">&gt;</span>  <span class="c">&lt;!-- implicit HTML --&gt;</span>
+        <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>bar<span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span></code></pre></div>
+
+
+<p>Chances are that a <strong>server side output filter</strong>, filtering HTML contributions
+would have <strong>detected</strong> this HTML as invalid, if you <strong>count opening and closing
+tags</strong> you can detect that a closing tag is missing.</p>
+
+<p>So our bad contributor will instead write this:</p>
+
+<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="c">&lt;!-- initial --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;foo&quot;</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>foo<span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;second&quot;</span><span class="p">&gt;&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;third&quot;</span><span class="p">&gt;</span>test<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>bar<span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span> <span class="c">&lt;!-- end third --&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span> <span class="c">&lt;!-- end second --&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span></code></pre></div>
+
+
+<p>And <strong>if you count</strong> the number of closing and opening tags, or if you try to
+cleanup this with some regexp (are you crazy?), chances are that this will look
+good.</p>
+
+<p>And now the browser result:</p>
+
+<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="c">&lt;!-- rendered --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;foo&quot;</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>foo
+           <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;second&quot;</span><span class="p">&gt;</span>
+            <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;third&quot;</span><span class="p">&gt;</span>test
+            <span class="p">&lt;/</span><span class="nt">DIV</span><span class="p">&gt;</span> <span class="c">&lt;!-- implicit HTML - end third--&gt;</span>
+           <span class="p">&lt;/</span><span class="nt">DIV</span><span class="p">&gt;</span> <span class="c">&lt;!-- implicit HTML - end second --&gt;</span>
+        <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>bar<span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span> <span class="c">&lt;!-- end third? no, end foo --&gt;</span>
+      <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span> <span class="c">&lt;!-- end second? no end foo&#39;s parent if any --&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span> <span class="c">&lt;!-- end foo&#39;s parent&#39;s parent if any --&gt;</span></code></pre></div>
+
+
+<p>Two <code>&lt;/DIV&gt;</code> are <strong>impliclty added by the browser</strong>, because you cannot close
+the <code>&lt;LI&gt;</code> without closing the <code>&lt;DIV&gt;</code> inside. And now, on the final page, you have
+2 extras closing divs !</p>
+
+<h3>Ok, too many closing divs, and then?</h3>
+
+<p>If the contributor can enter <code>&lt;div&gt;</code> and <code>&lt;/div&gt;</code>, and if you count the number
+of closing and opening divs to assume the HTML is correct, <strong>you are wrong</strong>.</p>
+
+<p>The HTML is correct only if <strong>the order</strong> of the opening and closing tags is
+correct, if some tags are closed before some others it may break the layout
+(it depends of the tags).</p>
+
+<p>For the contibutors, this means writing outside of the controlled zone (the
+user-comment box for example) and adding content, with the subset of HTML that
+they are allowed to use, on other parts of the page, maybe playing with <code>&lt;table&gt;</code>
+and <code>&lt;br/&gt;</code> to fake content on some parts of your layout that other users will
+trust more than a spam comment box (see last examples at the end of this text).</p>
+
+<h2>Demo</h2>
+
+<p>Below are some iframes that use the implicit DIV closing trick to write one
+simple line of text on the <code>main</code> div, instead of writing it 3 nested DIV
+deeper.</p>
+
+<p>An interesting thing to do is opening these iframes in a new window and looking
+at the source. Here is what you'll see if you view the source of the first iframe:</p>
+
+<p><img src="/theme/img/posts/t1_html_source.png"></p>
+
+<p>We can see that something wrong was detected and highlighted in red.</p>
+
+<p>Inspecting the DOM we see how the browser automatcially closes the divs:</p>
+
+<p><img src="/theme/img/posts/t1_html_dom.png"></p>
+
+<p>In these examples:</p>
+
+<ul>
+<li>the goal is to write something <strong>in red</strong>, in the main div</li>
+<li>somes tests should fail (using <code>&lt;P&gt;</code> or <code>&lt;TD&gt;</code> <code>&lt;TR&gt;</code> we do not break the divs
+as would most inline tags like <code>&lt;span&gt;</code>, <code>&lt;strong&gt;</code>, <code>&lt;sub&gt;</code>, etc.)</li>
+</ul>
+
+
+<table>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t1.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t2.html">direct link</a></small></td></tr><td>
+<iframe src=/theme/resource/t1.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
+<iframe src=/theme/resource/t2.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t3.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t4.html">direct link</a></small></td></tr><td>
+<iframe src=/theme/resource/t3.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
+<iframe src=/theme/resource/t4.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t5.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t6.html">direct link</a></small></td></tr><td>
+<iframe src=/theme/resource/t5.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
+<iframe src=/theme/resource/t6.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t7.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t8.html">direct link</a></small></td></tr><td>
+<iframe src=/theme/resource/t7.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
+<iframe src=/theme/resource/t8.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t9.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t10.html">direct link</a></small></td></tr><td>
+<iframe src=/theme/resource/t9.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
+<iframe src=/theme/resource/t10.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t11.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t12.html">direct link</a></small></td></tr><td>
+<iframe src=/theme/resource/t11.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
+<iframe src=/theme/resource/t12.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t13.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t14.html">direct link</a></small></td></tr><td>
+<iframe src=/theme/resource/t13.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
+<iframe src=/theme/resource/t14.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t15.html">direct link</a></small></td><td><small><a href="//regilero.github.io/theme/resource/t16.html">direct link</a></small></td></tr><td>
+<iframe src=/theme/resource/t15.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td>
+<iframe src=/theme/resource/t16.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td></tr>
+<tr><td><small><a href="//regilero.github.io/theme/resource/t17.html">direct link</a></small></td><td>&nbsp;</td></tr><td>
+<iframe src=//regilero.github.io/theme/resource/t17.html style="height:450px; width: 350px; border: 1px solid #ccc;"></iframe></td><td></td></tr>
+</table>
+
+
+<p><strong>H1, H2, H3, PRE, LI</strong></p>
+
+<p>These are the tags I prefer because chances are that they are in the list of allowed tags for contributors.</p>
+
+<h3>Will it break <code>&lt;section&gt;</code> or <code>&lt;article&gt;</code>?</h3>
+
+<p>Yes.</p>
+
+<p>First, if you allow <code>&lt;section&gt;</code> or <code>&lt;article&gt;</code> in allowed contributors tags, it
+will obviously allow the contributor to close such tags, so this would be a very
+bad move.</p>
+
+<p>More generaly, if you use one <code>&lt;DIV&gt;</code> on your layout, closing this tag will also
+close any <code>&lt;section&gt;</code> or <code>&lt;article&gt;</code> embedded inside.</p>
+
+<p>Let's see this in action in a more complex layout:</p>
+
+<p>Here is a new iframe with a full layout, you can see a div around the article.</p>
+
+<iframe src=/theme/resource/t18.html style="height:450px; width: 700px; border: 1px solid #ccc;"></iframe>
+
+
+<p>And here is this layout after a bad comment closing the comment and main divs (the real aside section and footers are far in the bottom):</p>
+
+<iframe src=/theme/resource/t19.html style="height:450px; width: 700px; border: 1px solid #ccc;"></iframe>
+
+
+<h3>What if direct HTML is not allowed?</h3>
+
+<p>If the only way to contribute is Markdown, reStructuredText or other wiki-like syntaxes, you
+cannot directly insert bad HTML, in theory.</p>
+
+<p>Well, for Markdown it depends of the flavor. By default, you can include raw
+HTML in Markdown, unless this feature is removed.</p>
+
+<p>Anyway, with a language generating HTML the game is to find strange syntax in
+this language which will generate bad HTML.</p>
+
+<p>Be careful, preview modes are usually made with syntax parsers written in JavaScript. These
+parsers are usually less robust than the real final generators. So a bad syntax
+in a preview mode means almost nothing.</p>
+
+<p>I wont give you specific syntax error examples, it depends on the engine, you'll
+have to research on your own.</p>
+
+<h2>Protections</h2>
+
+<p>If you want to allow contributions, here are some thoughts:</p>
+
+<ul>
+<li>Why not simply allowing unformatted text?</li>
+<li>Why allowing <code>&lt;div&gt;</code>? If you use <code>&lt;div&gt;</code> in your layout you could in fact
+prevent any contributions from using this HTML tag.</li>
+<li>More generally do not allow tags used for your layout structure (like article or section)</li>
+<li>Check your CMS if you CMS provides HTML syntax cleanup (Drupal does, for example)</li>
+<li>Avoid regexps to cleanup (filter) contributed HTML, prefer DOM-based tools
+when they are available. These tools will analyze text input, build a dom tree, then
+generate HTML output from the tree, so tags will always be in the right order,
+and can even be filtered for attributes and id cleanup.</li>
+<li>That said, regexp-based filters might also work and perform the same filtering
+task, here is for example <a href="https://www.drupal.org/project/wysiwyg_filter" title="Drupal WYSIWYG filter">a very good drupal7 module, wysiwyg_filter</a></li>
+</ul>
+
+
+
+          </div>
+         </div>
+        </div>
+        <div class="tag">Tags:&nbsp;<i class="glyphicon glyphicon-tag"></i><a href="/tag/HTML/">HTML</a>, <i class="glyphicon glyphicon-tag"></i><a href="/tag/Injection/">Injection</a>, <i class="glyphicon glyphicon-tag"></i><a href="/tag/Security/">Security</a></div>
+</article>
+<hr/>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: * * */
+    var disqus_shortname = "regilero";
+    var disqus_identifier = '9addd55e-aff4-4qdq-a8eef80dfee8d080f8';
+    var disqus_title = "Web Security, using bad HTML to escape from a DIV";
+    var disqus_url = 'http://regilero.github.io/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/';
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+
+    
+
+      </div>
+      <div class="col-md-4" id="sideBar">
+
+            <div id="sideBarContent"> 
+              
+              <div class="sideBarListBox">
+                <div class="page-header">
+                <h3>Related posts</h3>
+                </div>
+                <div class="list-group" role="navigation">
+                  
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
+                     <h4>Web Security, Dompdf security issues details</h4>
+                     <p>details of december 2015's 3 CVE in dompdf, with one RCE.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2019/04/24/security_jetty_http_smuggling/">
+                     <h4>Security: HTTP Smuggling, Jetty</h4>
+                     <p>details of CVE-2017-7656, CVE-2017-7657 and CVE-2017-7658 (June 2018 - Jetty).</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
+                     <h4>Security: HTTP Smuggling, Apsis Pound load balancer</h4>
+                     <p>details of CVE-2016-10711 (published feb 2018).</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <h4>Checking HTTP Smuggling issues in 2015 - Part1</h4>
+                     <p>First part of the 2015 HTTP Smuggling articles. Injecting HTTP in HTTP, the theory.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2015/03/25/nginx-integer_truncation/">
+                     <h4>Nginx Integer Truncation</h4>
+                     <p>Exploitation of Integer Overflow with the HTTP Content length Header</p>
+                     </a>
+                  
+                </div>
+              </div>
+              
+      
+              <div class="sideBarListBox">
+                <div class="page-header">
+                <h3>Latest posts</h3>
+                </div>
+                <div class="list-group" role="navigation">
+                  
+                     <a class="list-group-item" href="/english/security/2019/04/24/security_jetty_http_smuggling/">
+                     Security: HTTP Smuggling, Jetty
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
+                     Security: HTTP Smuggling, Apsis Pound load balancer
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
+                     PostgreSQL, advanced use of generate_series for data generation
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
+                     Web Security, Dompdf security issues details
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
+                     Web Security, using bad HTML to escape from a DIV
+                     </a>
+                  
+                </div>
+              </div>
+            
+              <div class="sideBarListBox">
+                <div class="page-header">
+                <h3>Tags</h3>
+                </div>
+
+                <div class="tagcloud">
+                <a style='font-size: 21px' class='taglink' href='/tag/CVE/'>CVE</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 21px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 30px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
+<a style='font-size: 21px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 27px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Jetty/'>Jetty</a>
+<a style='font-size: 21px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 30px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 21px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 21px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 30px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+
+                </div>
+              </div>
+          </div> <!-- end sideBarContent -->
+            
+            <div class="sideBarMore">
+              <div class="page-header">
+              <h3>About</h3>
+              </div>
+                <a href="https://twitter.com/regilero" target="_blank"><img src="/theme/img/twitter_thumb.png" width="48" height="48" alt="Twitter regilero" title="Twitter regilero"></a>
+                <a href="https://github.com/regilero" target="_blank"><img src="/theme/img/github_thumb.png" width="48" height="48" alt="Github regilero" title="Github regilero"></a>
+                <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
+                <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
+                <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
+                <a href="https://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+            </div>
+            <div class="sideBarItem">
+              <h3>Some Friends</h3>
+                <ul>
+                  <li><a class="effect" target="_blank" href="http://makina-corpus.com/blog/metier/actu-metier">Blogs Makina Corpus<div class="cover-right"><img src="/theme/img/makinaorg.png" height="30" width="30"><img src="/theme/img/makinaorg_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://www.makina-corpus.com">Makina Corpus<div class="cover-right"><img src="/theme/img/makinacom.png" height="30" width="30"><img src="/theme/img/makinacom_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://blog.processus.org/">Pounard, processus.org<div class="cover-right"><img src="/theme/img/pounard.png" height="30" width="30"><img src="/theme/img/pounard_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://toutpt.github.io/" >Toupt<div class="cover-right"><img src="/theme/img/toupt.png" height="30" width="30"><img src="/theme/img/toupt_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://francoisgaudin.com/">François Gaudin<div class="cover-right"><img src="/theme/img/gaudin.png" height="30" width="30"><img src="/theme/img/gaudin_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://fle.github.io/">Florent Lebreton<div class="cover-right"><img src="/theme/img/fle.png" height="30" width="30"><img src="/theme/img/fle_banner.png" height="30" width="117"></div></a></li>
+                </ul>
+                <div class="clear"></div>
+            </div>
+         </div> <!-- end sidebar -->
+        
+       </div><!-- end row -->
+       <div class="row">
+         <div class="col-md-12" id="footer">
+           <div class="panel panel-default">
+             <div class=panel-footer">
+          <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/"><img alt="Licence Creative Commons" style="border-width:0" src="http://i.creativecommons.org/l/by-sa/3.0/fr/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/Text" property="dct:title" rel="dct:type">regilero's blog</span> est mis à disposition selon les termes de la <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/">licence Creative Commons Attribution -  Partage dans les Mêmes Conditions 3.0 France</a>.<br />Fondé(e) sur une œuvre à <a xmlns:dct="http://purl.org/dc/terms/" href="http://regilero.github.io" rel="dct:source">http://regilero.github.io</a>.
+              </div>
+            </div>
+         </div>
+       </div><!-- end row -->
+  </div>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<!--    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script> -->
+    <script src="/theme/js/toc.min.js" ></script>
+    <script src="/theme/js/effects.js" ></script>
+   <script src="/theme/js/jquery.parallax.min.js"></script>
+    <script src="/theme/bootstrap/js/bootstrap.min.js"></script>
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-40859893-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+    </body>
+</html>
