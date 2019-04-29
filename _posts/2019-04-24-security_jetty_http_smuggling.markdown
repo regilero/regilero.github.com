@@ -22,7 +22,7 @@ For the part we are concerned with it's the **HTTP server** which is interesting
 
 If you use Jetty in your projects you should ensure your version is greater than :
 
- * 9.2.x : **9.2.25v20180606**  
+ * 9.2.x : **9.2.25v20180606**
  * 9.3.x : **9.3.24.v20180605**
  * 9.4.x : **9.4.11.v20280605**
  * not talking about previous versions, before the 9.x, not maintained anymore.
@@ -392,7 +392,7 @@ Next time we'll talk about **Apache Traffic Server**, with a lot more lab manipu
 ## See also
 
 * [basics of HTTP Smuggling](http://regilero.github.io/security/english/2015/10/04/http_smuggling_in_2015_part_one/)
-* [Pound SSl terminator smuggling issues] (http://regilero.github.io/security/english/2018/07/03/security_pound_http_smuggling/)
+* [Pound SSl terminator smuggling issues](http://regilero.github.io/security/english/2018/07/03/security_pound_http_smuggling/)
 * Video [Defcon HTTP Smuggling](https://www.youtube.com/watch?v=dVU9i5PsMPY)
 * [Defcon support](https://media.defcon.org/DEF%20CON%2024/DEF%20CON%2024%20presentations/DEFCON-24-Regilero-Hiding-Wookiees-In-Http.pdf)
 * Video [Defcon demos](https://www.youtube.com/watch?v=lY_Mf2Fv7kI)
