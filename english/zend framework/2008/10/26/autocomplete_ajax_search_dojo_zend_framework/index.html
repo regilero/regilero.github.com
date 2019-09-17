@@ -106,7 +106,7 @@ and that acl verifications are done elsewhere, on your Controller plugins for ex
 
 <p>First let's see HTML code (in your view):</p>
 
-<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="p">&lt;</span><span class="nt">script</span> <span class="na">type</span><span class="o">=</span><span class="s">&quot;text/javascript&quot;</span><span class="p">&gt;</span>
+<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
     <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dojo.parser&quot;</span><span class="p">);</span>
     <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dojox.data.QueryReadStore&quot;</span><span class="p">);</span>
     <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dijit.form.ComboBox&quot;</span><span class="p">);</span>
@@ -114,13 +114,13 @@ and that acl verifications are done elsewhere, on your Controller plugins for ex
     <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;custom.FindAutoCompleteReadStore&quot;</span><span class="p">);</span>
     <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dijit.form.Form&quot;</span><span class="p">);</span>
     <span class="nx">dojo</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="s2">&quot;dijit.form.Button&quot;</span><span class="p">);</span>
-  <span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
-  <span class="p">&lt;</span><span class="nt">form</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;Find_Form&quot;</span> <span class="na">action</span><span class="o">=</span><span class="s">&quot;/module/foo/edit&quot;</span> <span class="na">method</span><span class="o">=</span><span class="s">&quot;get&quot;</span> <span class="na">dojoType</span><span class="o">=</span><span class="s">&quot;dijit.form.Form&quot;</span><span class="p">&gt;</span>
-    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">dojoType</span><span class="o">=</span><span class="s">&quot;custom.FindAutoCompleteReadStore&quot;</span> <span class="na">jsId</span><span class="o">=</span><span class="s">&quot;NameStore&quot;</span> <span class="na">url</span><span class="o">=</span><span class="s">&quot;/module/foo/find/format/json&quot;</span> <span class="na">requestMethod</span><span class="o">=</span><span class="s">&quot;get&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
-    <span class="p">&lt;</span><span class="nt">label</span> <span class="na">for</span><span class="o">=</span><span class="s">&quot;id&quot;</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;optional&quot;</span><span class="p">&gt;</span>Recherchez un nom:<span class="p">&lt;/</span><span class="nt">label</span><span class="p">&gt;</span>
-    <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;formelement&quot;</span><span class="p">&gt;&lt;</span><span class="nt">select</span> <span class="na">name</span><span class="o">=</span><span class="s">&quot;id&quot;</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;FindByName&quot;</span> <span class="na">hasDownArrow</span><span class="o">=</span><span class="s">&quot;&quot;</span> <span class="na">store</span><span class="o">=</span><span class="s">&quot;NameStore&quot;</span> <span class="na">size</span><span class="o">=</span><span class="s">&quot;25&quot;</span> <span class="na">tabindex</span><span class="o">=</span><span class="s">&quot;99&quot;</span> <span class="na">autocomplete</span><span class="o">=</span><span class="s">&quot;1&quot;</span> <span class="na">dojoType</span><span class="o">=</span><span class="s">&quot;dijit.form.FilteringSelect&quot;</span> <span class="na">pageSize</span><span class="o">=</span><span class="s">&quot;10&quot;</span> <span class="p">&gt;&lt;/</span><span class="nt">select</span><span class="p">&gt;&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
-    <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;actionbuttons&quot;</span><span class="p">&gt;&lt;</span><span class="nt">input</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;Find_go&quot;</span> <span class="na">name</span><span class="o">=</span><span class="s">&quot;Find_go&quot;</span> <span class="na">value</span><span class="o">=</span><span class="s">&quot;Go:&quot;</span> <span class="na">type</span><span class="o">=</span><span class="s">&quot;submit&quot;</span> <span class="na">label</span><span class="o">=</span><span class="s">&quot;go:&quot;</span><span class="na">dojoType</span><span class="o">=</span><span class="s">&quot;dijit.form.Button&quot;</span> <span class="p">/&gt;&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
-  <span class="p">&lt;/</span><span class="nt">form</span><span class="p">&gt;</span></code></pre></div>
+  <span class="nt">&lt;/script&gt;</span>
+  <span class="nt">&lt;form</span> <span class="na">id=</span><span class="s">&quot;Find_Form&quot;</span> <span class="na">action=</span><span class="s">&quot;/module/foo/edit&quot;</span> <span class="na">method=</span><span class="s">&quot;get&quot;</span> <span class="na">dojoType=</span><span class="s">&quot;dijit.form.Form&quot;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;div</span> <span class="na">dojoType=</span><span class="s">&quot;custom.FindAutoCompleteReadStore&quot;</span> <span class="na">jsId=</span><span class="s">&quot;NameStore&quot;</span> <span class="na">url=</span><span class="s">&quot;/module/foo/find/format/json&quot;</span> <span class="na">requestMethod=</span><span class="s">&quot;get&quot;</span><span class="nt">&gt;&lt;/div&gt;</span>
+    <span class="nt">&lt;label</span> <span class="na">for=</span><span class="s">&quot;id&quot;</span> <span class="na">class=</span><span class="s">&quot;optional&quot;</span><span class="nt">&gt;</span>Recherchez un nom:<span class="nt">&lt;/label&gt;</span>
+    <span class="nt">&lt;span</span> <span class="na">class=</span><span class="s">&quot;formelement&quot;</span><span class="nt">&gt;&lt;select</span> <span class="na">name=</span><span class="s">&quot;id&quot;</span> <span class="na">id=</span><span class="s">&quot;FindByName&quot;</span> <span class="na">hasDownArrow=</span><span class="s">&quot;&quot;</span> <span class="na">store=</span><span class="s">&quot;NameStore&quot;</span> <span class="na">size=</span><span class="s">&quot;25&quot;</span> <span class="na">tabindex=</span><span class="s">&quot;99&quot;</span> <span class="na">autocomplete=</span><span class="s">&quot;1&quot;</span> <span class="na">dojoType=</span><span class="s">&quot;dijit.form.FilteringSelect&quot;</span> <span class="na">pageSize=</span><span class="s">&quot;10&quot;</span> <span class="nt">&gt;&lt;/select&gt;&lt;/span&gt;</span>
+    <span class="nt">&lt;span</span> <span class="na">class=</span><span class="s">&quot;actionbuttons&quot;</span><span class="nt">&gt;&lt;input</span> <span class="na">id=</span><span class="s">&quot;Find_go&quot;</span> <span class="na">name=</span><span class="s">&quot;Find_go&quot;</span> <span class="na">value=</span><span class="s">&quot;Go:&quot;</span> <span class="na">type=</span><span class="s">&quot;submit&quot;</span> <span class="na">label=</span><span class="s">&quot;go:&quot;</span><span class="na">dojoType=</span><span class="s">&quot;dijit.form.Button&quot;</span> <span class="nt">/&gt;&lt;/span&gt;</span>
+  <span class="nt">&lt;/form&gt;</span></code></pre></div>
 
 
 <p>As we can see you'll need an additional custom js: <strong>custom.FindAutoCompleteReadStore</strong>.</p>
@@ -295,6 +295,10 @@ to get other solutions or info on the way it will be fixed later look <a href="h
                 </div>
                 <div class="list-group" role="navigation">
                   
+                     <a class="list-group-item" href="/english/security/2019/10/17/security_apache_traffic_server_http_smuggling/">
+                     Security: HTTP Smuggling, Apache Traffic Server
+                     </a>
+                  
                      <a class="list-group-item" href="/english/security/2019/04/24/security_jetty_http_smuggling/">
                      Security: HTTP Smuggling, Jetty
                      </a>
@@ -311,10 +315,6 @@ to get other solutions or info on the way it will be fixed later look <a href="h
                      Web Security, Dompdf security issues details
                      </a>
                   
-                     <a class="list-group-item" href="/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
-                     Web Security, using bad HTML to escape from a DIV
-                     </a>
-                  
                 </div>
               </div>
             
@@ -324,47 +324,47 @@ to get other solutions or info on the way it will be fixed later look <a href="h
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Jetty/'>Jetty</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Apache/'>Apache</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 30px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 30px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
-<a style='font-size: 21px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
-<a style='font-size: 27px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
-<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 21px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 21px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
-<a style='font-size: 21px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
-<a style='font-size: 21px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 30px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 21px' class='taglink' href='/tag/CVE/'>CVE</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+                <a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
 <a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Pound/'>Pound</a>
+<a style='font-size: 31px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 26px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Jetty/'>Jetty</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 23px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 21px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 23px' class='taglink' href='/tag/CVE/'>CVE</a>
+<a style='font-size: 21px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 30px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 23px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 21px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 21px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 30px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
 
                 </div>
               </div>
@@ -376,7 +376,6 @@ to get other solutions or info on the way it will be fixed later look <a href="h
               </div>
                 <a href="https://twitter.com/regilero" target="_blank"><img src="/theme/img/twitter_thumb.png" width="48" height="48" alt="Twitter regilero" title="Twitter regilero"></a>
                 <a href="https://github.com/regilero" target="_blank"><img src="/theme/img/github_thumb.png" width="48" height="48" alt="Github regilero" title="Github regilero"></a>
-                <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
                 <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
                 <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
                 <a href="https://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>

@@ -141,53 +141,53 @@ Le mieux serait sans doute un script python mais comme je suis un peu dingue j'a
 (vous remarquerez que je limite à 30 caractères dans le nom de directory pour restreindre l'analyse,
 mais vous pouvez mettre plus si vous avez le temps d'attendre):</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="ch">#!/bin/bash</span>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c">#!/bin/bash</span>
 <span class="nv">REP_SOURCE</span><span class="o">=</span><span class="s2">&quot;/&quot;</span><span class="p">;</span>
 <span class="nv">BASE</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">;</span>
 <span class="nv">HOST</span><span class="o">=</span><span class="s2">&quot;localhost&quot;</span><span class="p">;</span>
 <span class="nv">USER</span><span class="o">=</span><span class="s2">&quot;testuser&quot;</span><span class="p">;</span>
 <span class="nv">MAXLENGHT</span><span class="o">=</span>30<span class="p">;</span>
 
-<span class="c1"># trap ctrl-c and call ctrl_c()</span>
-<span class="nb">trap</span> ctrl_c INT
+<span class="c"># trap ctrl-c and call ctrl_c()</span>
+<span class="nb">trap </span>ctrl_c INT
 
 <span class="k">function</span> ctrl_c<span class="o">()</span> <span class="o">{</span>
     <span class="nb">echo</span> <span class="s2">&quot;** Trapped CTRL-C&quot;</span><span class="p">;</span>
-    <span class="nb">exit</span> 1<span class="p">;</span>
+    <span class="nb">exit </span>1<span class="p">;</span>
 <span class="o">}</span>
 
 <span class="k">function</span> normalize <span class="o">{</span>
-    <span class="nb">echo</span> <span class="k">$(</span><span class="nb">echo</span> <span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span><span class="p">|</span>sed <span class="s2">&quot;s/\&quot;/_/g&quot;</span><span class="p">|</span>sed <span class="s2">&quot;s/&#39;/_/g&quot;</span><span class="p">|</span>sed <span class="s2">&quot;s/ /_/g&quot;</span><span class="k">)</span><span class="p">;</span>
+    <span class="nb">echo</span> <span class="k">$(</span><span class="nb">echo</span> <span class="s2">&quot;$1&quot;</span><span class="p">|</span>sed <span class="s2">&quot;s/\&quot;/_/g&quot;</span><span class="p">|</span>sed <span class="s2">&quot;s/&#39;/_/g&quot;</span><span class="p">|</span>sed <span class="s2">&quot;s/ /_/g&quot;</span><span class="k">)</span><span class="p">;</span>
 <span class="o">}</span>
 <span class="k">function</span> treeanalyse <span class="o">{</span>
     <span class="nv">DIR</span><span class="o">=</span><span class="nv">$1</span><span class="p">;</span>
-    <span class="c1"># shorten duration of this script with path greater than MAXLENGHT chars</span>
-    <span class="nv">len</span><span class="o">=</span><span class="sb">`</span>expr length <span class="s2">&quot;</span><span class="nv">$D</span><span class="s2">IR&quot;</span><span class="sb">`</span><span class="p">;</span>
-    <span class="k">if</span> <span class="o">[</span> $len -lt $MAXLENGHT <span class="o">]</span><span class="p">;</span> <span class="k">then</span>
-        <span class="c1">#echo &quot;DIR $DIR&quot;</span>
-        <span class="nv">nDIR</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;</span><span class="nv">$D</span><span class="s2">IR&quot;</span><span class="k">)</span><span class="p">;</span>
-        <span class="c1"># files detection</span>
-        find <span class="s2">&quot;</span><span class="nv">$D</span><span class="s2">IR&quot;</span> -maxdepth <span class="m">1</span> -type f <span class="p">|</span> <span class="k">while</span> <span class="nb">read</span> FIL <span class="p">;</span> <span class="k">do</span>
-            <span class="nv">FILENAME</span><span class="o">=</span><span class="sb">`</span>basename <span class="s2">&quot;</span><span class="nv">$F</span><span class="s2">IL&quot;</span><span class="sb">`</span><span class="p">;</span>
-            <span class="nv">nNAME</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;</span><span class="nv">$F</span><span class="s2">ILENAME&quot;</span><span class="k">)</span><span class="p">;</span>
-            <span class="nv">nFIL</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;</span><span class="nv">$F</span><span class="s2">IL&quot;</span><span class="k">)</span><span class="p">;</span>
-            <span class="nv">SQL</span><span class="o">=</span><span class="s2">&quot;INSERT INTO FILE (FILE_NAME,FILE_FULLNAME,FILE_TYPE,FILE_PARENT) SELECT &#39;</span>$<span class="s2">nNAME&#39;,&#39;</span>$<span class="s2">nFIL&#39;,&#39;file&#39;, FILE_ID FROM FILE WHERE FILE_FULLNAME=&#39;</span>$<span class="s2">nDIR&#39;;&quot;</span>
-            <span class="nb">echo</span> <span class="s2">&quot;</span><span class="si">${</span><span class="nv">SQL</span><span class="si">}</span><span class="s2">&quot;</span> &gt;&gt; /tmp/insert.sql
+    <span class="c"># shorten duration of this script with path greater than MAXLENGHT chars</span>
+    <span class="nv">len</span><span class="o">=</span><span class="sb">`</span>expr length <span class="s2">&quot;$DIR&quot;</span><span class="sb">`</span><span class="p">;</span>
+    <span class="k">if</span> <span class="o">[</span> <span class="nv">$len</span> -lt <span class="nv">$MAXLENGHT</span> <span class="o">]</span><span class="p">;</span> <span class="k">then</span>
+        <span class="c">#echo &quot;DIR $DIR&quot;</span>
+        <span class="nv">nDIR</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;$DIR&quot;</span><span class="k">)</span><span class="p">;</span>
+        <span class="c"># files detection</span>
+        find <span class="s2">&quot;$DIR&quot;</span> -maxdepth <span class="m">1</span> -type f <span class="p">|</span> <span class="k">while</span> <span class="nb">read </span>FIL <span class="p">;</span> <span class="k">do</span>
+            <span class="nv">FILENAME</span><span class="o">=</span><span class="sb">`</span>basename <span class="s2">&quot;$FIL&quot;</span><span class="sb">`</span><span class="p">;</span>
+            <span class="nv">nNAME</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;$FILENAME&quot;</span><span class="k">)</span><span class="p">;</span>
+            <span class="nv">nFIL</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;$FIL&quot;</span><span class="k">)</span><span class="p">;</span>
+            <span class="nv">SQL</span><span class="o">=</span><span class="s2">&quot;INSERT INTO FILE (FILE_NAME,FILE_FULLNAME,FILE_TYPE,FILE_PARENT) SELECT &#39;$nNAME&#39;,&#39;$nFIL&#39;,&#39;file&#39;, FILE_ID FROM FILE WHERE FILE_FULLNAME=&#39;$nDIR&#39;;&quot;</span>
+            <span class="nb">echo</span> <span class="s2">&quot;${SQL}&quot;</span> &gt;&gt; /tmp/insert.sql
         <span class="k">done</span>
-        <span class="c1"># directory detection</span>
-        find <span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR</span><span class="si">}</span><span class="s2">&quot;</span> -maxdepth <span class="m">1</span> -type d <span class="p">|</span> <span class="k">while</span> <span class="nb">read</span> SUBDIR <span class="p">;</span> <span class="k">do</span>
-            <span class="nb">echo</span> <span class="s2">&quot;</span>$<span class="s2">SUBDIR&quot;</span><span class="p">;</span>
-            <span class="nv">DIRNAME</span><span class="o">=</span><span class="sb">`</span>basename <span class="s2">&quot;</span>$<span class="s2">SUBDIR&quot;</span><span class="sb">`</span><span class="p">;</span>
-            <span class="k">if</span> <span class="o">[</span> <span class="s2">&quot;</span>$<span class="s2">SUBDIR&quot;</span> !<span class="o">=</span> <span class="s2">&quot;</span><span class="nv">$D</span><span class="s2">IR&quot;</span> -a <span class="s2">&quot;</span><span class="nv">$D</span><span class="s2">IRNAME&quot;</span> !<span class="o">=</span> <span class="s2">&quot;proc&quot;</span> -a <span class="s2">&quot;</span><span class="nv">$D</span><span class="s2">IRNAME&quot;</span> !<span class="o">=</span> <span class="s2">&quot;sys&quot;</span> -a <span class="s2">&quot;</span><span class="nv">$D</span><span class="s2">IRNAME&quot;</span> !<span class="o">=</span> <span class="s2">&quot;mnt&quot;</span> -a <span class="s2">&quot;</span><span class="nv">$D</span><span class="s2">IRNAME&quot;</span> !<span class="o">=</span> <span class="s2">&quot;.&quot;</span> -a <span class="s2">&quot;</span><span class="nv">$D</span><span class="s2">IRNAME&quot;</span> !<span class="o">=</span> <span class="s2">&quot;..&quot;</span> <span class="o">]</span><span class="p">;</span> <span class="k">then</span>
-                <span class="nv">CLEANDIRNAME</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span> <span class="nv">$D</span>IRNAME<span class="p">|</span>sed <span class="s2">&quot;s/\&quot;/_/g&quot;</span><span class="p">|</span>sed <span class="s2">&quot;s/&#39;/_/g&quot;</span><span class="p">|</span>sed <span class="s2">&quot;s/ /_/g&quot;</span><span class="k">)</span><span class="p">;</span>
-                <span class="nv">nDIRNAME</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;</span><span class="nv">$D</span><span class="s2">IRNAME&quot;</span><span class="k">)</span><span class="p">;</span>
-                <span class="nv">nDIR</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;</span><span class="nv">$D</span><span class="s2">IR&quot;</span><span class="k">)</span><span class="p">;</span>
-                <span class="nv">nSUBDIR</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;</span>$<span class="s2">SUBDIR&quot;</span><span class="k">)</span><span class="p">;</span>
-                <span class="nv">SQL</span><span class="o">=</span><span class="s2">&quot;INSERT INTO FILE (FILE_NAME,FILE_FULLNAME,FILE_TYPE,FILE_PARENT) SELECT &#39;</span>$<span class="s2">nDIRNAME&#39;,&#39;</span>$<span class="s2">nSUBDIR&#39;,&#39;directory&#39;,FILE_ID FROM FILE WHERE FILE_FULLNAME=&#39;</span>$<span class="s2">nDIR&#39;;&quot;</span>
-                <span class="nb">echo</span> <span class="s2">&quot;</span><span class="si">${</span><span class="nv">SQL</span><span class="si">}</span><span class="s2">&quot;</span> &gt;&gt; /tmp/insert.sql<span class="p">;</span>
-                <span class="nv">DIRBACKUP</span><span class="o">=</span><span class="nv">$D</span>IR<span class="p">;</span> <span class="c1"># prevent variable overlap in bash</span>
-                treeanalyse $SUBDIR<span class="p">;</span>
-                <span class="nv">DIR</span><span class="o">=</span><span class="nv">$D</span>IRBACKUP<span class="p">;</span> <span class="c1"># prevent variable overlap in bash</span>
+        <span class="c"># directory detection</span>
+        find <span class="s2">&quot;${DIR}&quot;</span> -maxdepth <span class="m">1</span> -type d <span class="p">|</span> <span class="k">while</span> <span class="nb">read </span>SUBDIR <span class="p">;</span> <span class="k">do</span>
+            <span class="nb">echo</span> <span class="s2">&quot;$SUBDIR&quot;</span><span class="p">;</span>
+            <span class="nv">DIRNAME</span><span class="o">=</span><span class="sb">`</span>basename <span class="s2">&quot;$SUBDIR&quot;</span><span class="sb">`</span><span class="p">;</span>
+            <span class="k">if</span> <span class="o">[</span> <span class="s2">&quot;$SUBDIR&quot;</span> !<span class="o">=</span> <span class="s2">&quot;$DIR&quot;</span> -a <span class="s2">&quot;$DIRNAME&quot;</span> !<span class="o">=</span> <span class="s2">&quot;proc&quot;</span> -a <span class="s2">&quot;$DIRNAME&quot;</span> !<span class="o">=</span> <span class="s2">&quot;sys&quot;</span> -a <span class="s2">&quot;$DIRNAME&quot;</span> !<span class="o">=</span> <span class="s2">&quot;mnt&quot;</span> -a <span class="s2">&quot;$DIRNAME&quot;</span> !<span class="o">=</span> <span class="s2">&quot;.&quot;</span> -a <span class="s2">&quot;$DIRNAME&quot;</span> !<span class="o">=</span> <span class="s2">&quot;..&quot;</span> <span class="o">]</span><span class="p">;</span> <span class="k">then</span>
+                <span class="nv">CLEANDIRNAME</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span> <span class="nv">$DIRNAME</span><span class="p">|</span>sed <span class="s2">&quot;s/\&quot;/_/g&quot;</span><span class="p">|</span>sed <span class="s2">&quot;s/&#39;/_/g&quot;</span><span class="p">|</span>sed <span class="s2">&quot;s/ /_/g&quot;</span><span class="k">)</span><span class="p">;</span>
+                <span class="nv">nDIRNAME</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;$DIRNAME&quot;</span><span class="k">)</span><span class="p">;</span>
+                <span class="nv">nDIR</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;$DIR&quot;</span><span class="k">)</span><span class="p">;</span>
+                <span class="nv">nSUBDIR</span><span class="o">=</span><span class="k">$(</span>normalize <span class="s2">&quot;$SUBDIR&quot;</span><span class="k">)</span><span class="p">;</span>
+                <span class="nv">SQL</span><span class="o">=</span><span class="s2">&quot;INSERT INTO FILE (FILE_NAME,FILE_FULLNAME,FILE_TYPE,FILE_PARENT) SELECT &#39;$nDIRNAME&#39;,&#39;$nSUBDIR&#39;,&#39;directory&#39;,FILE_ID FROM FILE WHERE FILE_FULLNAME=&#39;$nDIR&#39;;&quot;</span>
+                <span class="nb">echo</span> <span class="s2">&quot;${SQL}&quot;</span> &gt;&gt; /tmp/insert.sql<span class="p">;</span>
+                <span class="nv">DIRBACKUP</span><span class="o">=</span><span class="nv">$DIR</span><span class="p">;</span> <span class="c"># prevent variable overlap in bash</span>
+                treeanalyse <span class="nv">$SUBDIR</span><span class="p">;</span>
+                <span class="nv">DIR</span><span class="o">=</span><span class="nv">$DIRBACKUP</span><span class="p">;</span> <span class="c"># prevent variable overlap in bash</span>
             <span class="k">fi</span>
         <span class="k">done</span>
     <span class="k">fi</span>
@@ -195,18 +195,18 @@ mais vous pouvez mettre plus si vous avez le temps d'attendre):</p>
 
 <span class="nv">PARENTDIR</span><span class="o">=</span><span class="s2">&quot;0&quot;</span>
 <span class="nv">SQL</span><span class="o">=</span><span class="s2">&quot;TRUNCATE FILE;&quot;</span>
-<span class="nb">echo</span> <span class="s2">&quot;</span><span class="si">${</span><span class="nv">SQL</span><span class="si">}</span><span class="s2">&quot;</span> &gt; /tmp/insert.sql<span class="p">;</span>
-<span class="nv">SQL</span><span class="o">=</span><span class="s2">&quot;INSERT INTO FILE (FILE_ID,FILE_NAME,FILE_FULLNAME,FILE_TYPE,FILE_PARENT) VALUES (</span>$<span class="s2">PARENTDIR,&#39;</span>$<span class="s2">REP_SOURCE&#39;,&#39;</span>$<span class="s2">REP_SOURCE&#39;,&#39;directory&#39;,</span>$<span class="s2">PARENTDIR);&quot;</span>
-<span class="nv">PARENTDIR</span><span class="o">=</span>$REP_SOURCE<span class="p">;</span>
-<span class="nv">DIR</span><span class="o">=</span>$REP_SOURCE<span class="p">;</span>
-<span class="nb">echo</span> <span class="s2">&quot;</span><span class="si">${</span><span class="nv">SQL</span><span class="si">}</span><span class="s2">&quot;</span> &gt;&gt; /tmp/insert.sql<span class="p">;</span>
+<span class="nb">echo</span> <span class="s2">&quot;${SQL}&quot;</span> &gt; /tmp/insert.sql<span class="p">;</span>
+<span class="nv">SQL</span><span class="o">=</span><span class="s2">&quot;INSERT INTO FILE (FILE_ID,FILE_NAME,FILE_FULLNAME,FILE_TYPE,FILE_PARENT) VALUES ($PARENTDIR,&#39;$REP_SOURCE&#39;,&#39;$REP_SOURCE&#39;,&#39;directory&#39;,$PARENTDIR);&quot;</span>
+<span class="nv">PARENTDIR</span><span class="o">=</span><span class="nv">$REP_SOURCE</span><span class="p">;</span>
+<span class="nv">DIR</span><span class="o">=</span><span class="nv">$REP_SOURCE</span><span class="p">;</span>
+<span class="nb">echo</span> <span class="s2">&quot;${SQL}&quot;</span> &gt;&gt; /tmp/insert.sql<span class="p">;</span>
 <span class="nb">echo</span> <span class="s2">&quot;Analysing&quot;</span><span class="p">;</span>
-treeanalyse <span class="nv">$D</span>IR<span class="p">;</span>
+treeanalyse <span class="nv">$DIR</span><span class="p">;</span>
 
 <span class="nb">echo</span> <span class="s2">&quot;STARTING SQL INSERTION:&quot;</span>
-<span class="c1">#PGCOMMAND=&quot;psql -d $BASE -h $HOST -U $USER --single-transaction -f &quot;</span>
-<span class="nv">PGCOMMAND</span><span class="o">=</span><span class="s2">&quot;psql -d </span><span class="nv">$BA</span><span class="s2">SE -h </span>$<span class="s2">HOST -U </span>$<span class="s2">USER -f &quot;</span>
-$PGCOMMAND /tmp/insert.sql<span class="p">;</span>
+<span class="c">#PGCOMMAND=&quot;psql -d $BASE -h $HOST -U $USER --single-transaction -f &quot;</span>
+<span class="nv">PGCOMMAND</span><span class="o">=</span><span class="s2">&quot;psql -d $BASE -h $HOST -U $USER -f &quot;</span>
+<span class="nv">$PGCOMMAND</span> /tmp/insert.sql<span class="p">;</span>
 <span class="nb">echo</span> <span class="s2">&quot;Done&quot;</span></code></pre></div>
 
 
@@ -469,6 +469,10 @@ posgreSQL citée plus haut. <strong>Attention</strong> à ne pas oublier le <cod
                 </div>
                 <div class="list-group" role="navigation">
                   
+                     <a class="list-group-item" href="/english/security/2019/10/17/security_apache_traffic_server_http_smuggling/">
+                     Security: HTTP Smuggling, Apache Traffic Server
+                     </a>
+                  
                      <a class="list-group-item" href="/english/security/2019/04/24/security_jetty_http_smuggling/">
                      Security: HTTP Smuggling, Jetty
                      </a>
@@ -485,10 +489,6 @@ posgreSQL citée plus haut. <strong>Attention</strong> à ne pas oublier le <cod
                      Web Security, Dompdf security issues details
                      </a>
                   
-                     <a class="list-group-item" href="/english/security/2016/06/10/security_play_with_implicit_html_and_closing_divs/">
-                     Web Security, using bad HTML to escape from a DIV
-                     </a>
-                  
                 </div>
               </div>
             
@@ -498,47 +498,47 @@ posgreSQL citée plus haut. <strong>Attention</strong> à ne pas oublier le <cod
                 </div>
 
                 <div class="tagcloud">
-                <a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
-<a style='font-size: 21px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
-<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+                <a style='font-size: 21px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
 <a style='font-size: 30px' class='taglink' href='/tag/Drupal/'>Drupal</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
 <a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
-<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
-<a style='font-size: 30px' class='taglink' href='/tag/PHP/'>PHP</a>
-<a style='font-size: 21px' class='taglink' href='/tag/CVE/'>CVE</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
-<a style='font-size: 30px' class='taglink' href='/tag/HTTP/'>HTTP</a>
-<a style='font-size: 21px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
-<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
-<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
-<a style='font-size: 27px' class='taglink' href='/tag/Performance/'>Performance</a>
-<a style='font-size: 21px' class='taglink' href='/tag/Proxy/'>Proxy</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Pound/'>Pound</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
-<a style='font-size: 21px' class='taglink' href='/tag/Nginx/'>Nginx</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
-<a style='font-size: 21px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
-<a style='font-size: 24px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 21px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
 <a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 21px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
+<a style='font-size: 23px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
 <a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
-<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
-<a style='font-size: 31px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Jetty/'>Jetty</a>
-<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
-<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
-<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
-<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
+<a style='font-size: 26px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 23px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 23px' class='taglink' href='/tag/CVE/'>CVE</a>
+<a style='font-size: 31px' class='taglink' href='/tag/HTTP/'>HTTP</a>
 <a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Pound/'>Pound</a>
+<a style='font-size: 21px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 30px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
 
                 </div>
               </div>
@@ -550,7 +550,6 @@ posgreSQL citée plus haut. <strong>Attention</strong> à ne pas oublier le <cod
               </div>
                 <a href="https://twitter.com/regilero" target="_blank"><img src="/theme/img/twitter_thumb.png" width="48" height="48" alt="Twitter regilero" title="Twitter regilero"></a>
                 <a href="https://github.com/regilero" target="_blank"><img src="/theme/img/github_thumb.png" width="48" height="48" alt="Github regilero" title="Github regilero"></a>
-                <a href="https://plus.google.com/111280074129555323484?rel=author" target="_blank"><img src="/theme/img/google-plus-thumb.png" width="48" height="48" alt="G+" title="G+"></a>
                 <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
                 <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
                 <a href="https://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>

