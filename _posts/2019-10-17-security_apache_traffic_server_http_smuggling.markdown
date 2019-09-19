@@ -889,7 +889,7 @@ Just to better understand *real world impacts*, here the only one receiving resp
 ## See also
 
 * Video [Defcon 24: HTTP Smuggling](https://www.youtube.com/watch?v=dVU9i5PsMPY)
-* [Defcon support](https://media.defcon.org/DEF%20CON%2024/DEF%20CON%2024%20presentations/DEFCON-24-Regilero-Hiding-Wookiees-In-Http.pdf)
+* [Defcon support](https://media.defcon.org/DEF%20CON%2024/DEF%20CON%2024%20presentations/DEF%20CON%2024%20-%20Regilero-Hiding-Wookiees-In-Http.pdf)
 * Video [Defcon demos](https://www.youtube.com/watch?v=lY_Mf2Fv7kI)
 
   [FRENCH]: https://www.makina-corpus.com/blog/metier/2018/securite-contrebande-de-http-apache-traffic-server
